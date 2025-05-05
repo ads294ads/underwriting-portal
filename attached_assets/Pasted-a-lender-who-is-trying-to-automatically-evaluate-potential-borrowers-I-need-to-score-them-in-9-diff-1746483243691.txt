@@ -1,0 +1,144 @@
+a lender who is trying to automatically evaluate potential borrowers, I need to score them in 9 different groups: Grade A+,A, A-, Grade B+, B, B-, and Grade C+, C, C-. The grades are based on a numerical score from 1-100, 100 being the best. The score is derived from evaluating numerous data from the application, tax return, financials etc. Please give me the various parameters and how much each parameter weighs in to the score, use the knowledge of basics of banking underwriting to determine the worthiness of a candidate for a loan. These loans are for businesses and we need to evaluate current and past performance for the past 3 years or whoever long the client has been in business, minimum of 1 year in business. Code me a web app for automated scoring and create a borrower application that could be accessed on laptop and mobile that captures the necessary data and can analyze said data. The client will have to upload their data and the program will get the necessary information from the pdf documents the client uploads and analyze to get the score. All functions should work including the analysis of the uploaded docs to score. Make the website similar to other clerk fintech web apps. I like the code i have done already which you can find below. I just need you to help with 1. Coding a way that the user sees the uploaded docs that they uploaded so they can know what they uploaded, 2. That there is a detailed report stating how the program ascertained the grade. Also have to make sure the analysis is accurate and uses AI to ascertain whether the candidate is good for the loan. The code i have already done is <!DOCTYPE html>
+
+<html lang="en"> <head> <meta charset="UTF-8"> <meta name="viewport" content="width=device-width,initial-scale=1"> <title>Business Loan Scoring System - Automated Underwriting Platform</title> <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"> <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.2/css/all.min.css" rel="stylesheet"> <link href="https://fonts.googleapis.com/css?family=Inter:400,600,700&display=swap" rel="stylesheet"> <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script> <style> body { font-family: 'Inter', sans-serif; background: #f8fafc; } .no-scrollbar::-webkit-scrollbar { display: none; } .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; } .score-bar-segment { height: 12px; border-radius: 4px; } .grade-label { font-weight: 700; letter-spacing: .02em; } @media print { .no-print { display: none !important; } body { background: #fff !important; } html, body { width: 100%; } } </style> </head> <body class="min-h-screen text-gray-800 tracking-tight"> <!-- Header --> <header class="bg-white shadow sticky top-0 z-30 p-4 mb-6"> <div class="flex items-center space-x-3"> <span class="flex items-center justify-center bg-blue-100 text-blue-700 rounded-full w-12 h-12 text-2xl"><i class="fas fa-clipboard-list"></i></span> <div> <h1 class="text-2xl font-bold">Business Loan Scoring System</h1> <p class="text-sm text-gray-500">Automated Underwriting Platform</p> </div> </div> </header> <main class="max-w-5xl mx-auto px-4 py-2">
+<!-- Step 1: Borrower Application Form -->
+<section id="application-section" class="bg-white rounded-lg shadow p-6 mb-8">
+  <h2 class="text-xl font-semibold mb-4 flex items-center"><i class="fa fa-user-edit text-blue-500 mr-2"></i>Borrower Application</h2>
+
+  <form id="borrower-form" class="grid md:grid-cols-2 gap-6">
+    <div>
+      <label class="block font-medium mb-1">Business Name <span class="text-red-500">*</span></label>
+      <input required name="businessName" class="w-full border rounded p-2 focus:ring-2 focus:ring-blue-400" />
+    </div>
+    <div>
+      <label class="block font-medium mb-1">Industry <span class="text-red-500">*</span></label>
+      <input required name="industry" class="w-full border rounded p-2 focus:ring-2 focus:ring-blue-400" />
+    </div>
+    <div>
+      <label class="block font-medium mb-1">Years in Business <span class="text-red-500">*</span></label>
+      <input required name="yearsInBusiness" type="number" min="1" class="w-full border rounded p-2 focus:ring-2 focus:ring-blue-400" />
+    </div>
+    <div>
+      <label class="block font-medium mb-1">Annual Revenue (Last Year) <span class="text-red-500">*</span></label>
+      <input required name="annualRevenue" type="number" min="1" class="w-full border rounded p-2 focus:ring-2 focus:ring-blue-400" />
+    </div>
+    <div>
+      <label class="block font-medium mb-1">Requested Loan Amount <span class="text-red-500">*</span></label>
+      <input required name="loanAmount" type="number" min="1" class="w-full border rounded p-2 focus:ring-2 focus:ring-blue-400" />
+    </div>
+    <div>
+      <label class="block font-medium mb-1">Contact Email <span class="text-red-500">*</span></label>
+      <input required name="email" type="email" class="w-full border rounded p-2 focus:ring-2 focus:ring-blue-400" />
+    </div>
+    <div class="md:col-span-2">
+      <label class="block font-medium mb-2">Upload Financial Documents (PDF - tax returns, financials, etc.) <span class="text-red-500">*</span></label>
+      <input required name="upload" id="file-input" type="file" accept=".pdf" multiple class="w-full border rounded py-2 px-3 cursor-pointer focus:ring-2 focus:ring-blue-400" />
+      <small class="text-gray-500 block mt-1">Upload up to 5 PDFs. The system will extract and analyze data automatically.</small>
+    </div>
+    <div class="md:col-span-2 mt-6 flex justify-end">
+      <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded shadow transition font-semibold text-base inline-flex items-center">
+        <i class="fa fa-file-upload mr-2"></i> Submit & Score
+      </button>
+    </div>
+  </form>
+</section>
+
+<!-- Step 2: Scoring Result, hidden initially -->
+<section id="scoring-section" class="bg-white rounded-lg shadow p-6 mb-8" style="display:none">
+  <div class="flex items-center mb-4">
+    <span class="text-2xl text-green-500 mr-2"><i class="fa fa-chart-line"></i></span>
+    <h2 class="text-xl font-semibold">Automated Scoring Results</h2>
+  </div>
+
+  <!-- Score & Grade Visual -->
+  <div class="flex flex-col md:flex-row md:items-center gap-6 mb-8">
+    <div class="flex items-center space-x-4">
+      <div class="relative">
+        <canvas id="mainScoreDonut" width="112" height="112"></canvas>
+        <span id="mainScoreValue" class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 font-bold text-2xl text-blue-700">--</span>
+      </div>
+      <div>
+        <span id="mainGradeLabel" class="text-3xl grade-label block mb-1"></span>
+        <span id="mainGradeDesc" class="text-gray-600"></span>
+      </div>
+    </div>
+    <div class="w-full">
+      <div class="mb-1 flex justify-between">
+        <span class="text-xs font-semibold">Grade Bands</span>
+        <span class="text-xs text-gray-400" id="score-bar-pointer-label"></span>
+      </div>
+      <div class="flex w-full gap-1 items-center">
+        <div class="score-bar-segment flex-1 bg-green-400"></div>
+        <div class="score-bar-segment flex-1 bg-green-300"></div>
+        <div class="score-bar-segment flex-1 bg-green-200"></div>
+        <div class="score-bar-segment flex-1 bg-yellow-300"></div>
+        <div class="score-bar-segment flex-1 bg-yellow-400"></div>
+        <div class="score-bar-segment flex-1 bg-yellow-500"></div>
+        <div class="score-bar-segment flex-1 bg-red-300"></div>
+        <div class="score-bar-segment flex-1 bg-red-400"></div>
+        <div class="score-bar-segment flex-1 bg-red-500"></div>
+      </div>
+      <!-- Score Pointer -->
+      <div class="relative w-full h-6">
+        <div id="score-bar-pointer" class="absolute -top-1 left-0 transition-all duration-300 no-scrollbar" style="width:0px;">
+          <span class="fa fa-caret-down text-blue-700 text-2xl"></span>
+        </div>
+      </div>
+      <!-- Legend -->
+      <div class="flex justify-between text-xs font-semibold text-gray-600 mt-1" style="font-variant-numeric: tabular-nums;">
+        <span>A+</span><span>A</span><span>A-</span><span>B+</span>
+        <span>B</span><span>B-</span><span>C+</span><span>C</span><span>C-</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Detailed Scoring Breakdown -->
+  <div class="mb-4">
+    <h3 class="font-semibold text-lg mb-2">Scoring Breakdown</h3>
+    <div id="scoreBreakdown" class="grid md:grid-cols-2 gap-4"></div>
+  </div>
+  <div class="mb-6 mt-2">
+    <h3 class="font-semibold text-lg mb-2 flex items-center"><i class="fa fa-file-alt text-yellow-500 mr-2"></i>Document Analysis Highlights</h3>
+    <ul id="docAnalysis" class="text-gray-700 list-disc pl-5 text-sm"></ul>
+  </div>
+  <!-- Borrower Info -->
+  <div>
+    <h3 class="font-semibold text-lg mb-2 flex items-center"><i class="fa fa-id-card-alt text-indigo-400 mr-2"></i>Borrower & Application Details</h3>
+    <dl class="grid md:grid-cols-2 gap-x-8 gap-y-2 text-sm">
+      <dt class="font-semibold">Business Name:</dt><dd id="info-businessName"></dd>
+      <dt class="font-semibold">Industry:</dt><dd id="info-industry"></dd>
+      <dt class="font-semibold">Years in Business:</dt><dd id="info-yearsInBusiness"></dd>
+      <dt class="font-semibold">Annual Revenue:</dt><dd id="info-annualRevenue"></dd>
+      <dt class="font-semibold">Requested Loan Amount:</dt><dd id="info-loanAmount"></dd>
+      <dt class="font-semibold">Contact Email:</dt><dd id="info-email"></dd>
+    </dl>
+  </div>
+</section>
+
+<!-- Step 3: Lender Dashboard (Demo Table of Applicants) -->
+<section id="lender-dashboard" class="bg-white rounded-lg shadow p-6 mb-10">
+  <div class="flex items-center mb-4">
+    <span class="text-xl text-purple-500 mr-2"><i class="fa fa-users"></i></span>
+    <h2 class="text-xl font-semibold">Lender Dashboard (Applicant Overview)</h2>
+  </div>
+  <div class="overflow-x-auto">
+    <table class="min-w-full text-xs md:text-sm rounded-lg border border-gray-200">
+      <thead class="bg-gray-100 border-b border-gray-200">
+        <tr>
+          <th class="py-2 px-2 text-left font-semibold">Business Name</th>
+          <th class="py-2 px-2 text-left font-semibold">Industry</th>
+          <th class="py-2 px-2 text-center font-semibold">Score</th>
+          <th class="py-2 px-2 text-center font-semibold">Grade</th>
+          <th class="py-2 px-2 text-center font-semibold">Years</th>
+          <th class="py-2 px-2 text-center font-semibold">Annual Revenue</th>
+          <th class="py-2 px-2 text-center font-semibold">Loan Amt</th>
+          <th class="py-2 px-2 text-center font-semibold">Email</th>
+        </tr>
+      </thead>
+      <tbody id="applicants-table">
+        <!-- Applicant rows to be dynamically populated -->
+      </tbody>
+    </table>
+  </div>
+</section>
+</main> <!-- JS and PDF parsing logic --> <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@4.2.67/build/pdf.min.js"></script> <script> // ---- Scoring Parameters ---- const scoringParameters = [ {key:"revenueGrowthRate",name:"Revenue Growth Rate (3yr)",weight:0.18,desc:"Average YoY revenue increase, indicates business expansion and demand."}, {key:"ebitdaMargin",name:"EBITDA Margin",weight:0.17,desc:"Earnings before interest/taxes as % of revenue, measures profitability."}, {key:"debtServiceCoverage",name:"Debt Service Coverage Ratio (DSCR)",weight:0.15,desc:"Net operating income divided by total debt service; above 1.2 considered good."}, {key:"liquidityRatio",name:"Liquidity Ratio (Current Ratio)",weight:0.10,desc:"Current assets divided by current liabilities; above 1.2 preferred."}, {key:"leverageRatio",name:"Leverage Ratio (Debt to Equity)",weight:0.08,desc:"Total debt divided by equity. Lower is better (less than 2 is preferred)."}, {key:"creditHistoryScore",name:"Credit History (Business/Owner)",weight:0.12,desc:"Evaluates payment timeliness, delinquencies, bankruptcies."}, {key:"profitabilityTrend",name:"Profitability Trend",weight:0.08,desc:"Consistent net profits over time is positive."}, {key:"yearsInBusiness",name:"Years in Business",weight:0.06,desc:"Longer business history indicates stability, minimum 1 year."}, {key:"taxFilingCompliance",name:"Tax Filing Compliance",weight:0.06,desc:"On-time, accurate tax filings, no material IRS penalties."} ]; const scoreGrades = [ {min:94, grade:'A+', color:'bg-green-600', desc: 'Exceptional financials, low risk'}, {min:88, grade:'A', color:'bg-green-500', desc: 'Excellent. Very low risk'}, {min:82, grade:'A-', color:'bg-green-400', desc: 'Very good, minor areas to watch'}, {min:76, grade:'B+', color:'bg-yellow-300', desc:'Solid, generally safe with caveats'}, {min:70, grade:'B', color:'bg-yellow-400', desc:'Average, some potential risks'}, {min:62, grade:'B-', color:'bg-yellow-500', desc:'Watchlist, notable weaknesses'}, {min:55, grade:'C+', color:'bg-red-300', desc:'Below average, higher risk'}, {min:47, grade:'C', color:'bg-red-400', desc:'Weak, significant concerns'}, {min:0, grade:'C-', color:'bg-red-500', desc:'Very weak, high risk or default'} ]; // ---- State ---- let applicantList = []; // ---- Utility Functions ---- function formatMoney(n) { if (!n && n!==0) return '--'; n = Number(n); return n.toLocaleString('en-US', {style:'currency',currency:'USD',maximumFractionDigits:0}); } function findGrade(score) { for (const v of scoreGrades) { if (score >= v.min) return v; } return scoreGrades[scoreGrades.length-1]; } function clamp(x, min, max) { return Math.max(min, Math.min(max, x)); } // ---- PDF Extraction Helpers ---- async function parsePDFs(fileList) { const results = []; for (const file of fileList) { if (file.type==="application/pdf") { try { const text = await extractTextFromPDF(file); results.push({fileName:file.name, text}); } catch(e) { results.push({fileName:file.name, text:"[ERROR reading PDF]"}); } } } return results; } async function extractTextFromPDF(file) { const arrayBuffer = await file.arrayBuffer(); const pdf = await window['pdfjsLib'].getDocument({data:arrayBuffer}).promise; let allText = ''; for(let i=1; i<=pdf.numPages; i++) { const p = await pdf.getPage(i); const txtContent = await p.getTextContent(); allText += txtContent.items.map(i=>i.str).join(' ') + '\n'; } return allText; } // ---- Data Extraction from Text ---- // NOTE: In absence of structured PDFs, this is a best-effort heuristic for demo/mock. function extractFinancialDataFromText(docs, formData) { // Try to extract numbers for revenue/profit etc. from text using regex patterns. // Anchors: e.g. "Revenue: $1,200,000", "Net Income: $80,000", "EBITDA 13%", etc. // If not present, fallback to random ranges (for demo). // For a production app: use a proper native or cloud text extraction & classification API. let docAnalysis = []; function findNumber(pattern, text) { const m = text.match(pattern); return m ? parseFloat(m[1].replace(/[,$]/g, '')) : null; } let last3YearRevenue = []; let last3YearNetIncome = []; let last3YearEBITDA = []; let dscr = null, currRatio = null, taxLate=false, eq=0, debt=0, creditIssue=0, profitTrend=0; for(const doc of docs) { // Revenue by year, e.g. Revenue 2023: $..., Revenue 2022: $... let rev = []; for(let y=2021; y<=2024; y++) { const r = findNumber(new RegExp(`Revenue.*${y}[^\\d\\$]*\\$?([\\d,]+)`, 'i'), doc.text); if (r) rev.push({y,r}); } if (rev.length) last3YearRevenue = rev.map(x=>x.r); let ebitda = findNumber(/EBITDA[^%\\d]*([\\d.]{1,6})%/i, doc.text) || null; if(ebitda) last3YearEBITDA.push(ebitda); // Net Income by year e.g. Net Income 2023: $... let ni = []; for(let y=2021; y<=2024; y++) { const n = findNumber(new RegExp(`Net\\s+Income.*${y}[^\\d\\$]*\\$?([\\d,]+)`, 'i'), doc.text); if (n) ni.push({y, n}); } if (ni.length) last3YearNetIncome = ni.map(x=>x.n); // Debt Service Coverage if(!dscr) dscr = findNumber(/Debt Service Coverage Ratio[^\\d]*([\\d.]+)/i, doc.text); if(!currRatio) currRatio = findNumber(/Current Ratio[^\\d]*([\\d.]+)/i, doc.text); // Leverage Ratio (Debt/Equity) if(!eq) eq = findNumber(/Total\\s+Equity[^\\d]*([\\d,]+)/i, doc.text) || eq; if(!debt) debt = findNumber(/Total\\s+Debt[^\\d]*([\\d,]+)/i, doc.text) || debt; // Credit History if(/delinquency|late|bankrupt/i.test(doc.text)) creditIssue += 1; // Tax compliance if(/irs.*penalty|tax.*late|tax.*filed late/i.test(doc.text)) { taxLate=true; } } // Fallbacks for demo: const getDemoArr = n=>[1,2,3].map(()=>Math.floor(Math.random()*1000000+500000)); if(!last3YearRevenue.length) last3YearRevenue = [formData.annualRevenue, +formData.annualRevenue*0.87, +formData.annualRevenue*0.76]; if(!last3YearNetIncome.length) last3YearNetIncome = getDemoArr(3).map(x=>x*0.09); if(!last3YearEBITDA.length) last3YearEBITDA = getDemoArr(3).map(x=>x*0.13); if(!dscr) dscr = (Math.random()*1.3+0.9).toFixed(2); if(!currRatio) currRatio = (Math.random()*0.7+1.1).toFixed(2); if(!eq) eq = Math.floor(formData.annualRevenue/1.4); if(!debt) debt = Math.floor(eq*Math.random()*2.1); if(!creditIssue) creditIssue = 0; if(!profitTrend) profitTrend = (last3YearNetIncome[2]-last3YearNetIncome[0])>0 ? 1 : 0; docAnalysis.push('Extracted Revenue: '+last3YearRevenue.map((v,i)=>`${2023-i}: ${formatMoney(v)}`).join(', ')); docAnalysis.push('Extracted Net Income: '+last3YearNetIncome.map((v,i)=>`${2023-i}: ${formatMoney(v)}`).join(', ')); docAnalysis.push('Extracted DSCR: '+dscr+', Current Ratio: '+currRatio+', Debt: '+formatMoney(debt)+', Equity: '+formatMoney(eq)); if(creditIssue>0) docAnalysis.push("Negative credit remarks detected."); if(taxLate) docAnalysis.push("Possible tax filing compliance issue detected."); // Derived Metrics: const revenueGrowthRate = ( ((last3YearRevenue[0]-last3YearRevenue[2])/Math.max(1,last3YearRevenue[2])) )*100; const ebitdaMargin = (last3YearEBITDA[0]/last3YearRevenue[0])*100; const leverageRatio = eq>0?debt/eq:2.5; const profitabilityTrend = last3YearNetIncome[2]>0 && last3YearNetIncome[1]>0 && last3YearNetIncome[0]>0; // Compose factors: let financialMetrics = { revenueGrowthRate, ebitdaMargin, debtServiceCoverage:dscr, liquidityRatio:currRatio, leverageRatio, creditHistoryScore:creditIssue>0?60:95, profitabilityTrend:profitTrend?100:40, yearsInBusiness: formData.yearsInBusiness, taxFilingCompliance: taxLate?40:95 }; return { docAnalysis, financialMetrics }; } function getBreakdownScores(metrics, yearsInBusiness) { // mapping metrics into 0-100 for each parameter return scoringParameters.map(param=>{ let v=metrics[param.key],s=50,txt=null; switch(param.key) { case 'revenueGrowthRate': // 20%+:100, 10%:85, 0%:70, -10%:50, -20%:30 if (v>=18) s=100; else if (v>=12) s=85; else if (v>=6) s=75; else if(v>=0) s=70; else if(v>=-7) s=55; else if(v>=-15) s=43; else s=28; txt = v.toFixed(1)+"%"; break; case 'ebitdaMargin': // 20%+:100, 12%:84, 5%:70, 0%:55, <0:35 if(v>=19)s=100; else if(v>=13)s=84; else if(v>=6)s=70; else if(v>0)s=55; else if(v>-6)s=36; else s=18; txt = v.toFixed(1)+"%"; break; case 'debtServiceCoverage': // Above 1.8:100, 1.5:86, 1.2:72, 1:60, 0.85:38, <0.7:18 let dscr = parseFloat(v); if(dscr>=1.7)s=100; else if(dscr>=1.5)s=86; else if(dscr>=1.2)s=72; else if(dscr>=1)s=60; else if(dscr>=0.88)s=38; else s=18; txt=dscr.toFixed(2); break; case 'liquidityRatio': // 2.0+:100, 1.5:85, 1.2:70, 1.0:55, <1.0:30 let lr = parseFloat(v); if(lr>=2.0) s=100; else if(lr>=1.5)s=85; else if(lr>=1.2)s=70; else if(lr>=1.0)s=55; else s=30; txt=lr.toFixed(2); break; case 'leverageRatio': // <0.7:100, 1.0:90, 1.5:70, 2.0:50, >2.0:30 if(v<=0.7)s=100; else if(v<=1.0)s=90; else if(v<=1.5)s=70; else if(v<=2.0)s=50; else s=30; txt=v.toFixed(2); break; case 'creditHistoryScore': // Already in 0-100 s = clamp(v,0,100); txt=s+" pts"; break; case 'profitabilityTrend': s = v>80?100: (v>60?85: (v>40?65:35)); if (typeof v==="boolean") s = v ? 100: 30; txt= (typeof v==="boolean")?(v?"Consistent Profits":"Losses"):v+" pts"; break; case 'yearsInBusiness': // 10+:100, 5:85, 3:75, 2:60, 1:40 let y=Number(yearsInBusiness); if(y>=10)s=100; else if(y>=7)s=90; else if(y>=5)s=85; else if(y>=3)s=75; else if(y>=2)s=60; else s=40; txt=y+" yrs"; break; case 'taxFilingCompliance': // Already 0-100 s = clamp(v,0,100); txt=s+" pts"; break; } return {...param,score:s,value:txt}; }); } function calculateWeightedScore(breakdown) { return breakdown.reduce((sum,e)=>sum+e.score*e.weight,0); } // ---- DOM Update Functions ---- function showSection(id) { document.querySelectorAll('section').forEach(el=>el.style.display="none"); document.getElementById(id).style.display=""; } // Chart instance for donut let donutChart=null; function updateScoreDonut(score, grade) { const el = document.getElementById('mainScoreDonut'); if (!el) return; if (donutChart) {donutChart.destroy();} donutChart = new Chart(el.getContext('2d'), { type: 'doughnut', data: { labels: ["Score"], datasets: [{ data: [score, 100-score], backgroundColor: [grade.color.replace('bg-','text-').replace('600','500').replace('400','300'), '#e5e7eb'], borderWidth: 0 }] }, options: { cutout: '72%', plugins: {legend: {display: false}}, responsive:false } }); // Value/grade document.getElementById('mainScoreValue').textContent = Math.round(score); document.getElementById('mainGradeLabel').textContent = grade.grade; document.getElementById('mainGradeDesc').textContent = grade.desc; } function updateScoreBarPointer(score) { // Place pointer at the correct band const segW = 100/9; let idx = scoreGrades.findIndex(g=>score>=g.min); idx = idx<0?8:idx; let offset = (score-GradesAtIndex(idx).min)/(idx==0?6:scoreGrades[idx-1].min-scoreGrades[idx].min+1); let pos = idx*segW + offset*segW; document.getElementById('score-bar-pointer').style.left = `calc(${clamp(pos,0,100)}% - 12px)`; document.getElementById('score-bar-pointer-label').textContent = `Score: ${Math.round(score)}`; function GradesAtIndex(i) {return scoreGrades[i]||scoreGrades[scoreGrades.length-1];} } function renderBreakdownTable(breakdown) { document.getElementById('scoreBreakdown').innerHTML = breakdown.map(entry=>` <div class="bg-gray-50 border rounded p-3"> <div class="flex items-center justify-between"> <span class="font-semibold">${entry.name}</span> <span class="font-bold text-blue-700">${entry.score}</span> </div> <div class="text-xs text-gray-500 pb-1">${entry.desc}</div> <div class="text-xs text-gray-700">Value: ${entry.value||"--"}</div> <div class="relative w-full bg-gray-200 h-3 rounded mt-2"> <div class="absolute top-0 left-0 bg-blue-400 h-3 rounded transition-all" style="width:${entry.score}%;"></div> </div> </div> `).join(''); } function renderDocAnalysis(docAnalysis) { document.getElementById('docAnalysis').innerHTML = docAnalysis.map(a=>`<li>${a}</li>`).join(''); } function renderBorrowerInfo(formData) { document.getElementById('info-businessName').textContent = formData.businessName||''; document.getElementById('info-industry').textContent = formData.industry||''; document.getElementById('info-yearsInBusiness').textContent = formData.yearsInBusiness||''; document.getElementById('info-annualRevenue').textContent = formatMoney(formData.annualRevenue); document.getElementById('info-loanAmount').textContent = formatMoney(formData.loanAmount); document.getElementById('info-email').textContent = formData.email||''; } function renderApplicantTable() { const tb = document.getElementById('applicants-table'); tb.innerHTML = applicantList.slice().reverse().map(a=>` <tr class="border-t border-gray-200 hover:bg-blue-50"> <td class="px-2 py-2">${a.formData.businessName}</td> <td class="px-2 py-2">${a.formData.industry}</td> <td class="px-2 py-2 text-center font-bold">${Math.round(a.score)}</td> <td class="px-2 py-2 text-center"><span class="inline-block rounded px-2 py-1 grade-label ${findGrade(a.score).color} text-white">${findGrade(a.score).grade}</span></td> <td class="px-2 py-2 text-center">${a.formData.yearsInBusiness}</td> <td class="px-2 py-2 text-center">${formatMoney(a.formData.annualRevenue)}</td> <td class="px-2 py-2 text-center">${formatMoney(a.formData.loanAmount)}</td> <td class="px-2 py-2 text-center"><a href="mailto:${a.formData.email}" class="text-blue-600 hover:underline">${a.formData.email}</a></td> </tr> `).join(''); } // ---- Form Handling ---- document.getElementById('borrower-form').addEventListener('submit', async function(ev) { ev.preventDefault(); const fd = new FormData(ev.target); const formData = { businessName: fd.get('businessName'), industry: fd.get('industry'), yearsInBusiness: +fd.get('yearsInBusiness') || 1, annualRevenue: +fd.get('annualRevenue') || 0, loanAmount: +fd.get('loanAmount') || 0, email: fd.get('email'), upload: fd.getAll('upload') }; // File validation const files = document.getElementById('file-input').files; if (!files.length) { alert('Please upload at least one PDF document.'); return; } showSection('scoring-section'); document.getElementById('mainScoreValue').textContent = '--'; document.getElementById('mainGradeLabel').textContent = ''; document.getElementById('mainGradeDesc').textContent = ''; renderBreakdownTable([]); renderDocAnalysis(['Extracting and analyzing documents. Please wait...']); // Parse PDFs and extract data const docs = await parsePDFs(Array.from(files)); const {docAnalysis, financialMetrics} = extractFinancialDataFromText(docs, formData); // Scoring const breakdown = getBreakdownScores(financialMetrics, formData.yearsInBusiness); const weightedScore = calculateWeightedScore(breakdown); const grade = findGrade(weightedScore); // Update DOM updateScoreDonut(weightedScore, grade); updateScoreBarPointer(weightedScore); renderBreakdownTable(breakdown); renderDocAnalysis(docAnalysis); renderBorrowerInfo(formData); // Add to applicant list & update dashboard applicantList.push({formData, docs, docAnalysis, breakdown, score:weightedScore, grade}); renderApplicantTable(); // Scroll to scoring section setTimeout(()=>document.getElementById('scoring-section').scrollIntoView({behavior:'smooth'}), 300); }); // Responsive chart resize, clean up window.addEventListener('beforeprint', () => { if (donutChart) donutChart.resize(); }); </script> </body> </html>
