@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LoanApplication } from "@/types/loan";
 import { formatCurrency } from "@/lib/formatter";
@@ -6,7 +6,7 @@ import DonutChart from "@/components/donut-chart";
 import CreditScoreBar from "@/components/credit-score-bar";
 import { scoringComponents, gradeScales } from "@shared/schema";
 import { Button } from "@/components/ui/button";
-import { DownloadIcon } from "lucide-react";
+import { DownloadIcon, UploadIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface LoanScoringResultsProps {
@@ -22,7 +22,7 @@ export default function LoanScoringResults({ application }: LoanScoringResultsPr
   const [isDownloading, setIsDownloading] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<FileList | null>(null);
   const [isUploading, setIsUploading] = useState(false);
-  const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const grade = gradeScales.find(g => g.grade === application.grade);
@@ -380,6 +380,79 @@ export default function LoanScoringResults({ application }: LoanScoringResultsPr
             </div>
           </div>
         )}
+        
+        {/* Document Upload Section */}
+        <div className="mb-8">
+          <h3 className="text-base font-semibold text-neutral-800 mb-4 flex items-center justify-between">
+            <div className="flex items-center">
+              <i className="fas fa-file-upload text-primary-400 mr-2"></i>
+              Upload Additional Documents
+            </div>
+            
+            <div className="flex gap-2">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".pdf"
+                multiple
+                className="hidden"
+                onChange={handleFileChange}
+              />
+              <Button 
+                onClick={handleUploadClick} 
+                size="sm"
+                variant="outline"
+                className="flex items-center gap-1"
+              >
+                <UploadIcon className="h-3.5 w-3.5" />
+                Select Files
+              </Button>
+              <Button 
+                onClick={handleUploadDocuments} 
+                disabled={isUploading || !selectedFiles}
+                size="sm"
+                className="flex items-center gap-1"
+              >
+                {isUploading ? (
+                  <>Processing...</>
+                ) : (
+                  <>
+                    <i className="fas fa-file-medical text-xs"></i>
+                    Upload & Analyze
+                  </>
+                )}
+              </Button>
+            </div>
+          </h3>
+          
+          {selectedFiles && selectedFiles.length > 0 && (
+            <div className="bg-neutral-50 p-4 rounded-lg border border-neutral-200 mb-4">
+              <p className="text-sm text-neutral-700 mb-2">{selectedFiles.length} file(s) selected:</p>
+              <ul className="space-y-1">
+                {Array.from(selectedFiles).map((file, index) => (
+                  <li key={index} className="flex items-center text-sm">
+                    <i className="fas fa-file-pdf text-red-500 mr-2"></i>
+                    {file.name}
+                  </li>
+                ))}
+              </ul>
+              <p className="text-xs text-neutral-500 mt-3">
+                Note: Uploading new documents will preserve existing analysis and may improve your score.
+              </p>
+            </div>
+          )}
+          
+          <div className="text-sm text-neutral-600">
+            <p>Upload additional financial documents to strengthen your application and potentially improve your score:</p>
+            <ul className="list-disc list-inside mt-2 space-y-1 text-neutral-600 text-sm ml-2">
+              <li>Tax returns</li>
+              <li>Financial statements</li>
+              <li>Cash flow projections</li>
+              <li>Business credit reports</li>
+              <li>Bank statements</li>
+            </ul>
+          </div>
+        </div>
         
         {/* Borrower Details */}
         <div>
