@@ -34,7 +34,6 @@ export default function DonutChart({ percentage, color, size = 112 }: DonutChart
             data: [percentage, 100 - percentage],
             backgroundColor: [color, '#E5E7EB'],
             borderWidth: 0,
-            cutout: '80%',
             circumference: 360,
             rotation: 270,
           },
@@ -43,6 +42,7 @@ export default function DonutChart({ percentage, color, size = 112 }: DonutChart
       options: {
         responsive: true,
         maintainAspectRatio: false,
+        cutout: '80%', // Move cutout to options object
         plugins: {
           tooltip: {
             enabled: false,
