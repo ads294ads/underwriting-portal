@@ -1,5 +1,8 @@
 import { useEffect, useRef } from 'react';
-import { Chart } from 'chart.js';
+import { Chart, ArcElement, Tooltip, Legend, DoughnutController } from 'chart.js';
+
+// Register the required Chart.js components
+Chart.register(ArcElement, Tooltip, Legend, DoughnutController);
 
 interface DonutChartProps {
   percentage: number;
