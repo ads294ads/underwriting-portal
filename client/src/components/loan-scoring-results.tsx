@@ -5,16 +5,21 @@ import { formatCurrency } from "@/lib/formatter";
 import DonutChart from "@/components/donut-chart";
 import CreditScoreBar from "@/components/credit-score-bar";
 import { scoringComponents, gradeScales } from "@shared/schema";
+import { Button } from "@/components/ui/button";
+import { DownloadIcon } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 interface LoanScoringResultsProps {
   application: LoanApplication;
 }
 
 export default function LoanScoringResults({ application }: LoanScoringResultsProps) {
+  const { toast } = useToast();
   const [gradeInfo, setGradeInfo] = useState<{ grade: string; description: string }>({ 
     grade: application.grade || "C-", 
     description: "Pending evaluation." 
   });
+  const [isDownloading, setIsDownloading] = useState(false);
 
   useEffect(() => {
     const grade = gradeScales.find(g => g.grade === application.grade);
@@ -25,6 +30,82 @@ export default function LoanScoringResults({ application }: LoanScoringResultsPr
       });
     }
   }, [application]);
+  
+  const downloadRationaleReport = async () => {
+    try {
+      setIsDownloading(true);
+      
+      // Fetch detailed rationale from API
+      const response = await fetch(`/api/loan-applications/${application.id}/rationale`);
+      
+      if (!response.ok) {
+        throw new Error('Failed to generate rationale report');
+      }
+      
+      const data = await response.json();
+      const rationale = data.rationale;
+      
+      if (!rationale) {
+        throw new Error('No rationale data received');
+      }
+      
+      // Format the rationale into a text document
+      let reportContent = `# LOAN EVALUATION RATIONALE REPORT\n\n`;
+      reportContent += `## Application ID: ${application.id}\n`;
+      reportContent += `## Business: ${application.businessName}\n`;
+      reportContent += `## Grade: ${application.grade} (Score: ${application.score}/100)\n\n`;
+      
+      // Add overall assessment
+      if (rationale.overall) {
+        reportContent += `## OVERALL ASSESSMENT\n\n${rationale.overall}\n\n`;
+      }
+      
+      // Add section for each scoring component
+      reportContent += `## SCORING COMPONENT DETAILS\n\n`;
+      
+      for (const component of scoringComponents) {
+        const rationaleText = rationale[component.key] || 'No specific feedback available for this component.';
+        const score = getComponentScore(component.key);
+        const weight = component.weight * 100;
+        
+        reportContent += `### ${component.name} (${score}/${weight})\n\n`;
+        reportContent += `${rationaleText}\n\n`;
+      }
+      
+      // Add document analysis section if available
+      if (application.documentAnalysis && application.documentAnalysis.length > 0) {
+        reportContent += `## DOCUMENT ANALYSIS\n\n`;
+        application.documentAnalysis.forEach((insight, index) => {
+          reportContent += `${index + 1}. ${insight}\n`;
+        });
+      }
+      
+      // Create a downloadable file
+      const blob = new Blob([reportContent], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${application.businessName.replace(/\s+/g, '_')}_loan_rationale.txt`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      
+      toast({
+        title: "Report Downloaded",
+        description: "Detailed rationale report has been saved to your downloads folder.",
+      });
+    } catch (error) {
+      console.error("Error downloading rationale report:", error);
+      toast({
+        title: "Failed to Download Report",
+        description: error instanceof Error ? error.message : "An unexpected error occurred",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDownloading(false);
+    }
+  };
 
   const getGradeColor = (grade: string) => {
     const firstChar = grade.charAt(0);
@@ -53,10 +134,22 @@ export default function LoanScoringResults({ application }: LoanScoringResultsPr
   return (
     <Card className="bg-white rounded-lg shadow-sm border border-neutral-200 mb-8">
       <CardHeader className="p-6 border-b border-neutral-200">
-        <CardTitle className="text-lg font-semibold text-neutral-800 flex items-center">
-          <i className="fas fa-chart-bar text-primary mr-2"></i>
-          Loan Evaluation Results
-        </CardTitle>
+        <div className="flex justify-between items-center">
+          <CardTitle className="text-lg font-semibold text-neutral-800 flex items-center">
+            <i className="fas fa-chart-bar text-primary mr-2"></i>
+            Loan Evaluation Results
+          </CardTitle>
+          
+          <Button 
+            onClick={downloadRationaleReport} 
+            disabled={isDownloading}
+            size="sm"
+            className="flex items-center gap-2"
+          >
+            <DownloadIcon className="h-4 w-4" />
+            {isDownloading ? "Generating..." : "Report Rationale"}
+          </Button>
+        </div>
       </CardHeader>
       
       <CardContent className="p-6">

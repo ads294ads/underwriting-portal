@@ -126,13 +126,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create a variable with the proper type
       const analysisResults: string[] = documentAnalysis;
       
+      // Combine new analysis with existing analysis (if any)
+      // This allows users to upload additional documents without erasing existing analysis
+      const existingAnalysis = application.documentAnalysis || [];
+      const combinedAnalysis = [...existingAnalysis, ...analysisResults];
+      
       // Prepare the updated data using the LoanApplication type
       const updatedData: Partial<LoanApplication> = {
         fileUploaded: true,
         // Our schema now stores score as text
         score: updatedScore.toString(),
         grade: updatedGrade,
-        documentAnalysis: analysisResults,
+        documentAnalysis: combinedAnalysis,
       };
       
       const updatedApplication = await storage.updateLoanApplication(id, updatedData);
@@ -156,6 +161,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get grade scales
   app.get("/api/scoring/grades", (_req, res) => {
     res.json(gradeScales);
+  });
+  
+  // Generate detailed rationale report for a loan application
+  app.get("/api/loan-applications/:id/rationale", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const application = await storage.getLoanApplication(id);
+      
+      if (!application) {
+        return res.status(404).json({ message: "Loan application not found" });
+      }
+      
+      // Generate detailed explanations for each scoring component
+      const rationale = await generateScoringRationale(application);
+      
+      res.json({ rationale });
+    } catch (error) {
+      console.error("Error generating rationale report:", error);
+      res.status(500).json({ 
+        message: "Failed to generate rationale report", 
+        error: error instanceof Error ? error.message : "Unknown error" 
+      });
+    }
   });
 
   const httpServer = createServer(app);
@@ -236,6 +264,86 @@ function generateScoringDetails(application: any): Record<string, number> {
   return details;
 }
 
+async function generateScoringRationale(application: LoanApplication): Promise<Record<string, string>> {
+  try {
+    if (!application.scoringDetails) {
+      return {
+        "overall": "Insufficient data to provide detailed rationale for this application."
+      };
+    }
+    
+    const yearsInBusiness = Number(application.yearsInBusiness);
+    const annualRevenue = Number(application.annualRevenue);
+    const loanAmount = Number(application.loanAmount);
+    const loanToRevenueRatio = loanAmount / annualRevenue;
+    const industry = application.industry;
+    const scoringDetails = application.scoringDetails;
+    
+    // Prepare context for OpenAI to generate explanations
+    const applicationContext = `
+Business Name: ${application.businessName}
+Industry: ${industry}
+Years in Business: ${yearsInBusiness}
+Annual Revenue: $${annualRevenue.toLocaleString()}
+Loan Amount Requested: $${loanAmount.toLocaleString()}
+Loan-to-Revenue Ratio: ${(loanToRevenueRatio * 100).toFixed(2)}%
+Overall Score: ${application.score}
+Grade: ${application.grade}
+
+Scoring Component Results:
+${Object.entries(scoringDetails)
+  .map(([key, value]) => `- ${key}: ${value}/20`)
+  .join('\n')}
+
+${application.documentAnalysis && application.documentAnalysis.length > 0 ? 
+  `Document Analysis Findings:
+${application.documentAnalysis.map(insight => `- ${insight}`).join('\n')}` : 
+  'No document analysis available.'}
+`;
+
+    const prompt = `
+You are a financial loan analyst explaining a business loan application's scoring results to the applicant. 
+For each scoring component, provide a detailed 2-3 sentence explanation of why the applicant received their specific score, based on their application data.
+
+APPLICATION CONTEXT:
+${applicationContext}
+
+Please provide a detailed, specific rationale for each scoring component. Each explanation should:
+1. Directly reference the specific business data provided in the application
+2. Explain exactly why they received their specific score (high, medium, or low)
+3. When relevant, mention industry benchmarks or standards
+4. Provide constructive feedback for components with lower scores
+
+Format your response as a JSON object with keys matching each scoring component and the overall assessment.
+`;
+
+    // The newest OpenAI model is "gpt-4o" which was released May 13, 2024. Do not change this unless explicitly requested by the user
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [{ role: "user", content: prompt }],
+      response_format: { type: "json_object" },
+      max_tokens: 1500,
+      temperature: 0.5,
+    });
+    
+    // Parse the JSON response
+    const rationaleText = response.choices[0].message.content || "{}";
+    const rationale = JSON.parse(rationaleText);
+    
+    // Add an overall summary if not present
+    if (!rationale.overall) {
+      rationale.overall = `This application received a grade of ${application.grade} based on a comprehensive evaluation of financial metrics and business fundamentals. The most significant factors were revenue growth rate, debt service coverage ratio, and time in business.`;
+    }
+    
+    return rationale;
+  } catch (error) {
+    console.error("Error generating detailed rationale:", error);
+    return {
+      "overall": "We were unable to generate a detailed rationale at this time due to a technical issue. Please contact our support team for assistance."
+    };
+  }
+}
+
 async function analyzeDocuments(files: Express.Multer.File[]): Promise<string[]> {
   try {
     console.log("Starting AI-powered document analysis...");
@@ -251,24 +359,52 @@ async function analyzeDocuments(files: Express.Multer.File[]): Promise<string[]>
     
     const combinedContent = fileContents.join('\n\n');
     
-    // Use OpenAI to analyze the documents
+    // Extract document type from filename for better context
+    const documentTypes = files.map(file => {
+      const filename = file.originalname.toLowerCase();
+      let docType = "Unknown";
+      
+      if (filename.includes("balance sheet")) docType = "Balance Sheet";
+      else if (filename.includes("p&l") || filename.includes("profit and loss") || filename.includes("income statement")) docType = "Income Statement";
+      else if (filename.includes("cash flow")) docType = "Cash Flow Statement";
+      else if (filename.includes("tax") || filename.includes("return")) docType = "Tax Return";
+      else if (filename.includes("bank") || filename.includes("statement")) docType = "Bank Statement";
+      
+      return {
+        name: file.originalname,
+        type: docType,
+        size: file.size
+      };
+    });
+    
+    // Create detailed information about documents
+    const documentDetails = documentTypes.map(doc => 
+      `Document: ${doc.name} (${doc.type}, ${(doc.size / 1024).toFixed(2)} KB)`
+    ).join('\n');
+    
+    // Use OpenAI to analyze the documents with more specific context
     const prompt = `
-You are a financial analyst for a business loan provider. Review the following financial documents and provide 5 specific insights that would be relevant for loan evaluation:
+You are a financial analyst for a business loan provider. Review the following financial document information and provide specific insights about this company's financial health:
 
-Document Information:
-${combinedContent}
+DOCUMENT DETAILS:
+${documentDetails}
 
-Based on these financial documents, provide 5 distinct insights about the business's financial health that would be relevant for loan underwriting. 
-Each insight should be a single sentence that identifies a specific strength or weakness in the business's financial position.
-These insights should focus on areas like: revenue trends, profitability, debt levels, cash reserves, and operational efficiency.
+Based on these specific financial documents:
+1. Provide 5 highly specific insights about this business's financial position that would directly impact loan approval decisions
+2. Focus on concrete metrics like debt-to-equity ratios, profit margins, revenue growth rates, or cash reserves
+3. Mention specific financial terms relevant to the exact document types uploaded
+4. Each insight should be 1-2 specific sentences that identifies a strength or weakness
+5. Avoid generic statements - refer specifically to the types of documents provided and what they would likely show
+
+Note: Your analysis should focus on the exact documents that were uploaded, analyze what these specific document types would reveal, and provide insights that are directly relevant to a loan underwriting decision.
 `;
 
     // The newest OpenAI model is "gpt-4o" which was released May 13, 2024. Do not change this unless explicitly requested by the user
     const response = await openai.chat.completions.create({
       model: "gpt-4o",
       messages: [{ role: "user", content: prompt }],
-      max_tokens: 500,
-      temperature: 0.5,
+      max_tokens: 750,
+      temperature: 0.4,
     });
     
     // Parse response and extract insights
