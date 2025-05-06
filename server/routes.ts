@@ -118,13 +118,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       const updatedGrade = determineGrade(updatedScore);
       
-      // Update the loan application with document information
-      const updatedApplication = await storage.updateLoanApplication(id, {
+      // Convert the numeric score to string for storage compatibility
+      const updatedData: Partial<typeof application> = {
         fileUploaded: true,
-        score: updatedScore, // This is a number which matches the numeric type in schema
+        score: updatedScore.toString(), // Convert to string to satisfy TypeScript
         grade: updatedGrade,
         documentAnalysis,
-      });
+      };
+      
+      const updatedApplication = await storage.updateLoanApplication(id, updatedData);
       
       console.log("Application updated successfully with document data");
       res.json(updatedApplication);

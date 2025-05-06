@@ -15,20 +15,14 @@ export default function Footer() {
             <p className="text-xs mt-2">Business loan evaluation platform</p>
           </div>
           <div className="flex space-x-6">
-            <Link href="/">
-              <a className="text-neutral-400 hover:text-white transition">
+            <Link href="/" className="text-neutral-400 hover:text-white transition">
                 Privacy Policy
-              </a>
             </Link>
-            <Link href="/">
-              <a className="text-neutral-400 hover:text-white transition">
+            <Link href="/" className="text-neutral-400 hover:text-white transition">
                 Terms of Service
-              </a>
             </Link>
-            <Link href="/">
-              <a className="text-neutral-400 hover:text-white transition">
+            <Link href="/" className="text-neutral-400 hover:text-white transition">
                 Contact
-              </a>
             </Link>
           </div>
         </div>
