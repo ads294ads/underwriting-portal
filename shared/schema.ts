@@ -64,14 +64,27 @@ export const loanApplications = pgTable("loan_applications", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-export const insertLoanApplicationSchema = createInsertSchema(loanApplications).omit({
-  id: true,
-  createdAt: true,
-  score: true,
-  grade: true,
-  scoringDetails: true,
-  documentAnalysis: true,
-});
+export const insertLoanApplicationSchema = createInsertSchema(loanApplications)
+  .omit({
+    id: true,
+    createdAt: true,
+    score: true,
+    grade: true,
+    scoringDetails: true,
+    documentAnalysis: true,
+  })
+  .extend({
+    // Converting numeric fields to allow both string and number inputs
+    yearsInBusiness: z.union([z.string(), z.number()]).transform(val => 
+      typeof val === 'string' ? parseFloat(val) : val
+    ),
+    annualRevenue: z.union([z.string(), z.number()]).transform(val => 
+      typeof val === 'string' ? parseFloat(val) : val
+    ),
+    loanAmount: z.union([z.string(), z.number()]).transform(val => 
+      typeof val === 'string' ? parseFloat(val) : val
+    ),
+  });
 
 export type InsertLoanApplication = z.infer<typeof insertLoanApplicationSchema>;
 export type LoanApplication = typeof loanApplications.$inferSelect;

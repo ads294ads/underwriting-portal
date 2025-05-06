@@ -16,9 +16,9 @@ import { industries } from "@shared/schema";
 const formSchema = z.object({
   businessName: z.string().min(2, "Business name is required"),
   industry: z.string().min(1, "Industry is required"),
-  yearsInBusiness: z.string().min(1, "Years in business is required").transform(val => Number(val)),
-  annualRevenue: z.string().min(1, "Annual revenue is required").transform(val => Number(val)),
-  loanAmount: z.string().min(1, "Loan amount is required").transform(val => Number(val)),
+  yearsInBusiness: z.string().min(1, "Years in business is required"),
+  annualRevenue: z.string().min(1, "Annual revenue is required"),
+  loanAmount: z.string().min(1, "Loan amount is required"),
   email: z.string().email("Invalid email address"),
 });
 
@@ -58,26 +58,50 @@ export default function LoanApplicationForm({ onApplicationSubmit }: LoanApplica
       // Step 1: Create the loan application
       const response = await apiRequest("POST", "/api/loan-applications", data);
       const application: LoanApplication = await response.json();
+      console.log("Application created successfully:", application);
 
       // Step 2: Upload documents if provided
       if (selectedFiles && selectedFiles.length > 0) {
+        console.log("Uploading files:", selectedFiles);
         const formData = new FormData();
         for (let i = 0; i < selectedFiles.length; i++) {
           formData.append("documents", selectedFiles[i]);
         }
 
-        const uploadResponse = await fetch(`/api/loan-applications/${application.id}/documents`, {
-          method: "POST",
-          body: formData,
-        });
+        try {
+          const uploadResponse = await fetch(`/api/loan-applications/${application.id}/documents`, {
+            method: "POST",
+            body: formData,
+          });
 
-        if (!uploadResponse.ok) {
-          throw new Error("Failed to upload documents");
+          console.log("Upload response status:", uploadResponse.status);
+          
+          if (!uploadResponse.ok) {
+            const errorText = await uploadResponse.text();
+            console.error("Document upload failed:", errorText);
+            toast({
+              title: "Document Upload Issue",
+              description: "Files were uploaded but couldn't be processed. Your application was still submitted.",
+              variant: "destructive",
+            });
+            onApplicationSubmit(application);
+            return;
+          }
+
+          const updatedApplication = await uploadResponse.json();
+          console.log("Application updated with documents:", updatedApplication);
+          onApplicationSubmit(updatedApplication);
+        } catch (uploadError) {
+          console.error("Error during document upload:", uploadError);
+          toast({
+            title: "Document Upload Failed",
+            description: "There was an error uploading your documents, but your application was submitted.",
+            variant: "destructive",
+          });
+          onApplicationSubmit(application);
         }
-
-        const updatedApplication = await uploadResponse.json();
-        onApplicationSubmit(updatedApplication);
       } else {
+        console.log("No files to upload, submitting application as-is");
         onApplicationSubmit(application);
       }
 

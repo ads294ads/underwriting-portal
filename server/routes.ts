@@ -86,22 +86,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const id = parseInt(req.params.id);
       const files = req.files as Express.Multer.File[];
       
+      console.log(`Document upload request for application ID: ${id}`);
+      console.log(`Files received: ${files ? files.length : 0}`);
+      
       if (!files || files.length === 0) {
+        console.log("No files were received in the request");
         return res.status(400).json({ message: "No files uploaded" });
       }
+      
+      // Log file information
+      files.forEach((file, index) => {
+        console.log(`File ${index + 1}: ${file.originalname}, mimetype: ${file.mimetype}, size: ${file.size} bytes`);
+      });
       
       const application = await storage.getLoanApplication(id);
       
       if (!application) {
+        console.log(`Application with ID ${id} not found`);
         return res.status(404).json({ message: "Loan application not found" });
       }
       
       // In a real application, we would process the PDF files here
       // For now, we'll just update the application to show documents were uploaded
       const documentAnalysis = analyzeDocuments(files);
+      console.log("Document analysis completed:", documentAnalysis);
       
       // Update the loan application with document analysis results
-      const updatedScore = application.score * 1.05; // Slightly improve score with documents
+      let updatedScore = application.score ? Number(application.score) : 0;
+      if (updatedScore > 0) {
+        updatedScore = updatedScore * 1.05; // Slightly improve score with documents
+      }
       const updatedGrade = determineGrade(updatedScore);
       
       const updatedApplication = await storage.updateLoanApplication(id, {
@@ -111,10 +125,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         documentAnalysis,
       });
       
+      console.log("Application updated successfully with document data");
       res.json(updatedApplication);
     } catch (error) {
-      console.error("Error uploading documents:", error);
-      res.status(500).json({ message: "Failed to upload documents" });
+      console.error("Error processing document upload:", error);
+      res.status(500).json({ 
+        message: "Failed to upload documents", 
+        error: error instanceof Error ? error.message : "Unknown error" 
+      });
     }
   });
 
