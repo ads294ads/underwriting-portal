@@ -57,7 +57,7 @@ export const loanApplications = pgTable("loan_applications", {
   loanAmount: numeric("loan_amount").notNull(),
   email: text("email").notNull(),
   fileUploaded: boolean("file_uploaded").default(false),
-  score: numeric("score"),
+  score: text("score"), // Store score as text to avoid type issues
   grade: text("grade"),
   scoringDetails: json("scoring_details").$type<Record<string, number>>(),
   documentAnalysis: json("document_analysis").$type<string[]>(),

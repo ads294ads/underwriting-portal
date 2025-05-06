@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import multer from "multer";
-import { scoringComponents, gradeScales, insertLoanApplicationSchema } from "../shared/schema";
+import { scoringComponents, gradeScales, insertLoanApplicationSchema, type LoanApplication } from "../shared/schema";
 import { ZodError } from "zod";
 
 // Configure multer for file uploads
@@ -56,10 +56,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const score = calculateLoanScore(validatedData);
       const grade = determineGrade(score);
       
-      // Create loan application with score and grade
+      // Create loan application with score as string and grade
       const loanApplication = await storage.createLoanApplication({
         ...validatedData,
-        score,
+        score: score.toString(), // Convert score to string to match schema
         grade,
         scoringDetails: generateScoringDetails(validatedData),
         documentAnalysis: [],
@@ -118,10 +118,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       const updatedGrade = determineGrade(updatedScore);
       
-      // Convert the numeric score to string for storage compatibility
-      const updatedData: Partial<typeof application> = {
+      // Prepare the updated data using the LoanApplication type
+      const updatedData: Partial<LoanApplication> = {
         fileUploaded: true,
-        score: updatedScore.toString(), // Convert to string to satisfy TypeScript
+        // Our schema now stores score as text
+        score: updatedScore.toString(),
         grade: updatedGrade,
         documentAnalysis,
       };
