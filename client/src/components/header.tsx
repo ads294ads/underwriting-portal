@@ -22,25 +22,17 @@ export default function Header() {
         </div>
         
         <nav className="hidden md:flex items-center space-x-6">
-          <Link href="/">
-            <a className="text-primary font-medium flex items-center">
-              <i className="fas fa-home mr-2"></i> Dashboard
-            </a>
+          <Link href="/" className="text-primary font-medium flex items-center">
+            <i className="fas fa-home mr-2"></i> Dashboard
           </Link>
-          <Link href="/">
-            <a className="text-neutral-600 hover:text-primary transition flex items-center">
-              <i className="fas fa-users mr-2"></i> Applicants
-            </a>
+          <Link href="/" className="text-neutral-600 hover:text-primary transition flex items-center">
+            <i className="fas fa-users mr-2"></i> Applicants
           </Link>
-          <Link href="/">
-            <a className="text-neutral-600 hover:text-primary transition flex items-center">
-              <i className="fas fa-file-contract mr-2"></i> Loans
-            </a>
+          <Link href="/" className="text-neutral-600 hover:text-primary transition flex items-center">
+            <i className="fas fa-file-contract mr-2"></i> Loans
           </Link>
-          <Link href="/">
-            <a className="text-neutral-600 hover:text-primary transition flex items-center">
-              <i className="fas fa-cog mr-2"></i> Settings
-            </a>
+          <Link href="/" className="text-neutral-600 hover:text-primary transition flex items-center">
+            <i className="fas fa-cog mr-2"></i> Settings
           </Link>
         </nav>
         
@@ -53,25 +45,17 @@ export default function Header() {
             </SheetTrigger>
             <SheetContent side="right">
               <nav className="flex flex-col space-y-4 mt-8">
-                <Link href="/" onClick={closeMenu}>
-                  <a className="text-primary font-medium flex items-center py-2">
-                    <i className="fas fa-home mr-2"></i> Dashboard
-                  </a>
+                <Link href="/" onClick={closeMenu} className="text-primary font-medium flex items-center py-2">
+                  <i className="fas fa-home mr-2"></i> Dashboard
                 </Link>
-                <Link href="/" onClick={closeMenu}>
-                  <a className="text-neutral-600 hover:text-primary transition flex items-center py-2">
-                    <i className="fas fa-users mr-2"></i> Applicants
-                  </a>
+                <Link href="/" onClick={closeMenu} className="text-neutral-600 hover:text-primary transition flex items-center py-2">
+                  <i className="fas fa-users mr-2"></i> Applicants
                 </Link>
-                <Link href="/" onClick={closeMenu}>
-                  <a className="text-neutral-600 hover:text-primary transition flex items-center py-2">
-                    <i className="fas fa-file-contract mr-2"></i> Loans
-                  </a>
+                <Link href="/" onClick={closeMenu} className="text-neutral-600 hover:text-primary transition flex items-center py-2">
+                  <i className="fas fa-file-contract mr-2"></i> Loans
                 </Link>
-                <Link href="/" onClick={closeMenu}>
-                  <a className="text-neutral-600 hover:text-primary transition flex items-center py-2">
-                    <i className="fas fa-cog mr-2"></i> Settings
-                  </a>
+                <Link href="/" onClick={closeMenu} className="text-neutral-600 hover:text-primary transition flex items-center py-2">
+                  <i className="fas fa-cog mr-2"></i> Settings
                 </Link>
               </nav>
             </SheetContent>

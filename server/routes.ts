@@ -118,9 +118,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       const updatedGrade = determineGrade(updatedScore);
       
+      // Update the loan application with document information
       const updatedApplication = await storage.updateLoanApplication(id, {
         fileUploaded: true,
-        score: updatedScore,
+        score: updatedScore, // This is a number which matches the numeric type in schema
         grade: updatedGrade,
         documentAnalysis,
       });
