@@ -20,6 +20,7 @@ export default function LoanScoringResults({ application }: LoanScoringResultsPr
     description: "Pending evaluation." 
   });
   const [isDownloading, setIsDownloading] = useState(false);
+  const [isPdfDownloading, setIsPdfDownloading] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<FileList | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -142,6 +143,52 @@ export default function LoanScoringResults({ application }: LoanScoringResultsPr
     }
   };
 
+  // Download professionally formatted PDF report
+  const downloadPdfReport = async () => {
+    if (!application) return;
+    
+    setIsPdfDownloading(true);
+    
+    try {
+      // Create a direct download link to the PDF endpoint
+      const downloadUrl = `/api/loan-applications/${application.id}/pdf-report`;
+      
+      // Create an iframe to trigger the download without navigating away
+      const iframe = document.createElement('iframe');
+      iframe.style.display = 'none';
+      document.body.appendChild(iframe);
+      
+      iframe.onload = () => {
+        // Once loaded, remove the iframe
+        document.body.removeChild(iframe);
+        
+        toast({
+          title: "PDF Report Downloaded",
+          description: "Comprehensive PDF assessment report has been saved to your downloads folder.",
+        });
+        
+        setIsPdfDownloading(false);
+      };
+      
+      iframe.onerror = () => {
+        document.body.removeChild(iframe);
+        throw new Error("Failed to download PDF report");
+      };
+      
+      // Set the source to trigger the download
+      iframe.src = downloadUrl;
+      
+    } catch (error) {
+      console.error("Error downloading PDF report:", error);
+      toast({
+        title: "Failed to Download PDF Report",
+        description: error instanceof Error ? error.message : "An unexpected error occurred",
+        variant: "destructive",
+      });
+      setIsPdfDownloading(false);
+    }
+  };
+
   const getGradeColor = (grade: string) => {
     const firstChar = grade.charAt(0);
     if (firstChar === 'A') return 'bg-success-50 text-success-700';
@@ -243,15 +290,28 @@ export default function LoanScoringResults({ application }: LoanScoringResultsPr
             Loan Evaluation Results
           </CardTitle>
           
-          <Button 
-            onClick={downloadRationaleReport} 
-            disabled={isDownloading}
-            size="sm"
-            className="flex items-center gap-2"
-          >
-            <DownloadIcon className="h-4 w-4" />
-            {isDownloading ? "Generating..." : "Report Rationale"}
-          </Button>
+          <div className="flex gap-2">
+            <Button 
+              onClick={downloadRationaleReport} 
+              disabled={isDownloading}
+              size="sm"
+              variant="outline"
+              className="flex items-center gap-2"
+            >
+              <DownloadIcon className="h-4 w-4" />
+              {isDownloading ? "Generating..." : "Text Report"}
+            </Button>
+            
+            <Button 
+              onClick={downloadPdfReport} 
+              disabled={isPdfDownloading}
+              size="sm"
+              className="flex items-center gap-2"
+            >
+              <DownloadIcon className="h-4 w-4" />
+              {isPdfDownloading ? "Generating..." : "PDF Report"}
+            </Button>
+          </div>
         </div>
       </CardHeader>
       
