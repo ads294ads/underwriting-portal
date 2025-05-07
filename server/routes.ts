@@ -1,10 +1,12 @@
-import type { Express } from "express";
+import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import multer from "multer";
 import { scoringComponents, gradeScales, insertLoanApplicationSchema, type LoanApplication } from "../shared/schema";
 import { ZodError } from "zod";
 import OpenAI from "openai";
+import PDFDocument from "pdfkit";
+import { format } from "date-fns";
 
 // Initialize OpenAI client
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
@@ -163,7 +165,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(gradeScales);
   });
   
-  // Generate detailed rationale report for a loan application
+  // Generate detailed rationale report for a loan application (JSON format)
   app.get("/api/loan-applications/:id/rationale", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
@@ -181,6 +183,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("Error generating rationale report:", error);
       res.status(500).json({ 
         message: "Failed to generate rationale report", 
+        error: error instanceof Error ? error.message : "Unknown error" 
+      });
+    }
+  });
+  
+  // Generate and download PDF rationale report for a loan application
+  app.get("/api/loan-applications/:id/rationale-pdf", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const application = await storage.getLoanApplication(id);
+      
+      if (!application) {
+        return res.status(404).json({ message: "Loan application not found" });
+      }
+      
+      // Generate detailed explanations for each scoring component
+      const rationale = await generateScoringRationale(application);
+      
+      // Set response headers for PDF download
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="${application.businessName.replace(/\s+/g, '_')}_loan_assessment.pdf"`);
+      
+      // Generate PDF and stream it directly to the response
+      generatePDFReport(application, rationale, res);
+      
+    } catch (error) {
+      console.error("Error generating PDF report:", error);
+      res.status(500).json({ 
+        message: "Failed to generate PDF report", 
         error: error instanceof Error ? error.message : "Unknown error" 
       });
     }
@@ -403,6 +434,268 @@ Format your response as a JSON object with keys matching each scoring component 
     
     return fallbackRationale;
   }
+}
+
+// Function to generate detailed PDF report
+function generatePDFReport(
+  application: LoanApplication, 
+  rationale: Record<string, string>,
+  res: Response
+): void {
+  // Create a new PDF document
+  const doc = new PDFDocument({
+    size: 'A4',
+    margin: 50,
+    info: {
+      Title: `${application.businessName} - Loan Application Assessment`,
+      Author: 'Business Loan Evaluation Platform',
+      Subject: 'Detailed Loan Application Scoring Report',
+      Keywords: 'loan, assessment, business finance'
+    }
+  });
+  
+  // Pipe the PDF directly to the response
+  doc.pipe(res);
+  
+  // Define common styles and helpers
+  const colors = {
+    primary: '#1E40AF',
+    secondary: '#6B7280',
+    success: '#059669',
+    warning: '#D97706',
+    danger: '#DC2626',
+    lightGray: '#F3F4F6',
+    darkGray: '#4B5563',
+    black: '#111827'
+  };
+  
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2
+    }).format(amount);
+  };
+  
+  const formatDate = (date: Date) => {
+    return format(new Date(date), 'MMMM d, yyyy');
+  };
+  
+  const getScoreColor = (score: number, outOf: number) => {
+    const percentage = (score / outOf) * 100;
+    if (percentage >= 80) return colors.success;
+    if (percentage >= 60) return colors.primary;
+    if (percentage >= 40) return colors.warning;
+    return colors.danger;
+  };
+  
+  // Add logo and header
+  doc.image('public/logo.png', 50, 45, { width: 50 })
+    .font('Helvetica-Bold')
+    .fontSize(18)
+    .fillColor(colors.primary)
+    .text('BUSINESS LOAN EVALUATION', 110, 50)
+    .fontSize(14)
+    .fillColor(colors.secondary)
+    .text('Confidential Assessment Report', 110, 75)
+    .moveDown(0.5);
+  
+  // Add horizontal line
+  doc.strokeColor(colors.lightGray)
+    .lineWidth(2)
+    .moveTo(50, 95)
+    .lineTo(550, 95)
+    .stroke();
+  
+  // Executive Summary section
+  doc.moveDown(1)
+    .font('Helvetica-Bold')
+    .fontSize(16)
+    .fillColor(colors.black)
+    .text('EXECUTIVE SUMMARY', { align: 'left' })
+    .moveDown(0.5);
+  
+  // Add Application Overview Box with basic application details
+  doc.rect(50, doc.y, 500, 130)
+    .fillAndStroke('#F9FAFB', colors.lightGray);
+  
+  const boxY = doc.y + 15;
+  
+  // Left column
+  doc.font('Helvetica-Bold')
+    .fontSize(11)
+    .fillColor(colors.darkGray)
+    .text('Business Name:', 70, boxY)
+    .text('Industry:', 70, boxY + 25)
+    .text('Years in Business:', 70, boxY + 50)
+    .text('Annual Revenue:', 70, boxY + 75);
+  
+  // Left column values
+  doc.font('Helvetica')
+    .fontSize(11)
+    .fillColor(colors.black)
+    .text(application.businessName, 180, boxY)
+    .text(application.industry, 180, boxY + 25)
+    .text(application.yearsInBusiness.toString(), 180, boxY + 50)
+    .text(formatCurrency(Number(application.annualRevenue)), 180, boxY + 75);
+  
+  // Right column
+  doc.font('Helvetica-Bold')
+    .fontSize(11)
+    .fillColor(colors.darkGray)
+    .text('Loan Amount:', 320, boxY)
+    .text('Application Date:', 320, boxY + 25)
+    .text('Overall Score:', 320, boxY + 50)
+    .text('Final Grade:', 320, boxY + 75);
+  
+  // Right column values
+  const scoreNum = Number(application.score || 0);
+  const scoreColor = getScoreColor(scoreNum, 100);
+  
+  doc.font('Helvetica')
+    .fontSize(11)
+    .fillColor(colors.black)
+    .text(formatCurrency(Number(application.loanAmount)), 430, boxY)
+    .text(application.createdAt ? formatDate(new Date(application.createdAt)) : 'N/A', 430, boxY + 25)
+    .fillColor(scoreColor)
+    .text(`${scoreNum}/100`, 430, boxY + 50)
+    .font('Helvetica-Bold')
+    .text(application.grade || 'N/A', 430, boxY + 75);
+  
+  doc.moveDown(7);
+
+  // Add overall assessment section
+  doc.font('Helvetica-Bold')
+    .fontSize(14)
+    .fillColor(colors.primary)
+    .text('ASSESSMENT OVERVIEW', { align: 'left' })
+    .moveDown(0.5);
+  
+  doc.font('Helvetica')
+    .fontSize(11)
+    .fillColor(colors.black)
+    .text(rationale.overall || 'No overall assessment available.', { align: 'justify' })
+    .moveDown(1);
+  
+  // Add horizontal line
+  doc.strokeColor(colors.lightGray)
+    .lineWidth(1)
+    .moveTo(50, doc.y)
+    .lineTo(550, doc.y)
+    .stroke()
+    .moveDown(1);
+  
+  // Add detailed component breakdown section
+  doc.font('Helvetica-Bold')
+    .fontSize(14)
+    .fillColor(colors.primary)
+    .text('DETAILED SCORE BREAKDOWN', { align: 'left' })
+    .moveDown(0.5);
+  
+  // Add page break before component details
+  doc.addPage();
+  
+  // List each component with detailed rationale
+  scoringComponents.forEach((component, index) => {
+    const componentScore = Number(application.scoringDetails?.[component.key] || 0);
+    const componentWeight = component.weight * 100;
+    const scoreColor = getScoreColor(componentScore, componentWeight);
+    
+    // Component header with score
+    doc.font('Helvetica-Bold')
+      .fontSize(12)
+      .fillColor(colors.black)
+      .text(`${index + 1}. ${component.name}`, { continued: true })
+      .fillColor(scoreColor)
+      .text(` (${componentScore}/${componentWeight})`, { align: 'left' })
+      .moveDown(0.3);
+    
+    // Component description
+    doc.font('Helvetica')
+      .fontSize(10)
+      .fillColor(colors.secondary)
+      .text(component.desc, { align: 'left' })
+      .moveDown(0.3);
+    
+    // Draw score bar
+    const barWidth = 300;
+    const percentage = Math.min(100, (componentScore / componentWeight) * 100);
+    const calculatedWidth = (barWidth * percentage) / 100;
+    
+    doc.rect(50, doc.y, barWidth, 15)
+      .fillAndStroke('#F3F4F6', colors.lightGray);
+    
+    doc.rect(50, doc.y - 15, calculatedWidth, 15)
+      .fill(scoreColor);
+    
+    doc.moveDown(1);
+    
+    // Component detailed rationale
+    const rationaleText = rationale[component.key] || `No specific rationale available for ${component.name}.`;
+    
+    doc.font('Helvetica')
+      .fontSize(11)
+      .fillColor(colors.black)
+      .text(rationaleText, { align: 'justify' })
+      .moveDown(1.5);
+    
+    // Add page break if we're reaching the bottom of the page (except for the last component)
+    if (doc.y > 700 && index < scoringComponents.length - 1) {
+      doc.addPage();
+    }
+  });
+  
+  // Add final page with document analysis
+  if (application.documentAnalysis && application.documentAnalysis.length > 0) {
+    doc.addPage();
+    
+    doc.font('Helvetica-Bold')
+      .fontSize(14)
+      .fillColor(colors.primary)
+      .text('DOCUMENT ANALYSIS', { align: 'left' })
+      .moveDown(0.5);
+    
+    doc.font('Helvetica')
+      .fontSize(11)
+      .fillColor(colors.secondary)
+      .text('The following insights were extracted from the documents provided with this application:', { align: 'left' })
+      .moveDown(1);
+    
+    application.documentAnalysis.forEach((insight, index) => {
+      doc.font('Helvetica')
+        .fontSize(11)
+        .fillColor(colors.black)
+        .text(`${index + 1}. ${insight}`, { align: 'left' })
+        .moveDown(0.5);
+    });
+  }
+  
+  // Add footer with page numbers to each page
+  const totalPages = doc.bufferedPageRange().count;
+  
+  for (let i = 0; i < totalPages; i++) {
+    doc.switchToPage(i);
+    
+    // Footer line
+    doc.strokeColor(colors.lightGray)
+      .lineWidth(1)
+      .moveTo(50, 780)
+      .lineTo(550, 780)
+      .stroke();
+    
+    // Footer text
+    doc.fontSize(9)
+      .fillColor(colors.secondary)
+      .text(
+        `${application.businessName} - Loan Assessment Report | Page ${i + 1} of ${totalPages}`,
+        50,
+        790,
+        { align: 'center' }
+      );
+  }
+  
+  // Finalize the PDF
+  doc.end();
 }
 
 async function analyzeDocuments(files: Express.Multer.File[]): Promise<string[]> {
