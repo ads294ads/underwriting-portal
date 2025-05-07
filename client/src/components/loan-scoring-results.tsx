@@ -151,7 +151,7 @@ export default function LoanScoringResults({ application }: LoanScoringResultsPr
     
     try {
       // Create a direct download link to the PDF endpoint
-      const downloadUrl = `/api/loan-applications/${application.id}/pdf-report`;
+      const downloadUrl = `/api/loan-applications/${application.id}/rationale-pdf`;
       
       // Create an iframe to trigger the download without navigating away
       const iframe = document.createElement('iframe');
