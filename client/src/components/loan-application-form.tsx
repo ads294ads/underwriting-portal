@@ -31,7 +31,7 @@ interface LoanApplicationFormProps {
 export default function LoanApplicationForm({ onApplicationSubmit }: LoanApplicationFormProps) {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [selectedFiles, setSelectedFiles] = useState<FileList | null>(null);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -47,8 +47,16 @@ export default function LoanApplicationForm({ onApplicationSubmit }: LoanApplica
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      setSelectedFiles(e.target.files);
+      const newFiles = Array.from(e.target.files);
+      setSelectedFiles(prevFiles => [...prevFiles, ...newFiles]);
+      
+      // Reset the input so the same file can be selected again if needed
+      e.target.value = '';
     }
+  };
+  
+  const removeFile = (index: number) => {
+    setSelectedFiles(prevFiles => prevFiles.filter((_, i) => i !== index));
   };
 
   const onSubmit = async (data: FormValues) => {
@@ -107,7 +115,7 @@ export default function LoanApplicationForm({ onApplicationSubmit }: LoanApplica
 
       // Reset form
       form.reset();
-      setSelectedFiles(null);
+      setSelectedFiles([]);
 
       toast({
         title: "Application Submitted",
@@ -310,14 +318,28 @@ export default function LoanApplicationForm({ onApplicationSubmit }: LoanApplica
                   </label>
                 </div>
               </div>
-              {selectedFiles && selectedFiles.length > 0 && (
-                <div className="mt-2 text-sm text-neutral-600">
-                  {Array.from(selectedFiles).map((file, index) => (
-                    <div key={index} className="flex items-center">
-                      <i className="fas fa-file-pdf text-red-500 mr-2"></i>
-                      {file.name}
-                    </div>
-                  ))}
+              {selectedFiles.length > 0 && (
+                <div className="mt-4 text-sm text-neutral-600">
+                  <p className="font-medium mb-2">Selected Files ({selectedFiles.length})</p>
+                  <ul className="space-y-2 max-h-40 overflow-y-auto border border-neutral-200 rounded-md p-2">
+                    {selectedFiles.map((file, index) => (
+                      <li key={index} className="flex items-center justify-between group">
+                        <div className="flex items-center">
+                          <i className="fas fa-file-pdf text-red-500 mr-2"></i>
+                          <span className="truncate max-w-xs">{file.name}</span>
+                          <span className="text-xs text-neutral-400 ml-2">({(file.size / 1024).toFixed(1)} KB)</span>
+                        </div>
+                        <button 
+                          type="button"
+                          onClick={() => removeFile(index)} 
+                          className="text-neutral-400 hover:text-red-500 p-1 rounded-full"
+                          aria-label="Remove file"
+                        >
+                          <i className="fas fa-times"></i>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
                 </div>
               )}
             </div>

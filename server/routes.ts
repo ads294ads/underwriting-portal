@@ -428,10 +428,21 @@ Note: Your analysis should focus on the exact documents that were uploaded, anal
     console.error("Error analyzing documents with AI:", error);
     
     // Generate more specific fallback based on document types
-    const specificInsights = [];
+    const specificInsights: string[] = [];
     
     // Generate document-specific insights based on detected document types
-    const documentTypeSet = new Set(documentTypes.map(d => d.type));
+    // Extract document types from filenames since we're in the catch block
+    const fileTypes = files.map(file => {
+      const filename = file.originalname.toLowerCase();
+      if (filename.includes("balance sheet")) return "Balance Sheet";
+      if (filename.includes("p&l") || filename.includes("profit and loss") || filename.includes("income statement")) return "Income Statement";
+      if (filename.includes("cash flow")) return "Cash Flow Statement";
+      if (filename.includes("tax") || filename.includes("return")) return "Tax Return";
+      if (filename.includes("bank") || filename.includes("statement")) return "Bank Statement";
+      return "Unknown";
+    });
+    
+    const documentTypeSet = new Set(fileTypes);
     
     if (documentTypeSet.has("Balance Sheet")) {
       specificInsights.push("Balance sheet reveals an appropriate asset-to-liability ratio that supports debt serviceability.");
