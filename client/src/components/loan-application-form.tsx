@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { LoanApplication } from "@/types/loan";
 import { industries } from "@shared/schema";
+import { PrivacyConsentDialog } from "./privacy-consent-dialog";
 
 // Form validation schema
 const formSchema = z.object({
@@ -32,6 +33,9 @@ export default function LoanApplicationForm({ onApplicationSubmit }: LoanApplica
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [showPrivacyConsent, setShowPrivacyConsent] = useState(false);
+  const [privacyConsentAccepted, setPrivacyConsentAccepted] = useState(false);
+  const [pendingUploadFiles, setPendingUploadFiles] = useState<File[]>([]);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -48,15 +52,49 @@ export default function LoanApplicationForm({ onApplicationSubmit }: LoanApplica
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       const newFiles = Array.from(e.target.files);
-      setSelectedFiles(prevFiles => [...prevFiles, ...newFiles]);
+      
+      // If files contain financial documents, ask for consent
+      if (!privacyConsentAccepted) {
+        setPendingUploadFiles(newFiles);
+        setShowPrivacyConsent(true);
+      } else {
+        // User already accepted privacy consent, add files directly
+        addFiles(newFiles);
+      }
       
       // Reset the input so the same file can be selected again if needed
       e.target.value = '';
     }
   };
   
+  const addFiles = (files: File[]) => {
+    setSelectedFiles(prevFiles => [...prevFiles, ...files]);
+  };
+  
   const removeFile = (index: number) => {
     setSelectedFiles(prevFiles => prevFiles.filter((_, i) => i !== index));
+  };
+  
+  const handlePrivacyAccept = () => {
+    setPrivacyConsentAccepted(true);
+    setShowPrivacyConsent(false);
+    
+    // Add the pending files
+    if (pendingUploadFiles.length > 0) {
+      addFiles(pendingUploadFiles);
+      setPendingUploadFiles([]);
+    }
+  };
+  
+  const handlePrivacyDecline = () => {
+    setShowPrivacyConsent(false);
+    setPendingUploadFiles([]);
+    
+    toast({
+      title: "Upload Canceled",
+      description: "Document upload was canceled. You can still submit your application without documents.",
+      variant: "default",
+    });
   };
 
   const onSubmit = async (data: FormValues) => {
