@@ -23,6 +23,7 @@ export default function LoanScoringResults({ application }: LoanScoringResultsPr
   const [isPdfDownloading, setIsPdfDownloading] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<FileList | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [isPerformingDeepResearch, setIsPerformingDeepResearch] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {

@@ -940,6 +940,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
          .font('Helvetica')
          .text(conclusionText, 50, yPos, { width: 495, align: 'justify' });
       
+      // Add deep research pages if available
+      if (deepResearchResults) {
+        console.log("Adding deep research pages to PDF report");
+        addDeepResearchPages(doc, application, deepResearchResults, colors);
+      } else {
+        console.log("No deep research results available for PDF report");
+      }
+      
       // Footer
       doc.fontSize(8)
          .fillColor(colors.secondary)
