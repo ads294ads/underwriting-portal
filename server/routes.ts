@@ -205,28 +205,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Generate detailed explanations for each scoring component
       const rationale = await generateScoringRationale(application);
       
-      // Set response headers for PDF download
-      res.setHeader('Content-Type', 'application/pdf');
-      res.setHeader('Content-Disposition', `attachment; filename="${application.businessName.replace(/\s+/g, '_')}_loan_assessment.pdf"`);
+      // Create a simple PDF document
+      const doc = new PDFDocument({
+        size: 'A4',
+        margin: 50,
+        info: {
+          Title: `${application.businessName} - Loan Assessment`,
+          Author: 'LendScore Platform',
+        }
+      });
       
-      try {
-        // Generate PDF and stream it directly to the response
-        await generatePDFReport(application, rationale, res);
-      } catch (pdfError) {
-        console.error("PDF generation failed:", pdfError);
-        // If PDF generation fails, send a text response instead
-        res.status(500).json({ 
-          message: "Failed to generate PDF report", 
-          error: pdfError instanceof Error ? pdfError.message : "Unknown error" 
-        });
+      // Set response headers
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="${application.businessName.replace(/\s+/g, '_')}_assessment.pdf"`);
+      
+      // Pipe the PDF directly to the response
+      doc.pipe(res);
+      
+      // Add content to the PDF
+      doc.fontSize(20).text('Loan Assessment Report', { align: 'center' });
+      doc.moveDown();
+      doc.fontSize(16).text(`Business: ${application.businessName}`);
+      doc.fontSize(14).text(`Score: ${application.score}/100`);
+      doc.fontSize(14).text(`Grade: ${application.grade}`);
+      doc.moveDown();
+      
+      // Add overall assessment
+      doc.fontSize(16).text('Overall Assessment');
+      doc.fontSize(12).text(rationale.overall || 'No overall assessment available.');
+      doc.moveDown();
+      
+      // Add component scores
+      doc.fontSize(16).text('Component Scores');
+      doc.moveDown();
+      
+      // Add each scoring component
+      for (const component of scoringComponents) {
+        const score = application.scoringDetails?.[component.key] || 0;
+        doc.fontSize(14).text(`${component.name}: ${score}/${component.weight * 100}`);
+        doc.fontSize(12).text(rationale[component.key] || `No rationale available for ${component.name}.`);
+        doc.moveDown();
       }
+      
+      // Finalize the PDF and end the response
+      doc.end();
       
     } catch (error) {
       console.error("Error generating PDF report:", error);
-      res.status(500).json({ 
-        message: "Failed to generate PDF report", 
-        error: error instanceof Error ? error.message : "Unknown error" 
-      });
+      // Only set status if headers haven't been sent
+      if (!res.headersSent) {
+        res.status(500).json({ 
+          message: "Failed to generate PDF report", 
+          error: error instanceof Error ? error.message : "Unknown error" 
+        });
+      }
     }
   });
 
