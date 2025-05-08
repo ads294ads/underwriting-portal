@@ -9,7 +9,11 @@ import PDFDocument from "pdfkit";
 import { format } from "date-fns";
 
 // Initialize OpenAI client
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+const openai = new OpenAI({ 
+  apiKey: process.env.OPENAI_API_KEY 
+});
+
+console.log("OpenAI API Key environment variable exists:", !!process.env.OPENAI_API_KEY);
 
 // Configure multer for file uploads
 const upload = multer({ 
@@ -514,8 +518,11 @@ function generatePDFReport(
     return colors.danger;
   };
   
-  // Add logo and header
-  doc.image('public/logo.png', 50, 45, { width: 50 })
+  // Add logo text as header
+  doc.font('Helvetica-Bold')
+     .fontSize(20)
+     .fillColor(colors.primary)
+     .text('LendScore', 50, 45)
     .font('Helvetica-Bold')
     .fontSize(18)
     .fillColor(colors.primary)

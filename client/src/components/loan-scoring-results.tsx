@@ -212,7 +212,12 @@ export default function LoanScoringResults({ application }: LoanScoringResultsPr
 
   const getComponentPercentage = (key: string, weight: number) => {
     const score = getComponentScore(key);
-    return (score / weight) * 100;
+    // Calculate percentage based on component's max possible score (weight * 100)
+    const maxPossibleScore = weight * 100;
+    // Convert to a percentage between 0-100
+    const percentage = (score / maxPossibleScore) * 100;
+    console.log(`Component: ${key}, Score: ${score}/${maxPossibleScore}, Percentage: ${percentage.toFixed(1)}%`);
+    return percentage;
   };
 
   const getScoreColor = (percentage: number) => {
