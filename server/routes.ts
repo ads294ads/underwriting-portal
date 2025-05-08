@@ -981,23 +981,27 @@ async function generateScoringRationale(application: LoanApplication): Promise<R
       };
     }
     
-    const yearsInBusiness = Number(application.yearsInBusiness);
-    const annualRevenue = Number(application.annualRevenue);
-    const loanAmount = Number(application.loanAmount);
+    // Sanitize sensitive data before sending to OpenAI
+    const sanitizedApp = sanitizeForAI(application);
+    console.log("Using sanitized data for AI rationale generation");
+    
+    const yearsInBusiness = Number(sanitizedApp.yearsInBusiness);
+    const annualRevenue = Number(sanitizedApp.annualRevenue);
+    const loanAmount = Number(sanitizedApp.loanAmount);
     const loanToRevenueRatio = loanAmount / annualRevenue;
-    const industry = application.industry;
-    const scoringDetails = application.scoringDetails;
+    const industry = sanitizedApp.industry;
+    const scoringDetails = sanitizedApp.scoringDetails;
     
     // Prepare context for OpenAI to generate explanations
     const applicationContext = `
-Business Name: ${application.businessName}
+Business Name: ${sanitizedApp.businessName}
 Industry: ${industry}
 Years in Business: ${yearsInBusiness}
 Annual Revenue: $${annualRevenue.toLocaleString()}
 Loan Amount Requested: $${loanAmount.toLocaleString()}
 Loan-to-Revenue Ratio: ${(loanToRevenueRatio * 100).toFixed(2)}%
-Overall Score: ${application.score}
-Grade: ${application.grade}
+Overall Score: ${sanitizedApp.score}
+Grade: ${sanitizedApp.grade}
 
 Scoring Component Results:
 ${Object.entries(scoringDetails)
@@ -1423,9 +1427,14 @@ async function analyzeDocuments(files: Express.Multer.File[]): Promise<string[]>
     
     // Extract document type from filename for better context
     const documentTypes = files.map(file => {
-      const filename = file.originalname.toLowerCase();
+      // Sanitize the original filename to avoid potential PII leakage
+      const originalName = file.originalname;
+      const sanitizedName = originalName.replace(/\d{9,}|[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, "[REDACTED]");
+      
+      const filename = sanitizedName.toLowerCase();
       let docType = "Unknown";
       
+      // Detect document type based on filename patterns
       if (filename.includes("balance") || filename.includes("assets") || filename.includes("liabilities")) docType = "Balance Sheet";
       else if (filename.includes("p&l") || filename.includes("profit") || filename.includes("loss") || filename.includes("income")) docType = "Income Statement";
       else if (filename.includes("cash") || filename.includes("flow")) docType = "Cash Flow Statement";
@@ -1436,7 +1445,7 @@ async function analyzeDocuments(files: Express.Multer.File[]): Promise<string[]>
       else if (filename.includes("audit") || filename.includes("report")) docType = "Audit Report";
       
       return {
-        name: file.originalname,
+        name: sanitizedName,
         type: docType,
         size: file.size
       };
@@ -1446,6 +1455,8 @@ async function analyzeDocuments(files: Express.Multer.File[]): Promise<string[]>
     const documentDetails = documentTypes.map(doc => 
       `Document: ${doc.name} (${doc.type}, ${(doc.size / 1024).toFixed(2)} KB)`
     ).join('\n');
+    
+    console.log("Using sanitized document information for AI analysis");
     
     // Create a comprehensive industry context based on loan application information
     // This would usually come from the application data
