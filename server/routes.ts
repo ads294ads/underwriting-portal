@@ -9,6 +9,7 @@ import PDFDocument from "pdfkit";
 import { format } from "date-fns";
 import crypto from "crypto";
 import { performDeepResearch, DeepResearchResult, DEEP_RESEARCH_COMPONENT_WEIGHT } from "./deepsearch";
+import { addDeepResearchPages } from "./pdf-generator";
 
 // Encryption key for sensitive data - should be stored in environment variables in production
 const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || crypto.randomBytes(32).toString('hex');
@@ -306,6 +307,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Generate and download PDF rationale report for a loan application
   app.get("/api/loan-applications/:id/rationale-pdf", async (req, res) => {
+    // Perform deep research if not already done
+    let deepResearchResults: DeepResearchResult | null = null;
     try {
       const id = parseInt(req.params.id);
       const application = await storage.getLoanApplication(id);
