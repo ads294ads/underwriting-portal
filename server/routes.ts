@@ -317,6 +317,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Loan application not found" });
       }
       
+      // Check if this application has a deep research score component
+      // If it exists, attempt to retrieve the deep research results
+      if (application.scoringDetails && application.scoringDetails.deepResearch) {
+        console.log("Deep research already performed, retrieving results for PDF report");
+        try {
+          // Perform the deep research again to get the detailed results
+          // This is efficient because if the Perplexity API fails, we already have the score
+          deepResearchResults = await performDeepResearch(application);
+          console.log("Deep research results retrieved for PDF report");
+        } catch (drError) {
+          console.error("Error retrieving deep research results:", drError);
+          // Continue with PDF generation even if deep research retrieval fails
+        }
+      }
+      
       // Generate detailed explanations for each scoring component
       const rationale = await generateScoringRationale(application);
       
