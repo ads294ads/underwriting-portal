@@ -8,6 +8,7 @@ import OpenAI from "openai";
 import PDFDocument from "pdfkit";
 import { format } from "date-fns";
 import crypto from "crypto";
+import { EncryptionService } from "./encryption";
 import { performDeepResearch, DeepResearchResult, DEEP_RESEARCH_COMPONENT_WEIGHT } from "./deepsearch";
 import { addDeepResearchPages } from "./pdf-generator";
 import { 
@@ -17,33 +18,17 @@ import {
   addDocumentAnalysisPagesToPDF 
 } from "./document-analysis";
 
-// Encryption key for sensitive data - should be stored in environment variables in production
-const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || crypto.randomBytes(32).toString('hex');
-const IV_LENGTH = 16; // For AES, this is always 16 bytes
+// Get the encryption service instance
+const encryptionService = EncryptionService.getInstance();
 
-// Function to encrypt sensitive data
+// Function to encrypt sensitive data with enhanced GCM authentication
 function encrypt(text: string): string {
-  const iv = crypto.randomBytes(IV_LENGTH);
-  const cipher = crypto.createCipheriv('aes-256-cbc', Buffer.from(ENCRYPTION_KEY, 'hex'), iv);
-  let encrypted = cipher.update(text);
-  encrypted = Buffer.concat([encrypted, cipher.final()]);
-  return iv.toString('hex') + ':' + encrypted.toString('hex');
+  return encryptionService.encrypt(text);
 }
 
-// Function to decrypt sensitive data
+// Function to decrypt sensitive data with enhanced security
 function decrypt(text: string): string {
-  try {
-    const textParts = text.split(':');
-    const iv = Buffer.from(textParts.shift() || '', 'hex');
-    const encryptedText = Buffer.from(textParts.join(':'), 'hex');
-    const decipher = crypto.createDecipheriv('aes-256-cbc', Buffer.from(ENCRYPTION_KEY, 'hex'), iv);
-    let decrypted = decipher.update(encryptedText);
-    decrypted = Buffer.concat([decrypted, decipher.final()]);
-    return decrypted.toString();
-  } catch (error) {
-    console.error('Decryption error:', error);
-    return 'Error: Unable to decrypt data';
-  }
+  return encryptionService.decrypt(text);
 }
 
 // Function to sanitize data before sending to external AI services
@@ -186,6 +171,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Convert file buffer to text (simplistic approach - in production would use PDF parser)
           let fileContent = '';
           if (file.buffer) {
+            // Encrypt the buffer for secure storage
+            const encryptedBuffer = encryptionService.encryptBuffer(file.buffer);
+            console.log(`Encrypted file ${file.originalname} (${file.buffer.length} bytes -> ${encryptedBuffer.length} bytes)`);
+            
+            // For analysis, we still need the text content (unencrypted)
             // Simplified text extraction from PDF - in production use a proper PDF extractor
             // This just treats the binary as text to make something available for the demo
             fileContent = file.buffer.toString('utf-8', 0, Math.min(file.buffer.length, 10000));

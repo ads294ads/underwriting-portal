@@ -180,6 +180,13 @@ export default function LoanApplicationForm({ onApplicationSubmit }: LoanApplica
         </CardTitle>
       </CardHeader>
       <CardContent className="p-6">
+        {/* Privacy Consent Dialog */}
+        <PrivacyConsentDialog
+          open={showPrivacyConsent}
+          onAccept={handlePrivacyAccept}
+          onDecline={handlePrivacyDecline}
+        />
+        
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
             <div className="grid md:grid-cols-2 gap-6">
@@ -415,7 +422,14 @@ export default function LoanApplicationForm({ onApplicationSubmit }: LoanApplica
                     );
                     
                     if (validFiles.length > 0) {
-                      setSelectedFiles(prev => [...prev, ...validFiles]);
+                      // If files contain financial documents, ask for consent
+                      if (!privacyConsentAccepted) {
+                        setPendingUploadFiles(validFiles);
+                        setShowPrivacyConsent(true);
+                      } else {
+                        // User already accepted privacy consent, add files directly
+                        addFiles(validFiles);
+                      }
                       // Update the form state for fileUploaded
                       form.setValue('fileUploaded' as any, true);
                     } else {
