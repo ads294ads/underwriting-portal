@@ -228,10 +228,23 @@ export default function LoanApplicationForm({ onApplicationSubmit }: LoanApplica
                           <span className="text-neutral-500">$</span>
                         </div>
                         <Input 
-                          type="number" 
-                          min="0" 
-                          placeholder="e.g. 1000000" 
-                          {...field} 
+                          type="text" 
+                          placeholder="e.g. 1,000,000" 
+                          {...field}
+                          onChange={(e) => {
+                            // Remove non-numeric characters for validation
+                            const value = e.target.value.replace(/[^\d]/g, '');
+                            
+                            // Format with commas for display
+                            const formattedValue = value === '' ? '' : 
+                              Number(value).toLocaleString('en-US');
+                            
+                            // Update the field with the formatted value
+                            field.onChange(value);
+                            
+                            // Update the input display
+                            e.target.value = formattedValue;
+                          }}
                           className="pl-8 pr-3 py-2 w-full border border-neutral-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
                         />
                       </div>
@@ -255,10 +268,23 @@ export default function LoanApplicationForm({ onApplicationSubmit }: LoanApplica
                           <span className="text-neutral-500">$</span>
                         </div>
                         <Input 
-                          type="number" 
-                          min="1000" 
-                          placeholder="e.g. 250000" 
-                          {...field} 
+                          type="text" 
+                          placeholder="e.g. 250,000" 
+                          {...field}
+                          onChange={(e) => {
+                            // Remove non-numeric characters for validation
+                            const value = e.target.value.replace(/[^\d]/g, '');
+                            
+                            // Format with commas for display
+                            const formattedValue = value === '' ? '' : 
+                              Number(value).toLocaleString('en-US');
+                            
+                            // Update the field with the formatted value
+                            field.onChange(value);
+                            
+                            // Update the input display
+                            e.target.value = formattedValue;
+                          }}
                           className="pl-8 pr-3 py-2 w-full border border-neutral-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
                         />
                       </div>

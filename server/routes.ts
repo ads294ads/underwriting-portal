@@ -205,47 +205,500 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Generate detailed explanations for each scoring component
       const rationale = await generateScoringRationale(application);
       
-      // Create a simple PDF document
+      // Create a professional PDF document
       const doc = new PDFDocument({
         size: 'A4',
         margin: 50,
         info: {
-          Title: `${application.businessName} - Loan Assessment`,
-          Author: 'LendScore Platform',
+          Title: `${application.businessName} - Comprehensive Loan Assessment Report`,
+          Author: 'LendScore Financial Analytics Platform',
+          Keywords: 'business loan, credit assessment, financial analysis',
+          CreationDate: new Date(),
         }
       });
       
       // Set response headers
       res.setHeader('Content-Type', 'application/pdf');
-      res.setHeader('Content-Disposition', `attachment; filename="${application.businessName.replace(/\s+/g, '_')}_assessment.pdf"`);
+      res.setHeader('Content-Disposition', `attachment; filename="${application.businessName.replace(/\s+/g, '_')}_Comprehensive_Assessment.pdf"`);
       
       // Pipe the PDF directly to the response
       doc.pipe(res);
       
-      // Add content to the PDF
-      doc.fontSize(20).text('Loan Assessment Report', { align: 'center' });
-      doc.moveDown();
-      doc.fontSize(16).text(`Business: ${application.businessName}`);
-      doc.fontSize(14).text(`Score: ${application.score}/100`);
-      doc.fontSize(14).text(`Grade: ${application.grade}`);
-      doc.moveDown();
+      // Define colors
+      const colors = {
+        primary: '#1E40AF',
+        secondary: '#6B7280',
+        success: '#059669',
+        warning: '#D97706',
+        danger: '#DC2626',
+        light: '#F3F4F6',
+        dark: '#1F2937',
+        highlight: '#3B82F6'
+      };
       
-      // Add overall assessment
-      doc.fontSize(16).text('Overall Assessment');
-      doc.fontSize(12).text(rationale.overall || 'No overall assessment available.');
-      doc.moveDown();
+      // Helper function to format currency
+      const formatCurrency = (amount: number) => {
+        return new Intl.NumberFormat('en-US', {
+          style: 'currency',
+          currency: 'USD',
+          minimumFractionDigits: 0,
+          maximumFractionDigits: 0
+        }).format(amount);
+      };
       
-      // Add component scores
-      doc.fontSize(16).text('Component Scores');
-      doc.moveDown();
+      // Helper function to format date
+      const formatDate = (date: Date) => {
+        return new Intl.DateTimeFormat('en-US', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
+        }).format(new Date(date));
+      };
       
-      // Add each scoring component
-      for (const component of scoringComponents) {
-        const score = application.scoringDetails?.[component.key] || 0;
-        doc.fontSize(14).text(`${component.name}: ${score}/${component.weight * 100}`);
-        doc.fontSize(12).text(rationale[component.key] || `No rationale available for ${component.name}.`);
-        doc.moveDown();
+      // Helper function to determine score color
+      const getScoreColor = (score: number) => {
+        if (score >= 80) return colors.success;
+        if (score >= 60) return colors.primary;
+        if (score >= 40) return colors.warning;
+        return colors.danger;
+      };
+      
+      // Helper function to get grade description
+      const getGradeDescription = (grade: string) => {
+        const gradeInfo = gradeScales.find(scale => scale.grade === grade);
+        return gradeInfo?.description || '';
+      };
+      
+      // Helper function to draw section header
+      const drawSectionHeader = (text: string, y: number) => {
+        doc.fontSize(16)
+           .fillColor(colors.primary)
+           .font('Helvetica-Bold')
+           .text(text, 50, y)
+           .moveDown(0.5)
+           .lineWidth(1)
+           .strokeColor(colors.primary)
+           .moveTo(50, doc.y)
+           .lineTo(545, doc.y)
+           .stroke()
+           .moveDown(0.5);
+        return doc.y;
+      };
+      
+      // Helper function to draw a colored box with text
+      const drawBox = (text: string, boxWidth: number, y: number, color: string) => {
+        const x = 50;
+        const boxHeight = 30;
+        
+        doc.roundedRect(x, y, boxWidth, boxHeight, 5)
+           .fillAndStroke(color, color);
+        
+        doc.fillColor('white')
+           .fontSize(12)
+           .font('Helvetica-Bold')
+           .text(text, x + 10, y + 9, { width: boxWidth - 20, align: 'center' });
+        
+        return y + boxHeight;
+      };
+      
+      // Helper function to draw a progress bar
+      const drawProgressBar = (score: number, maxScore: number, y: number) => {
+        const barWidth = 300;
+        const barHeight = 12;
+        const x = 50;
+        const percentage = Math.min(score / maxScore, 1);
+        
+        // Draw background
+        doc.roundedRect(x, y, barWidth, barHeight, 3)
+           .fillAndStroke('#e5e7eb', '#e5e7eb');
+        
+        // Draw progress
+        const progressWidth = Math.max(percentage * barWidth, 3);
+        
+        const scoreColor = getScoreColor(percentage * 100);
+        doc.roundedRect(x, y, progressWidth, barHeight, 3)
+           .fillAndStroke(scoreColor, scoreColor);
+        
+        // Draw score text
+        doc.fillColor(colors.dark)
+           .fontSize(10)
+           .text(`${score}/${maxScore}`, x + barWidth + 10, y + 1);
+        
+        return y + barHeight + 5;
+      };
+      
+      ///////////////////////////////////////////////////////////
+      // COVER PAGE
+      ///////////////////////////////////////////////////////////
+      
+      // Add logo and report title
+      doc.fontSize(28)
+         .fillColor(colors.primary)
+         .font('Helvetica-Bold')
+         .text('COMPREHENSIVE', 50, 100, { align: 'center' })
+         .fontSize(30)
+         .text('LOAN ASSESSMENT REPORT', 50, doc.y, { align: 'center' })
+         .moveDown(1);
+      
+      // Business info box
+      doc.roundedRect(150, doc.y, 300, 120, 10)
+         .fillAndStroke(colors.light, colors.secondary);
+      
+      doc.fillColor(colors.dark)
+         .fontSize(16)
+         .font('Helvetica-Bold')
+         .text(application.businessName, 170, doc.y - 100, { width: 260, align: 'center' })
+         .fontSize(12)
+         .font('Helvetica')
+         .text(`Industry: ${application.industry}`, 170, doc.y + 20, { width: 260, align: 'center' })
+         .text(`Years in Business: ${application.yearsInBusiness}`, 170, doc.y + 10, { width: 260, align: 'center' })
+         .text(`Annual Revenue: ${formatCurrency(Number(application.annualRevenue))}`, 170, doc.y + 10, { width: 260, align: 'center' })
+         .text(`Requested Amount: ${formatCurrency(Number(application.loanAmount))}`, 170, doc.y + 10, { width: 260, align: 'center' });
+      
+      // Date and grade
+      doc.moveDown(4)
+         .fontSize(12)
+         .font('Helvetica')
+         .fillColor(colors.secondary)
+         .text(`Report Date: ${formatDate(new Date())}`, { align: 'center' })
+         .moveDown(1);
+      
+      // Draw Grade Circle
+      const centerX = 300;
+      const centerY = 480;
+      const radius = 60;
+      
+      // Draw the grade circle
+      doc.circle(centerX, centerY, radius)
+         .fillAndStroke(getScoreColor(Number(application.score)), colors.primary);
+      
+      // Add grade and score text
+      doc.fillColor('white')
+         .fontSize(36)
+         .font('Helvetica-Bold')
+         .text(application.grade, centerX - 20, centerY - 20, { width: 40, align: 'center' })
+         .fontSize(14)
+         .text(`${application.score}/100`, centerX - 30, centerY + 20, { width: 60, align: 'center' });
+      
+      // Add grade description
+      doc.moveDown(5)
+         .fillColor(colors.dark)
+         .fontSize(11)
+         .font('Helvetica')
+         .text(getGradeDescription(application.grade || 'C-'), 100, doc.y, { width: 400, align: 'center' });
+      
+      // Add confidentiality notice at the bottom
+      doc.fontSize(8)
+         .fillColor(colors.secondary)
+         .text('CONFIDENTIAL: This report contains proprietary analysis and confidential information intended solely for the named recipient.', 50, 740, { width: 500, align: 'center' });
+      
+      // Add new page
+      doc.addPage();
+      
+      ///////////////////////////////////////////////////////////
+      // EXECUTIVE SUMMARY PAGE
+      ///////////////////////////////////////////////////////////
+      
+      // Page header
+      doc.fontSize(18)
+         .fillColor(colors.primary)
+         .font('Helvetica-Bold')
+         .text('EXECUTIVE SUMMARY', 50, 50, { align: 'left' })
+         .moveDown(1);
+      
+      // Draw assessment summary section
+      let yPos = drawSectionHeader('Overall Assessment', doc.y);
+      
+      doc.fontSize(12)
+         .fillColor(colors.dark)
+         .font('Helvetica')
+         .text(rationale.overall || 'No overall assessment available.', 50, yPos, { width: 495, align: 'justify' })
+         .moveDown(2);
+      
+      // Key metrics section
+      yPos = drawSectionHeader('Key Financial Metrics', doc.y);
+      
+      // Financial metrics details - 2 columns
+      const leftCol = 50;
+      const rightCol = 300;
+      const metricLabelWidth = 150;
+      
+      // Calculate Loan-to-Revenue Ratio
+      const loanToRevenueRatio = (Number(application.loanAmount) / Number(application.annualRevenue)) * 100;
+      
+      // Left column metrics
+      doc.fontSize(11)
+         .fillColor(colors.secondary)
+         .font('Helvetica-Bold')
+         .text('Loan-to-Revenue Ratio:', leftCol, yPos, { width: metricLabelWidth })
+         .fontSize(11)
+         .fillColor(colors.dark)
+         .font('Helvetica')
+         .text(`${loanToRevenueRatio.toFixed(1)}%`, leftCol + metricLabelWidth, yPos, { link: false })
+         .moveDown(0.7);
+      
+      doc.fontSize(11)
+         .fillColor(colors.secondary)
+         .font('Helvetica-Bold')
+         .text('Requested Loan Amount:', leftCol, doc.y, { width: metricLabelWidth })
+         .fontSize(11)
+         .fillColor(colors.dark)
+         .font('Helvetica')
+         .text(formatCurrency(Number(application.loanAmount)), leftCol + metricLabelWidth, doc.y - 13, { link: false })
+         .moveDown(0.7);
+      
+      const startRightCol = yPos;
+      
+      // Right column metrics
+      doc.fontSize(11)
+         .fillColor(colors.secondary)
+         .font('Helvetica-Bold')
+         .text('Years in Business:', rightCol, startRightCol, { width: metricLabelWidth })
+         .fontSize(11)
+         .fillColor(colors.dark)
+         .font('Helvetica')
+         .text(application.yearsInBusiness.toString(), rightCol + metricLabelWidth, startRightCol, { link: false })
+         .moveDown(0.7);
+      
+      doc.fontSize(11)
+         .fillColor(colors.secondary)
+         .font('Helvetica-Bold')
+         .text('Annual Revenue:', rightCol, doc.y - 13 + startRightCol - yPos, { width: metricLabelWidth })
+         .fontSize(11)
+         .fillColor(colors.dark)
+         .font('Helvetica')
+         .text(formatCurrency(Number(application.annualRevenue)), rightCol + metricLabelWidth, doc.y - 13, { link: false })
+         .moveDown(2);
+      
+      // Scoring summary section
+      yPos = drawSectionHeader('Scoring Summary', doc.y + 10);
+      
+      // Score distribution bar
+      doc.fontSize(11)
+         .fillColor(colors.dark)
+         .font('Helvetica')
+         .text('Overall score distribution across all assessment categories:', 50, yPos)
+         .moveDown(1);
+      
+      // Calculate total score and max possible score
+      const totalMaxScore = scoringComponents.reduce((sum, component) => sum + component.weight * 100, 0);
+      const totalScore = Number(application.score || 0);
+      
+      // Draw overall score progress bar
+      yPos = drawProgressBar(totalScore, 100, doc.y);
+      doc.moveDown(2);
+      
+      // Document analysis findings section
+      if (application.documentAnalysis && application.documentAnalysis.length > 0) {
+        yPos = drawSectionHeader('Document Analysis Findings', doc.y);
+        
+        doc.fontSize(11)
+           .fillColor(colors.dark)
+           .font('Helvetica')
+           .text('The following insights were derived from the financial documents provided:', 50, yPos)
+           .moveDown(1);
+        
+        // List document analysis findings
+        application.documentAnalysis.forEach((insight, index) => {
+          doc.fontSize(11)
+             .fillColor(colors.dark)
+             .font('Helvetica')
+             .text(`${index + 1}. ${insight}`, 70, doc.y, { width: 475 })
+             .moveDown(0.5);
+        });
       }
+      
+      // Add recommendation box at the bottom
+      doc.moveDown(1);
+      const recommendationY = doc.y + 20;
+      doc.roundedRect(50, recommendationY, 495, 100, 5)
+         .fillAndStroke('#f0f9ff', '#93c5fd');
+      
+      doc.fontSize(14)
+         .fillColor(colors.primary)
+         .font('Helvetica-Bold')
+         .text('RECOMMENDATION', 70, recommendationY + 15, { width: 455 });
+      
+      let recommendationText = 'Based on the comprehensive analysis of the financial data and business metrics, ';
+      
+      if (totalScore >= 80) {
+        recommendationText += 'this application shows strong financial health and represents a low-risk lending opportunity. The loan request is recommended for approval with standard terms.';
+      } else if (totalScore >= 60) {
+        recommendationText += 'this application demonstrates moderate financial strength with some areas that require monitoring. The loan request is recommended for approval with enhanced monitoring terms.';
+      } else if (totalScore >= 40) {
+        recommendationText += 'this application shows several areas of financial concern that need to be addressed. Consider approval with modified terms, reduced loan amount, or additional collateral requirements.';
+      } else {
+        recommendationText += 'this application presents significant financial risks that do not align with standard lending criteria. The loan request is not recommended for approval in its current form.';
+      }
+      
+      doc.fontSize(11)
+         .fillColor(colors.dark)
+         .font('Helvetica')
+         .text(recommendationText, 70, recommendationY + 40, { width: 455, align: 'justify' });
+      
+      // Add new page
+      doc.addPage();
+      
+      ///////////////////////////////////////////////////////////
+      // DETAILED ANALYSIS PAGE
+      ///////////////////////////////////////////////////////////
+      
+      // Page header
+      doc.fontSize(18)
+         .fillColor(colors.primary)
+         .font('Helvetica-Bold')
+         .text('DETAILED SCORING ANALYSIS', 50, 50, { align: 'left' })
+         .moveDown(1);
+      
+      // Introduction text
+      doc.fontSize(11)
+         .fillColor(colors.dark)
+         .font('Helvetica')
+         .text('This section provides an in-depth analysis of each scoring component, highlighting strengths, areas for improvement, and specific recommendations to enhance business loan eligibility.', 50, doc.y, { width: 495, align: 'justify' })
+         .moveDown(2);
+      
+      // Display detailed component scores
+      let componentY = doc.y;
+      
+      // Get the scoring details
+      const scoringDetails = application.scoringDetails || {};
+      
+      // Iterate through each component
+      for (const component of scoringComponents) {
+        const componentScore = scoringDetails[component.key] || 0;
+        const maxComponentScore = component.weight * 100;
+        
+        // Get the rationale text for this component
+        const componentRationale = rationale[component.key] || 
+          `No detailed rationale available for ${component.name}. This component received a score of ${componentScore} out of a possible ${maxComponentScore} points.`;
+        
+        // Add component header
+        doc.fontSize(12)
+           .fillColor(colors.primary)
+           .font('Helvetica-Bold')
+           .text(component.name, 50, componentY);
+        
+        // Add score bar
+        componentY = drawProgressBar(componentScore, maxComponentScore, doc.y + 5);
+        
+        // Add component description
+        doc.fontSize(10)
+           .fillColor(colors.secondary)
+           .font('Helvetica-Oblique')
+           .text(component.desc, 50, componentY, { width: 495 })
+           .moveDown(0.5);
+        
+        // Add component analysis
+        doc.fontSize(11)
+           .fillColor(colors.dark)
+           .font('Helvetica')
+           .text(componentRationale, 50, doc.y, { width: 495, align: 'justify' })
+           .moveDown(1.5);
+        
+        componentY = doc.y;
+        
+        // Add page break if needed
+        if (componentY > 680) {
+          doc.addPage();
+          componentY = 50;
+        }
+      }
+      
+      // Final page with improvement recommendations
+      if (doc.y > 500) {
+        doc.addPage();
+      } else {
+        doc.moveDown(3);
+      }
+      
+      // Improvement recommendations section
+      yPos = drawSectionHeader('Priority Improvement Recommendations', doc.y);
+      
+      doc.fontSize(11)
+         .fillColor(colors.dark)
+         .font('Helvetica')
+         .text('Based on the comprehensive analysis, here are the top priority areas for improvement to enhance loan eligibility and terms:', 50, yPos, { width: 495, align: 'justify' })
+         .moveDown(1);
+      
+      // Generate improvement recommendations based on lowest component scores
+      const componentScoresArray = Object.entries(scoringDetails)
+        .map(([key, score]) => ({ 
+          key, 
+          score, 
+          component: scoringComponents.find(c => c.key === key),
+          percentage: score / (scoringComponents.find(c => c.key === key)?.weight || 1) / 100
+        }))
+        .sort((a, b) => a.percentage - b.percentage);
+      
+      // Take lowest 3 component scores for recommendations
+      const lowestComponents = componentScoresArray.slice(0, 3);
+      
+      lowestComponents.forEach((item, index) => {
+        if (!item.component) return;
+        
+        const recommendationTitles = [
+          "Improve Revenue Growth Rate", 
+          "Enhance EBITDA Margin",
+          "Strengthen Debt Service Coverage",
+          "Improve Loan-to-Value Ratio",
+          "Build Business Credit History",
+          "Diversify Industry Risk Exposure",
+          "Increase Business Tenure",
+          "Enhance Owner's Personal Credit",
+          "Build Stronger Cash Reserves"
+        ];
+        
+        const recommendations = [
+          "Implement strategic pricing, expand market reach, and develop new revenue streams to accelerate growth.",
+          "Reduce operational costs, optimize pricing strategy, and improve operational efficiency to boost margins.",
+          "Restructure existing debt, improve cash flow management, and increase revenue while controlling expenses.",
+          "Increase business asset valuation, reduce loan amount, or provide additional collateral to improve this ratio.",
+          "Establish more trade lines, ensure timely payments, and reduce credit utilization to build stronger business credit.",
+          "Diversify customer base, develop contingency plans, and implement risk mitigation strategies for industry-specific challenges.",
+          "Maintain consistent business operations, document business continuity, and highlight stability factors in loan applications.",
+          "Reduce personal debt, correct credit report errors, and establish more personal credit accounts with perfect payment history.",
+          "Implement aggressive savings plans, reduce unnecessary expenses, and establish dedicated business emergency funds."
+        ];
+        
+        const componentIndex = scoringComponents.findIndex(c => c.key === item.key);
+        if (componentIndex >= 0 && componentIndex < recommendationTitles.length) {
+          doc.fontSize(12)
+             .fillColor(colors.dark)
+             .font('Helvetica-Bold')
+             .text(`${index + 1}. ${recommendationTitles[componentIndex]}`, 70, doc.y)
+             .moveDown(0.5);
+          
+          doc.fontSize(11)
+             .fillColor(colors.dark)
+             .font('Helvetica')
+             .text(recommendations[componentIndex], 90, doc.y, { width: 455, align: 'justify' })
+             .moveDown(1);
+        }
+      });
+      
+      // Conclusion
+      doc.moveDown(1);
+      yPos = drawSectionHeader('Conclusion', doc.y);
+      
+      let conclusionText = `${application.businessName} has received an overall grade of ${application.grade} with a score of ${application.score}/100. `;
+      
+      if (Number(application.score) >= 80) {
+        conclusionText += 'This strong performance indicates a well-positioned business with solid financial fundamentals. To maintain this position, continue implementing sound financial management practices and consider the recommendations provided to further strengthen areas with potential for improvement.';
+      } else if (Number(application.score) >= 60) {
+        conclusionText += 'This satisfactory performance indicates a reasonably stable business with some areas requiring attention. By focusing on the recommended improvements, particularly in the lower-scoring categories, the business can significantly enhance its lending profile and potentially qualify for more favorable terms in the future.';
+      } else {
+        conclusionText += 'This performance indicates several areas that require significant improvement before optimal loan terms can be offered. By prioritizing the recommended actions in this report, particularly focusing on the lowest-scoring categories, the business can work toward building a stronger financial foundation for future lending opportunities.';
+      }
+      
+      doc.fontSize(11)
+         .fillColor(colors.dark)
+         .font('Helvetica')
+         .text(conclusionText, 50, yPos, { width: 495, align: 'justify' });
+      
+      // Footer
+      doc.fontSize(8)
+         .fillColor(colors.secondary)
+         .text('This report was generated by the LendScore Advanced Financial Analysis Platform. For questions, please contact your financial advisor.', 50, 740, { width: 495, align: 'center' });
       
       // Finalize the PDF and end the response
       doc.end();
