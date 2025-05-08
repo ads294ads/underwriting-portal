@@ -644,14 +644,27 @@ function generatePDFReport(
     
     // Draw score bar
     const barWidth = 300;
-    const percentage = Math.min(100, (componentScore / componentWeight) * 100);
-    const calculatedWidth = (barWidth * percentage) / 100;
     
+    // Calculate the percentage of the maximum possible score
+    const percentage = Math.min(100, (componentScore / componentWeight) * 100);
+    console.log(`Component: ${component.name}, Score: ${componentScore}/${componentWeight}, Percentage: ${percentage.toFixed(1)}%`);
+    
+    // Calculate the width of the colored portion of the bar
+    const calculatedWidth = Math.max(5, (barWidth * percentage) / 100); // Minimum 5px width for visibility
+    
+    // Draw the background (gray) bar
     doc.rect(50, doc.y, barWidth, 15)
       .fillAndStroke('#F3F4F6', colors.lightGray);
     
+    // Draw the foreground (colored) bar representing the score
     doc.rect(50, doc.y - 15, calculatedWidth, 15)
       .fill(scoreColor);
+      
+    // Add percentage text for clarity
+    doc.font('Helvetica')
+      .fontSize(8)
+      .fillColor('#FFFFFF')
+      .text(`${percentage.toFixed(0)}%`, 50 + (calculatedWidth/2) - 10, doc.y - 13);
     
     doc.moveDown(1);
     

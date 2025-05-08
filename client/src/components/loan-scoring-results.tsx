@@ -153,31 +153,38 @@ export default function LoanScoringResults({ application }: LoanScoringResultsPr
       // Create a direct download link to the PDF endpoint
       const downloadUrl = `/api/loan-applications/${application.id}/rationale-pdf`;
       
-      // Create an iframe to trigger the download without navigating away
-      const iframe = document.createElement('iframe');
-      iframe.style.display = 'none';
-      document.body.appendChild(iframe);
+      console.log("Starting PDF download from:", downloadUrl);
       
-      iframe.onload = () => {
-        // Once loaded, remove the iframe
-        document.body.removeChild(iframe);
-        
-        toast({
-          title: "PDF Report Downloaded",
-          description: "Comprehensive PDF assessment report has been saved to your downloads folder.",
-        });
-        
-        setIsPdfDownloading(false);
-      };
+      // Better approach: use fetch to stream the PDF data
+      const response = await fetch(downloadUrl);
       
-      iframe.onerror = () => {
-        document.body.removeChild(iframe);
-        throw new Error("Failed to download PDF report");
-      };
+      if (!response.ok) {
+        throw new Error(`Failed to download PDF: ${response.status} ${response.statusText}`);
+      }
       
-      // Set the source to trigger the download
-      iframe.src = downloadUrl;
+      // Get the blob from the response
+      const blob = await response.blob();
       
+      // Create a URL for the blob
+      const url = URL.createObjectURL(blob);
+      
+      // Create a link to download the file
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${application.businessName.replace(/\s+/g, '_')}_loan_assessment.pdf`;
+      document.body.appendChild(a);
+      
+      // Trigger the download
+      a.click();
+      
+      // Clean up
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      
+      toast({
+        title: "PDF Report Downloaded",
+        description: "Comprehensive PDF assessment report has been saved to your downloads folder.",
+      });
     } catch (error) {
       console.error("Error downloading PDF report:", error);
       toast({
@@ -185,6 +192,7 @@ export default function LoanScoringResults({ application }: LoanScoringResultsPr
         description: error instanceof Error ? error.message : "An unexpected error occurred",
         variant: "destructive",
       });
+    } finally {
       setIsPdfDownloading(false);
     }
   };
