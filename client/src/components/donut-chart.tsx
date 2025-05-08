@@ -25,13 +25,19 @@ export default function DonutChart({ percentage, color, size = 112 }: DonutChart
     const ctx = canvasRef.current.getContext('2d');
     if (!ctx) return;
 
+    // Ensure percentage is between 0-100
+    const normalizedPercentage = Math.min(Math.max(percentage, 0), 100);
+    
+    // Log the percentage value for debugging
+    console.log('Donut Chart Percentage:', normalizedPercentage);
+
     // Create new chart
     chartRef.current = new Chart(ctx, {
       type: 'doughnut',
       data: {
         datasets: [
           {
-            data: [percentage, 100 - percentage],
+            data: [normalizedPercentage, 100 - normalizedPercentage],
             backgroundColor: [color, '#E5E7EB'],
             borderWidth: 0,
             circumference: 360,

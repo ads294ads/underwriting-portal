@@ -209,8 +209,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.setHeader('Content-Type', 'application/pdf');
       res.setHeader('Content-Disposition', `attachment; filename="${application.businessName.replace(/\s+/g, '_')}_loan_assessment.pdf"`);
       
-      // Generate PDF and stream it directly to the response
-      generatePDFReport(application, rationale, res);
+      try {
+        // Generate PDF and stream it directly to the response
+        await generatePDFReport(application, rationale, res);
+      } catch (pdfError) {
+        console.error("PDF generation failed:", pdfError);
+        // If PDF generation fails, send a text response instead
+        res.status(500).json({ 
+          message: "Failed to generate PDF report", 
+          error: pdfError instanceof Error ? pdfError.message : "Unknown error" 
+        });
+      }
       
     } catch (error) {
       console.error("Error generating PDF report:", error);

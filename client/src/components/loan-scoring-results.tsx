@@ -335,7 +335,11 @@ export default function LoanScoringResults({ application }: LoanScoringResultsPr
             {/* Score Display */}
             <div className="relative w-24 h-24">
               <DonutChart 
-                percentage={application.score ? Number(application.score) : 0}
+                percentage={
+                  application.score 
+                    ? Math.min(Number(application.score), 100) // Ensure it's capped at 100
+                    : 0
+                }
                 color="#0050C8"
               />
               <div className="absolute inset-0 flex items-center justify-center flex-col">
@@ -364,7 +368,11 @@ export default function LoanScoringResults({ application }: LoanScoringResultsPr
           <div className="flex-1 bg-neutral-50 p-6 rounded-lg border border-neutral-200">
             <h3 className="text-sm font-medium text-neutral-700 mb-3">Grade Scale</h3>
             
-            <CreditScoreBar score={application.score ? Number(application.score) : 0} />
+            <CreditScoreBar score={
+              application.score 
+                ? Math.min(Number(application.score), 100) // Ensure it's capped at 100
+                : 0
+            } />
             
             <div className="mt-4">
               <div className="flex justify-between items-center mb-2">
