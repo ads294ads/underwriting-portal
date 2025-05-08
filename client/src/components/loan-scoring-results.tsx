@@ -6,7 +6,7 @@ import DonutChart from "@/components/donut-chart";
 import CreditScoreBar from "@/components/credit-score-bar";
 import { scoringComponents, gradeScales } from "@shared/schema";
 import { Button } from "@/components/ui/button";
-import { DownloadIcon, UploadIcon } from "lucide-react";
+import { DownloadIcon, UploadIcon, SearchIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface LoanScoringResultsProps {
@@ -294,6 +294,49 @@ export default function LoanScoringResults({ application }: LoanScoringResultsPr
       setIsUploading(false);
     }
   };
+  
+  const performDeepResearch = async () => {
+    if (!application) return;
+    
+    setIsPerformingDeepResearch(true);
+    
+    try {
+      // Call the deep research endpoint
+      const response = await fetch(`/api/loan-applications/${application.id}/deep-research`, {
+        method: "POST",
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Deep research failed:", errorText);
+        throw new Error("Failed to perform deep research");
+      }
+      
+      const updatedApplication = await response.json();
+      console.log("Application updated with deep research:", updatedApplication);
+      
+      // Update the application in the parent component
+      Object.assign(application, updatedApplication);
+      
+      toast({
+        title: "Deep Research Completed",
+        description: "Advanced company and owner research has been performed and incorporated into assessment",
+      });
+      
+      // Automatically trigger PDF generation with updated deep research
+      await downloadPdfReport();
+      
+    } catch (error) {
+      console.error("Error performing deep research:", error);
+      toast({
+        title: "Deep Research Failed",
+        description: error instanceof Error ? error.message : "An unexpected error occurred",
+        variant: "destructive",
+      });
+    } finally {
+      setIsPerformingDeepResearch(false);
+    }
+  };
 
   return (
     <Card className="bg-white rounded-lg shadow-sm border border-neutral-200 mb-8">
@@ -462,6 +505,74 @@ export default function LoanScoringResults({ application }: LoanScoringResultsPr
             </div>
           </div>
         )}
+        
+        {/* Deep Research Section */}
+        <div className="mb-8">
+          <h3 className="text-base font-semibold text-neutral-800 mb-4 flex items-center justify-between">
+            <div className="flex items-center">
+              <i className="fas fa-search-plus text-primary-400 mr-2"></i>
+              Deep Research
+            </div>
+            
+            <div className="flex gap-2">
+              <Button 
+                onClick={performDeepResearch} 
+                disabled={isPerformingDeepResearch}
+                size="sm"
+                className="flex items-center gap-1 bg-indigo-600 hover:bg-indigo-700"
+              >
+                {isPerformingDeepResearch ? (
+                  <>Researching...</>
+                ) : (
+                  <>
+                    <SearchIcon className="h-3.5 w-3.5" />
+                    Perform Deep Research
+                  </>
+                )}
+              </Button>
+            </div>
+          </h3>
+          
+          <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-200">
+            <div className="flex items-start mb-3">
+              <div className="bg-indigo-100 p-2 rounded-full mr-3">
+                <SearchIcon className="h-5 w-5 text-indigo-600" />
+              </div>
+              <div>
+                <h4 className="text-sm font-medium text-neutral-800 mb-1">
+                  Enhanced Due Diligence
+                </h4>
+                <p className="text-sm text-neutral-600">
+                  Our Deep Research feature performs comprehensive background checks on both the business and its owners. 
+                  This includes analyzing legal records, financial standings, market reputation, and potential red flags.
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-4">
+              <div className="flex-1 bg-white p-3 rounded-md border border-indigo-100">
+                <p className="text-xs font-medium text-indigo-700 mb-1">Company Analysis</p>
+                <ul className="text-xs text-neutral-600 list-disc pl-4 space-y-1">
+                  <li>Legal history and litigation research</li>
+                  <li>Financial stability assessment</li>
+                  <li>Market reputation and customer sentiment</li>
+                  <li>Industry risk factors identification</li>
+                </ul>
+              </div>
+              <div className="flex-1 bg-white p-3 rounded-md border border-indigo-100">
+                <p className="text-xs font-medium text-indigo-700 mb-1">Owner Analysis</p>
+                <ul className="text-xs text-neutral-600 list-disc pl-4 space-y-1">
+                  <li>Personal financial background check</li>
+                  <li>Previous business venture history</li>
+                  <li>Public record investigations</li>
+                  <li>Management experience evaluation</li>
+                </ul>
+              </div>
+            </div>
+            <p className="text-xs text-neutral-500 mt-3">
+              Results from Deep Research contribute 10% to the final loan assessment score. Findings are incorporated into the comprehensive PDF report.
+            </p>
+          </div>
+        </div>
         
         {/* Document Upload Section */}
         <div className="mb-8">
