@@ -8,6 +8,7 @@ import OpenAI from "openai";
 import PDFDocument from "pdfkit";
 import { format } from "date-fns";
 import crypto from "crypto";
+import { performDeepResearch, DeepResearchResult, DEEP_RESEARCH_COMPONENT_WEIGHT } from "./deepsearch";
 
 // Encryption key for sensitive data - should be stored in environment variables in production
 const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || crypto.randomBytes(32).toString('hex');
@@ -211,12 +212,73 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Get scoring components
   app.get("/api/scoring/components", (_req, res) => {
-    res.json(scoringComponents);
+    // Add the deep research component to scoring components
+    const allComponents = [
+      ...scoringComponents,
+      { 
+        key: "deepResearch", 
+        name: "Deep Research Analysis", 
+        weight: DEEP_RESEARCH_COMPONENT_WEIGHT / 100, 
+        desc: "Comprehensive analysis of company and owner backgrounds, legal issues, and financial red flags." 
+      }
+    ];
+    res.json(allComponents);
   });
 
   // Get grade scales
   app.get("/api/scoring/grades", (_req, res) => {
     res.json(gradeScales);
+  });
+
+  // Perform deep research on a loan application
+  app.post("/api/loan-applications/:id/deep-research", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const application = await storage.getLoanApplication(id);
+      
+      if (!application) {
+        return res.status(404).json({ message: "Loan application not found" });
+      }
+      
+      console.log(`Starting deep research for application ID: ${id}`);
+      
+      // Perform the deep research analysis
+      const deepResearchResults = await performDeepResearch(application);
+      
+      // Update the loan application score with the deep research component
+      const currentScore = application.score ? parseFloat(application.score) : 0;
+      
+      // Calculate new score: original score * (1 - deep research weight) + deep research score * weight
+      const deepResearchWeight = DEEP_RESEARCH_COMPONENT_WEIGHT / 100;
+      const newScore = (currentScore * (1 - deepResearchWeight)) + 
+                       (deepResearchResults.combinedScore * deepResearchWeight);
+      
+      // Update scoring details
+      const scoringDetails = application.scoringDetails || {};
+      scoringDetails.deepResearch = deepResearchResults.combinedScore;
+      
+      // Update application with new details
+      const updatedData: Partial<LoanApplication> = {
+        score: newScore.toString(),
+        grade: determineGrade(newScore),
+        scoringDetails: scoringDetails,
+      };
+      
+      const updatedApplication = await storage.updateLoanApplication(id, updatedData);
+      
+      // Return the results
+      res.json({
+        application: updatedApplication,
+        deepResearchResults
+      });
+      
+    } catch (error) {
+      console.error("Error performing deep research:", error);
+      res.status(500).json({ 
+        message: "Failed to perform deep research", 
+        error: error instanceof Error ? error.message : "Unknown error" 
+      });
+    }
   });
   
   // Generate detailed rationale report for a loan application (JSON format)

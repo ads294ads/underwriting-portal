@@ -354,7 +354,42 @@ export default function LoanApplicationForm({ onApplicationSubmit }: LoanApplica
               <FormLabel className="block text-sm font-medium text-neutral-700 mb-1">
                 Upload Financial Documents <span className="text-red-500">*</span>
               </FormLabel>
-              <div className="border-2 border-dashed border-neutral-300 rounded-md p-4">
+              <div 
+                className="border-2 border-dashed border-neutral-300 rounded-md p-4"
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  e.currentTarget.classList.add('bg-primary-50', 'border-primary-300');
+                }}
+                onDragLeave={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  e.currentTarget.classList.remove('bg-primary-50', 'border-primary-300');
+                }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  e.currentTarget.classList.remove('bg-primary-50', 'border-primary-300');
+                  
+                  if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                    const validFiles = Array.from(e.dataTransfer.files).filter(
+                      file => file.type === 'application/pdf'
+                    );
+                    
+                    if (validFiles.length > 0) {
+                      setSelectedFiles(prev => [...prev, ...validFiles]);
+                      // Update the form state for fileUploaded
+                      form.setValue('fileUploaded' as any, true);
+                    } else {
+                      toast({
+                        title: "Invalid file type",
+                        description: "Please upload PDF files only",
+                        variant: "destructive"
+                      });
+                    }
+                  }
+                }}
+              >
                 <div className="flex flex-col items-center justify-center space-y-2">
                   <i className="fas fa-cloud-upload-alt text-3xl text-neutral-400"></i>
                   <p className="text-sm text-neutral-500 text-center">
