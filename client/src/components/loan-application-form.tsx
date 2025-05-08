@@ -230,20 +230,37 @@ export default function LoanApplicationForm({ onApplicationSubmit }: LoanApplica
                         <Input 
                           type="text" 
                           placeholder="e.g. 1,000,000" 
-                          {...field}
+                          value={field.value 
+                            ? Number(field.value).toLocaleString('en-US') 
+                            : ''}
                           onChange={(e) => {
-                            // Remove non-numeric characters for validation
-                            const value = e.target.value.replace(/[^\d]/g, '');
+                            // Get cursor position before update
+                            const cursorPosition = e.target.selectionStart || 0;
+                            const previousValue = e.target.value;
+                            
+                            // Extract only digits from input
+                            const rawValue = e.target.value.replace(/[^\d]/g, '');
                             
                             // Format with commas for display
-                            const formattedValue = value === '' ? '' : 
-                              Number(value).toLocaleString('en-US');
+                            const formattedValue = rawValue === '' ? '' : 
+                              Number(rawValue).toLocaleString('en-US');
                             
-                            // Update the field with the formatted value
-                            field.onChange(value);
+                            // Update the form field with raw value
+                            field.onChange(rawValue);
                             
-                            // Update the input display
-                            e.target.value = formattedValue;
+                            // Calculate new cursor position (accounting for commas)
+                            setTimeout(() => {
+                              // Count how many commas were added/removed to adjust cursor
+                              const commasBefore = (previousValue.slice(0, cursorPosition).match(/,/g) || []).length;
+                              const commasAfter = (formattedValue.slice(0, cursorPosition).match(/,/g) || []).length;
+                              const adjustment = commasAfter - commasBefore;
+                              
+                              // Set cursor position
+                              e.target.setSelectionRange(
+                                cursorPosition + adjustment, 
+                                cursorPosition + adjustment
+                              );
+                            }, 0);
                           }}
                           className="pl-8 pr-3 py-2 w-full border border-neutral-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
                         />
@@ -270,20 +287,37 @@ export default function LoanApplicationForm({ onApplicationSubmit }: LoanApplica
                         <Input 
                           type="text" 
                           placeholder="e.g. 250,000" 
-                          {...field}
+                          value={field.value 
+                            ? Number(field.value).toLocaleString('en-US') 
+                            : ''}
                           onChange={(e) => {
-                            // Remove non-numeric characters for validation
-                            const value = e.target.value.replace(/[^\d]/g, '');
+                            // Get cursor position before update
+                            const cursorPosition = e.target.selectionStart || 0;
+                            const previousValue = e.target.value;
+                            
+                            // Extract only digits from input
+                            const rawValue = e.target.value.replace(/[^\d]/g, '');
                             
                             // Format with commas for display
-                            const formattedValue = value === '' ? '' : 
-                              Number(value).toLocaleString('en-US');
+                            const formattedValue = rawValue === '' ? '' : 
+                              Number(rawValue).toLocaleString('en-US');
                             
-                            // Update the field with the formatted value
-                            field.onChange(value);
+                            // Update the form field with raw value
+                            field.onChange(rawValue);
                             
-                            // Update the input display
-                            e.target.value = formattedValue;
+                            // Calculate new cursor position (accounting for commas)
+                            setTimeout(() => {
+                              // Count how many commas were added/removed to adjust cursor
+                              const commasBefore = (previousValue.slice(0, cursorPosition).match(/,/g) || []).length;
+                              const commasAfter = (formattedValue.slice(0, cursorPosition).match(/,/g) || []).length;
+                              const adjustment = commasAfter - commasBefore;
+                              
+                              // Set cursor position
+                              e.target.setSelectionRange(
+                                cursorPosition + adjustment, 
+                                cursorPosition + adjustment
+                              );
+                            }, 0);
                           }}
                           className="pl-8 pr-3 py-2 w-full border border-neutral-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
                         />

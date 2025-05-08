@@ -7,6 +7,56 @@ import { ZodError } from "zod";
 import OpenAI from "openai";
 import PDFDocument from "pdfkit";
 import { format } from "date-fns";
+import crypto from "crypto";
+
+// Encryption key for sensitive data - should be stored in environment variables in production
+const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || crypto.randomBytes(32).toString('hex');
+const IV_LENGTH = 16; // For AES, this is always 16 bytes
+
+// Function to encrypt sensitive data
+function encrypt(text: string): string {
+  const iv = crypto.randomBytes(IV_LENGTH);
+  const cipher = crypto.createCipheriv('aes-256-cbc', Buffer.from(ENCRYPTION_KEY, 'hex'), iv);
+  let encrypted = cipher.update(text);
+  encrypted = Buffer.concat([encrypted, cipher.final()]);
+  return iv.toString('hex') + ':' + encrypted.toString('hex');
+}
+
+// Function to decrypt sensitive data
+function decrypt(text: string): string {
+  try {
+    const textParts = text.split(':');
+    const iv = Buffer.from(textParts.shift() || '', 'hex');
+    const encryptedText = Buffer.from(textParts.join(':'), 'hex');
+    const decipher = crypto.createDecipheriv('aes-256-cbc', Buffer.from(ENCRYPTION_KEY, 'hex'), iv);
+    let decrypted = decipher.update(encryptedText);
+    decrypted = Buffer.concat([decrypted, decipher.final()]);
+    return decrypted.toString();
+  } catch (error) {
+    console.error('Decryption error:', error);
+    return 'Error: Unable to decrypt data';
+  }
+}
+
+// Function to sanitize data before sending to external AI services
+function sanitizeForAI(data: any): any {
+  // Create a deep copy of the data
+  const sanitized = JSON.parse(JSON.stringify(data));
+  
+  // Remove or anonymize personally identifiable information
+  if (sanitized.email) {
+    // Only keep domain part of email for industry analysis
+    sanitized.email = sanitized.email.split('@')[1] || 'example.com';
+  }
+  
+  // Replace business name with generic identifier if needed
+  if (sanitized.businessName) {
+    sanitized.businessId = crypto.createHash('md5').update(sanitized.businessName).digest('hex').substring(0, 8);
+    sanitized.businessName = `Business-${sanitized.businessId}`;
+  }
+  
+  return sanitized;
+}
 
 // Initialize OpenAI client
 const openai = new OpenAI({ 
@@ -352,34 +402,61 @@ export async function registerRoutes(app: Express): Promise<Server> {
          .text('LOAN ASSESSMENT REPORT', 50, doc.y + 10, { align: 'center' })
          .moveDown(1.5);
       
-      // Create two-column layout for business info
-      const leftColumnX = 100;
-      const rightColumnX = 300;
-      const infoY = doc.y + 20;
+      // Create a table for business info with proper alignment
+      const tableX = 150;
+      const tableWidth = 600;
+      const infoY = doc.y + 30;
+      const labelWidth = 200;
+      const valueX = tableX + 180;
+      const rowHeight = 30;
       
-      // Left column labels
+      // Create a styled table for business information
+      doc.rect(tableX, infoY, 300, 120)
+         .fillAndStroke('#f8f9fa', '#e9ecef');
+      
+      // Business info headers - Labels column
       doc.fontSize(12)
          .fillColor(colors.secondary)
-         .font('Helvetica-Bold')
-         .text('Industry:', leftColumnX, infoY)
-         .moveDown(1)
-         .text('Years in Business:', leftColumnX, doc.y)
-         .moveDown(1)
-         .text('Annual Revenue:', leftColumnX, doc.y)
-         .moveDown(1)
-         .text('Requested Amount:', leftColumnX, doc.y);
+         .font('Helvetica-Bold');
       
-      // Right column values (aligned)
+      // Industry row
+      let currentY = infoY + 15;
+      doc.text('Industry:', tableX + 20, currentY);
+      
+      // Years in Business row
+      currentY += rowHeight;
+      doc.text('Years in Business:', tableX + 20, currentY);
+      
+      // Annual Revenue row
+      currentY += rowHeight;
+      doc.text('Annual Revenue:', tableX + 20, currentY);
+      
+      // Requested Amount row
+      currentY += rowHeight;
+      doc.text('Requested Amount:', tableX + 20, currentY);
+      
+      // Business info values - Values column
       doc.fontSize(12)
          .fillColor(colors.dark)
-         .font('Helvetica')
-         .text(application.industry, rightColumnX, infoY)
-         .moveDown(1)
-         .text(application.yearsInBusiness.toString(), rightColumnX, doc.y - 14)
-         .moveDown(1)
-         .text(formatCurrency(Number(application.annualRevenue)), rightColumnX, doc.y - 14)
-         .moveDown(1)
-         .text(formatCurrency(Number(application.loanAmount)), rightColumnX, doc.y - 14);
+         .font('Helvetica');
+      
+      // Reset Y position for values
+      currentY = infoY + 15;
+      
+      // Industry value
+      doc.text(application.industry, valueX, currentY);
+      
+      // Years in Business value
+      currentY += rowHeight;
+      doc.text(application.yearsInBusiness.toString(), valueX, currentY);
+      
+      // Annual Revenue value
+      currentY += rowHeight;
+      doc.text(formatCurrency(Number(application.annualRevenue)), valueX, currentY);
+      
+      // Requested Amount value
+      currentY += rowHeight;
+      doc.text(formatCurrency(Number(application.loanAmount)), valueX, currentY);
       
       // Add divider line
       doc.moveDown(3)
