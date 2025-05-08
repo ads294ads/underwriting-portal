@@ -332,20 +332,45 @@ ${application.documentAnalysis.map(insight => `- ${insight}`).join('\n')}` :
   'No document analysis available.'}
 `;
 
+    // Create scoring guidance for each component
+    const componentGuidance = {
+      revenueGrowthRate: "Annual growth rate expectations: 15%+ (excellent, 14-18 points), 8-15% (good, 9-13 points), 3-8% (average, 5-8 points), <3% (concerning, 0-4 points)",
+      ebitdaMargin: "EBITDA margin targets: 20%+ (excellent, 13-17 points), 15-20% (good, 9-12 points), 10-15% (average, 5-8 points), <10% (concerning, 0-4 points)",
+      debtServiceCoverage: "DSCR expectations: >1.5 (excellent, 12-16 points), 1.25-1.5 (good, 8-11 points), 1.1-1.25 (acceptable, 5-7 points), <1.1 (high risk, 0-4 points)",
+      loanToValueRatio: "LTV targets: <50% (excellent, 9-12 points), 50-65% (good, 6-8 points), 65-75% (acceptable, 3-5 points), >75% (high risk, 0-2 points)",
+      businessCreditHistory: "Based on: payment history, credit utilization, negative marks, length of credit history",
+      industryRiskAssessment: "Industry risk factors: projected growth, competition, regulation, economic sensitivity, pandemic impact",
+      timeInBusiness: "Tenure assessment: 10+ years (excellent, 6-7 points), 5-10 years (good, 4-5 points), 2-5 years (moderate, 2-3 points), <2 years (higher risk, 0-1 points)",
+      ownerPersonalCredit: "Personal credit targets: 750+ (excellent, 4-5 points), 700-750 (good, 3 points), 650-700 (fair, 2 points), <650 (concerning, 0-1 points)",
+      cashReserves: "Cash reserve targets: >6 months of expenses (excellent, 4-5 points), 3-6 months (good, 3 points), 1-3 months (fair, 2 points), <1 month (concerning, 0-1 points)"
+    };
+    
+    // Add scoring guidance to context
+    const scoringGuidance = Object.entries(componentGuidance)
+      .map(([key, guidance]) => `${key}: ${guidance}`)
+      .join('\n\n');
+
     const prompt = `
-You are a financial loan analyst explaining a business loan application's scoring results to the applicant. 
-For each scoring component, provide a detailed 2-3 sentence explanation of why the applicant received their specific score, based on their application data.
+You are a financial loan analyst providing a detailed breakdown of a business loan application's scoring results.
+For each scoring component, explain EXACTLY why the applicant received their specific point score, with quantitative analysis.
 
 APPLICATION CONTEXT:
 ${applicationContext}
 
-Please provide a detailed, specific rationale for each scoring component. Each explanation should:
-1. Directly reference the specific business data provided in the application
-2. Explain exactly why they received their specific score (high, medium, or low)
-3. When relevant, mention industry benchmarks or standards
-4. Provide constructive feedback for components with lower scores
+SCORING GUIDANCE (how we assign points for each component):
+${scoringGuidance}
 
-Format your response as a JSON object with keys matching each scoring component and the overall assessment.
+For each scoring component, provide a detailed explanation that MUST include:
+1. The SPECIFIC metrics or values measured (use concrete numbers)
+2. The EXACT threshold or benchmark that was applied (citing the scoring guidance)
+3. An explanation of WHY the specific point value was assigned
+4. Both positive factors that earned points AND negative factors that lost points
+5. At least one actionable recommendation for improvement
+
+Your explanations must be specific and informative - avoid generic statements. Use financial terminology appropriately.
+Each component explanation should clearly justify the exact score given using the scoring guidance above.
+
+Format your response as a JSON object with keys matching each scoring component plus an "overall" key for the overall assessment.
 `;
 
     // The newest OpenAI model is "gpt-4o" which was released May 13, 2024. Do not change this unless explicitly requested by the user
