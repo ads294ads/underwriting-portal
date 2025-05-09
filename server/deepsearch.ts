@@ -80,19 +80,38 @@ async function researchCompany(companyName: string, industry: string): Promise<{
     const companyNameHash = crypto.createHash('md5').update(companyName).digest('hex').substring(0, 8);
     console.log(`Researching company: ${companyNameHash}`);
     
-    // Prompt for Perplexity API
+    // Enhanced prompt for Perplexity API with more detailed instructions
     const companyPrompt = `
-I need a comprehensive analysis of the company "${companyName}" in the ${industry} industry. 
-Focus specifically on:
+I need a comprehensive analysis of the company "${companyName}" in the ${industry} industry as part of a business loan underwriting process. 
+Focus specifically on these key risk areas:
 
-1. Recent legal issues, lawsuits, or regulatory actions against the company
-2. Any financial red flags, including bankruptcies, missed payments, loan defaults, or irregular financial practices
-3. Management reputation and any issues with key executives
-4. Overall market standing and reliability as a borrower
+1. LEGAL ISSUES
+   - Any pending or recent lawsuits, especially those related to fraud, contracts, or financial obligations
+   - Regulatory violations, investigations, or fines from government agencies
+   - Compliance history with industry regulations specific to ${industry}
+   - Any judgments, liens, or legal encumbrances on company assets
 
-Please only include verified factual information with specific dates, figures, and sources where available. 
-Format the response in clear sections and focus exclusively on objective information that would be relevant for a loan assessment.
-Start with a brief 2-3 sentence overview summarizing your findings.`;
+2. FINANCIAL RED FLAGS
+   - Evidence of bankruptcy filings, reorganizations, or debt restructuring
+   - History of missed payments, loan defaults, or late payments to creditors
+   - Unusual or concerning accounting practices or financial irregularities
+   - Major fluctuations in revenue or profitability that indicate instability
+   - Recent layoffs, office closures, or other signs of financial distress
+
+3. MANAGEMENT & REPUTATION
+   - Background of key executives, including past business failures or successes
+   - Public reputation and customer sentiment (review scores, complaints)
+   - Industry standing compared to competitors
+   - Any evidence of management impropriety or conflicts of interest
+   - Stability of leadership team (high turnover would be concerning)
+
+4. MARKET POSITION & STABILITY
+   - Current market share and trajectory (growing/declining)
+   - Competitive threats within the ${industry} industry
+   - Economic factors that may impact future performance
+   - Stability of revenue streams and customer base diversity
+
+Please structure your response in clearly labeled sections starting with a 2-3 sentence executive summary of key findings. Only include verified factual information with specific dates, figures, and sources. For each section, use bulleted lists to highlight key findings. This information will directly impact loan decisioning, so accuracy is crucial.`;
 
     // Call Perplexity API for company research
     const companyResearchResponse = await callPerplexityAPI(companyPrompt);
@@ -139,19 +158,41 @@ async function researchPerson(ownerName: string, companyName: string): Promise<{
     const ownerNameHash = crypto.createHash('md5').update(ownerName).digest('hex').substring(0, 8);
     console.log(`Researching business owner: ${ownerNameHash}`);
     
-    // Prompt for Perplexity API
+    // Enhanced prompt for Perplexity API with more detailed instructions
     const personPrompt = `
-I need a comprehensive analysis of "${ownerName}" who is associated with the company "${companyName}". 
-Focus specifically on:
+I need a comprehensive background analysis of "${ownerName}" who is associated with the company "${companyName}" as part of a business loan underwriting process.
+Focus specifically on these key risk areas:
 
-1. Any personal legal issues, lawsuits, or criminal records
-2. Personal financial red flags such as bankruptcies, foreclosures, or tax liens
-3. Professional reputation and business history
-4. Any public controversies or issues that might affect creditworthiness
+1. LEGAL BACKGROUND
+   - Any personal lawsuits, especially those related to fraud, contracts, or financial matters
+   - Criminal records or charges relevant to business operations or financial trustworthiness
+   - Any restraining orders, injunctions, or other legal complications
+   - Professional license suspensions, revocations, or disciplinary actions
 
-Please only include verified factual information with specific dates, figures, and sources where available. 
-Format the response in clear sections and focus exclusively on objective information that would be relevant for a loan assessment.
-Start with a brief 2-3 sentence overview summarizing your findings.`;
+2. FINANCIAL STABILITY
+   - Personal bankruptcy filings (Chapter 7, 11, or 13) in the past 10 years
+   - Foreclosures, short sales, or significant property liens
+   - Tax liens, judgment liens, or unpaid tax history
+   - Pattern of delinquencies or defaults on personal obligations
+   - Evidence of unusual financial activity that suggests instability
+
+3. PROFESSIONAL BACKGROUND
+   - History with previous businesses (successes and failures)
+   - Track record of business leadership and management skills
+   - Pattern of starting and abandoning businesses
+   - Professional achievements, awards, and recognitions
+   - Educational background and qualifications relevant to ${companyName}
+
+4. REPUTATION & CHARACTER
+   - Public perception and reputation in business community
+   - Notable philanthropic or community involvement (positive indicator)
+   - Any controversies, scandals, or negative press coverage
+   - Online reviews, ratings, or testimonials about business practices
+   - Any evidence of fraudulent, deceptive, or unethical behavior
+
+Please structure your response in clearly labeled sections starting with a 2-3 sentence executive summary of key findings. Only include verified factual information with specific dates, figures, and sources. For each section, use bulleted lists to highlight key findings.
+
+Remember, this information will directly impact loan decisioning, so accuracy is crucial. Focus on objective facts rather than speculation or rumors.`;
 
     // Call Perplexity API for person research
     const personResearchResponse = await callPerplexityAPI(personPrompt);
@@ -188,7 +229,7 @@ Start with a brief 2-3 sentence overview summarizing your findings.`;
 // Function to call Perplexity API
 async function callPerplexityAPI(prompt: string): Promise<string> {
   try {
-    // Prepare the API request
+    // Prepare the API request with enhanced parameters
     const response = await fetch('https://api.perplexity.ai/chat/completions', {
       method: 'POST',
       headers: {
@@ -196,21 +237,23 @@ async function callPerplexityAPI(prompt: string): Promise<string> {
         'Authorization': `Bearer ${process.env.PERPLEXITY_API_KEY}`
       },
       body: JSON.stringify({
-        model: "llama-3.1-sonar-small-128k-online",
+        model: "llama-3.1-sonar-small-128k-online", // Latest model
         messages: [
           {
             role: "system",
-            content: "You are a financial analyst specialized in risk assessment and due diligence. Provide factual, objective information from reliable sources. Always provide specific details including dates, figures, and citations where possible. Never make up information or present speculation as fact."
+            content: "You are a financial analyst specialized in risk assessment and due diligence for business loans. Provide factual, objective information from reliable sources. Always include specific details with dates, figures, and citations. Focus on verifiable financial and legal information, not speculation. Structure your response with clear sections for different risk categories. Use bulleted lists for key findings."
           },
           {
             role: "user",
             content: prompt
           }
         ],
-        temperature: 0.2,
-        max_tokens: 2000,
-        search_recency_filter: "month",
-        search_domain_filter: ["research", "news"]
+        temperature: 0.1, // Lower temperature for more factual responses
+        max_tokens: 3000, // Increased token limit for more detailed responses
+        search_recency_filter: "month", // Recent information
+        search_domain_filter: ["research", "news", "finance"], // Added finance domain
+        return_citations: true, // Include citations for verification
+        frequency_penalty: 0.5 // Reduce repetitive statements
       })
     });
     
@@ -237,38 +280,101 @@ function extractOverview(text: string): string {
 }
 
 function extractBulletedList(text: string, keyword1: string, keyword2: string): string[] {
-  // Find sections that mention keywords
-  const lowerText = text.toLowerCase();
-  const relevantParagraphs = text.split('\n\n').filter(p => 
-    p.toLowerCase().includes(keyword1) || p.toLowerCase().includes(keyword2)
-  );
+  // Find sections that mention keywords - support for markdown headers
+  const sections: string[] = [];
+  const sectionTitles = [
+    "LEGAL ISSUES", "LEGAL BACKGROUND", "LAWSUITS", 
+    "FINANCIAL RED FLAGS", "FINANCIAL STABILITY", "BANKRUPTCY", 
+    "REPUTATION", "MANAGEMENT", "PROFESSIONAL BACKGROUND", "CHARACTER"
+  ];
+  
+  // Split by markdown headers and section titles
+  const lines = text.split('\n');
+  let currentSection = "";
+  let inRelevantSection = false;
+  
+  for (const line of lines) {
+    // Check if this is a section header
+    const headerMatch = line.match(/^#+\s+(.+)$/);
+    const sectionTitle = headerMatch ? headerMatch[1].toUpperCase() : "";
+    
+    if (headerMatch) {
+      // Save previous section if relevant
+      if (inRelevantSection && currentSection.trim()) {
+        sections.push(currentSection);
+      }
+      
+      // Check if new section is relevant
+      inRelevantSection = sectionTitles.some(title => 
+        sectionTitle.includes(title) || 
+        sectionTitle.includes(keyword1.toUpperCase()) || 
+        sectionTitle.includes(keyword2.toUpperCase())
+      );
+      
+      currentSection = "";
+    } else {
+      // Add line to current section if relevant
+      if (inRelevantSection) {
+        currentSection += line + '\n';
+      }
+    }
+  }
+  
+  // Add the last section if relevant
+  if (inRelevantSection && currentSection.trim()) {
+    sections.push(currentSection);
+  }
+  
+  // If no sections were found through headers, fall back to paragraph matching
+  if (sections.length === 0) {
+    const relevantParagraphs = text.split('\n\n').filter(p => 
+      p.toLowerCase().includes(keyword1) || p.toLowerCase().includes(keyword2)
+    );
+    sections.push(...relevantParagraphs);
+  }
   
   // Extract bullet points and sentences
   const bulletPoints: string[] = [];
   
-  relevantParagraphs.forEach(para => {
-    // Check for bullet list items
-    const bulletMatches = para.match(/^[•\-\*]\s+(.+)$/gm);
-    if (bulletMatches) {
+  sections.forEach(section => {
+    // Check for bullet list items - match various bullet formats including numbered lists
+    const bulletMatches = section.match(/^[\s]*[•\-\*\d+\.]\s+(.+)$/gm);
+    if (bulletMatches && bulletMatches.length > 0) {
       bulletMatches.forEach(bullet => {
-        const cleanedBullet = bullet.replace(/^[•\-\*]\s+/, '').trim();
-        if (cleanedBullet) bulletPoints.push(cleanedBullet);
+        // Clean up the bullet text
+        const cleanedBullet = bullet.replace(/^[\s]*[•\-\*\d+\.]\s+/, '').trim();
+        if (cleanedBullet && cleanedBullet.length > 10) bulletPoints.push(cleanedBullet);
       });
     } else {
       // If no bullets, extract sentences that mention keywords
-      const sentences = para.split(/\.\s+/);
+      const sentences = section.split(/\.\s+/);
       sentences.forEach(sentence => {
         const lowerSentence = sentence.toLowerCase();
         if ((lowerSentence.includes(keyword1) || lowerSentence.includes(keyword2)) && sentence.length > 15) {
+          // Ensure the sentence ends with proper punctuation
           bulletPoints.push(sentence.trim() + (sentence.endsWith('.') ? '' : '.'));
         }
       });
     }
   });
   
-  // Deduplicate and return 
-  const uniqueItems = Array.from(new Set(bulletPoints));
-  return uniqueItems.slice(0, 5); // Return up to 5 unique items
+  // Deduplicate and prioritize the most informative bullet points
+  let uniqueItems = Array.from(new Set(bulletPoints))
+    // Sort by length (prioritize more detailed points) and keyword relevance
+    .sort((a, b) => {
+      // Count keyword occurrences as a measure of relevance
+      const aRelevance = (a.toLowerCase().match(new RegExp(keyword1, 'g')) || []).length +
+                        (a.toLowerCase().match(new RegExp(keyword2, 'g')) || []).length;
+      const bRelevance = (b.toLowerCase().match(new RegExp(keyword1, 'g')) || []).length +
+                        (b.toLowerCase().match(new RegExp(keyword2, 'g')) || []).length;
+      
+      // Prioritize relevance first, then length for similarly relevant items
+      if (aRelevance !== bRelevance) return bRelevance - aRelevance;
+      return b.length - a.length;
+    });
+    
+  // Limit to 5 most relevant items but ensure we have some items if available
+  return uniqueItems.slice(0, 5);
 }
 
 function calculateResearchScore(fullText: string, legalIssues: string[], financialRedFlags: string[]): number {
