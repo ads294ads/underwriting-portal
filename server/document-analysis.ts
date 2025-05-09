@@ -202,7 +202,13 @@ async function callPerplexityAPI(prompt: string): Promise<string> {
           }
         ],
         temperature: 0.1,
-        max_tokens: 2500
+        max_tokens: 2500,
+        response_format: { type: "json_object" },
+        // Enable web search for additional industry benchmarks and context
+        search_focus: "internet",
+        search_queries: ["auto"], 
+        search_recency_filter: "month",
+        search_domain_filter: ["finance", "accounting", "business", "research"]
       })
     });
     

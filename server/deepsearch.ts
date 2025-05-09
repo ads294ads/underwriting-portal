@@ -266,8 +266,11 @@ async function callPerplexityAPI(prompt: string): Promise<string> {
         ],
         temperature: 0.1, // Lower temperature for more factual responses
         max_tokens: 3000, // Increased token limit for more detailed responses
+        // Enhanced search parameters
+        search_focus: "internet", // Explicitly tell Perplexity to search the web
+        search_queries: ["auto"], // Auto-generate search queries based on the prompt
         search_recency_filter: "month", // Recent information
-        search_domain_filter: ["research", "news", "finance"], // Added finance domain
+        search_domain_filter: ["research", "news", "finance", "legal"], // Added finance and legal domains
         return_citations: true, // Include citations for verification
         frequency_penalty: 0.5 // Reduce repetitive statements
       })

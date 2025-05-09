@@ -79,7 +79,11 @@ async function callPerplexityAPI(
         ],
         temperature: 0.1,
         max_tokens: 2500,
-        response_format: { type: "json_object" }
+        response_format: { type: "json_object" },
+        // Enable web search to leverage Perplexity's online capabilities
+        search_queries: ["auto"],
+        search_focus: "internet",
+        search_recency_filter: "month"
       })
     });
     
