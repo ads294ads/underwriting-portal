@@ -57,7 +57,7 @@ export function generateEnhancedPDFReport(
   
   // Add document analysis pages if available
   if (documentAnalysis && documentAnalysis.length > 0) {
-    addDocumentAnalysisPages(doc, documentAnalysis, colors);
+    addDetailedDocumentAnalysisPages(doc, documentAnalysis, colors);
   }
   
   // Add recommendations and conclusion
@@ -1069,9 +1069,9 @@ function addRiskAssessmentPage(
 }
 
 /**
- * Add document analysis pages
+ * Add detailed document analysis pages
  */
-function addDocumentAnalysisPages(
+function addDetailedDocumentAnalysisPages(
   doc: PDFKit.PDFDocument,
   documentAnalysis: DocumentAnalysisResult[],
   colors: Record<string, string>
@@ -1566,9 +1566,9 @@ function addRecommendationsPage(
 }
 
 /**
- * Add document analysis pages to the PDF report
+ * Add enhanced document analysis pages with detailed metrics to the PDF report
  */
-function addDocumentAnalysisPages(
+function addEnhancedDocumentAnalysisPages(
   doc: PDFKit.PDFDocument,
   analyses: DocumentAnalysisResult[],
   colors: Record<string, string>

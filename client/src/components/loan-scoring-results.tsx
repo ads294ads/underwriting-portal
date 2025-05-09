@@ -21,6 +21,7 @@ export default function LoanScoringResults({ application }: LoanScoringResultsPr
   });
   const [isDownloading, setIsDownloading] = useState(false);
   const [isPdfDownloading, setIsPdfDownloading] = useState(false);
+  const [isEnhancedPdfDownloading, setIsEnhancedPdfDownloading] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<FileList | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isPerformingDeepResearch, setIsPerformingDeepResearch] = useState(false);
@@ -197,6 +198,60 @@ export default function LoanScoringResults({ application }: LoanScoringResultsPr
       setIsPdfDownloading(false);
     }
   };
+  
+  // Download enhanced multi-agent PDF report
+  const downloadEnhancedPdfReport = async () => {
+    if (!application) return;
+    
+    setIsEnhancedPdfDownloading(true);
+    
+    try {
+      // Create a direct download link to the enhanced PDF endpoint
+      const downloadUrl = `/api/loan-applications/${application.id}/enhanced-pdf`;
+      
+      console.log("Starting Enhanced Multi-Agent PDF download from:", downloadUrl);
+      
+      // Use fetch to stream the PDF data
+      const response = await fetch(downloadUrl);
+      
+      if (!response.ok) {
+        throw new Error(`Failed to download Enhanced PDF: ${response.status} ${response.statusText}`);
+      }
+      
+      // Get the blob from the response
+      const blob = await response.blob();
+      
+      // Create a URL for the blob
+      const url = URL.createObjectURL(blob);
+      
+      // Create a link to download the file
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${application.businessName.replace(/\s+/g, '_')}_Enhanced_Assessment.pdf`;
+      document.body.appendChild(a);
+      
+      // Trigger the download
+      a.click();
+      
+      // Clean up
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      
+      toast({
+        title: "Enhanced Report Downloaded",
+        description: "Multi-agent detailed analysis report has been saved to your downloads folder.",
+      });
+    } catch (error) {
+      console.error("Error downloading enhanced PDF report:", error);
+      toast({
+        title: "Failed to Download Enhanced PDF",
+        description: error instanceof Error ? error.message : "An unexpected error occurred",
+        variant: "destructive",
+      });
+    } finally {
+      setIsEnhancedPdfDownloading(false);
+    }
+  };
 
   const getGradeColor = (grade: string) => {
     const firstChar = grade.charAt(0);
@@ -363,10 +418,21 @@ export default function LoanScoringResults({ application }: LoanScoringResultsPr
               onClick={downloadPdfReport} 
               disabled={isPdfDownloading}
               size="sm"
+              variant="outline"
               className="flex items-center gap-2"
             >
               <DownloadIcon className="h-4 w-4" />
               {isPdfDownloading ? "Generating..." : "PDF Report"}
+            </Button>
+            
+            <Button 
+              onClick={downloadEnhancedPdfReport} 
+              disabled={isEnhancedPdfDownloading}
+              size="sm"
+              className="flex items-center gap-2 bg-primary-700 hover:bg-primary-800"
+            >
+              <DownloadIcon className="h-4 w-4" />
+              {isEnhancedPdfDownloading ? "Generating..." : "Enhanced Report"}
             </Button>
           </div>
         </div>
