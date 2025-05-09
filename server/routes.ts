@@ -434,8 +434,8 @@ Current Ratio: ${(Math.random() * 1.5 + 1.0).toFixed(2)}`;
               documentType: docType as any,
               fileName,
               keyFindings: [
-                `The ${docType.toLowerCase()} shows ${application.grade.startsWith('A') ? 'strong' : 'moderate'} financial health`,
-                `Business demonstrates ${application.yearsInBusiness > 5 ? 'established' : 'developing'} operational stability`
+                `The ${docType.toLowerCase()} shows strong financial health`,
+                `Business demonstrates ${Number(application.yearsInBusiness) > 5 ? 'established' : 'developing'} operational stability`
               ],
               financialMetrics: {
                 "Debt Service Coverage": {
