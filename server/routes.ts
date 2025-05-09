@@ -4,7 +4,6 @@ import { storage } from "./storage";
 import multer from "multer";
 import { scoringComponents, gradeScales, insertLoanApplicationSchema, type LoanApplication } from "../shared/schema";
 import { ZodError } from "zod";
-import OpenAI from "openai";
 import PDFDocument from "pdfkit";
 import { format } from "date-fns";
 import crypto from "crypto";
@@ -51,12 +50,8 @@ function sanitizeForAI(data: any): any {
   return sanitized;
 }
 
-// Initialize OpenAI client
-const openai = new OpenAI({ 
-  apiKey: process.env.OPENAI_API_KEY 
-});
-
-console.log("OpenAI API Key environment variable exists:", !!process.env.OPENAI_API_KEY);
+// Check if we have the Perplexity API Key
+console.log("Perplexity API Key environment variable exists:", !!process.env.PERPLEXITY_API_KEY);
 
 // Configure multer for file uploads
 const upload = multer({ 
