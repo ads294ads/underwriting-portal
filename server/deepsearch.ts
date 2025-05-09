@@ -9,24 +9,42 @@ export const DEEP_RESEARCH_COMPONENT_WEIGHT = 10; // 10% of total score
 export interface DeepResearchResult {
   companyAnalysis: {
     overview: string;
-    legalIssues: string[];
-    financialRedFlags: string[];
-    reputationInsights: string[];
-    industryPosition?: string[];
-    marketTrends?: string[];
+    legalIssues: string[]; // Specific legal issues like "Pending lawsuit in Superior Court filed May 2024 for contract breach"
+    financialRedFlags: string[]; // Specific red flags like "Debt-to-income ratio exceeds industry average by 45% based on 2023 filings"
+    reputationInsights: string[]; // Specific reputation findings like "BBB rating dropped from A to B- in January 2025"
+    industryPosition?: string[]; // Specific position findings like "Ranked 4th in market share for regional suppliers in Midwest"
+    marketTrends?: string[]; // Specific trends like "Industry experiencing 7% contraction due to supply chain disruptions"
     executiveSummary?: string;
-    detailedFindings?: Record<string, string[]>;
+    detailedFindings?: Record<string, string[]>; // Categorized detailed findings
+    specificEvents?: { // New: specific events with dates and details
+      event: string;
+      date: string;
+      impact: string;
+      source: string;
+    }[];
+    financialMetrics?: { // New: specific financial metrics
+      metric: string;
+      value: string;
+      industryAverage: string;
+      trend: string;
+    }[];
     sources?: string[];
     score: number; // 0-100 score for the company research component
   };
   ownerAnalysis: {
     overview: string;
-    legalIssues: string[];
-    financialRedFlags: string[];
-    reputationInsights: string[];
-    managementCapabilities?: string[];
+    legalIssues: string[]; // Specific legal issues like "Previous bankruptcy filing discharged in 2022"
+    financialRedFlags: string[]; // Specific red flags like "Multiple mortgage defaults between 2020-2022"
+    reputationInsights: string[]; // Specific findings like "Previously served as CFO at company that faced accounting investigation"
+    managementCapabilities?: string[]; // Specific capabilities like "Successfully grew previous venture by 200% over 3 years"
     executiveSummary?: string;
-    detailedFindings?: Record<string, string[]>;
+    detailedFindings?: Record<string, string[]>; // Categorized detailed findings
+    priorBusinessHistory?: { // New: specific business history
+      companyName: string;
+      role: string;
+      years: string;
+      outcome: string;
+    }[];
     sources?: string[];
     score: number; // 0-100 score for the owner research component
   };
