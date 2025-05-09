@@ -624,6 +624,132 @@ function addCompanyAnalysisPages(
        .moveDown(1);
   }
   
+  // Financial Metrics Table if available
+  if (deepResearchResults.companyAnalysis.financialMetrics && deepResearchResults.companyAnalysis.financialMetrics.length > 0) {
+    doc.fontSize(14)
+       .fillColor(colors.primary)
+       .font('Helvetica-Bold')
+       .text('Key Financial Metrics', 50, doc.y)
+       .moveDown(0.5);
+    
+    // Add explanation of metrics
+    doc.fontSize(11)
+       .fillColor(colors.dark)
+       .font('Helvetica-Italic')
+       .text('The following specific financial metrics were identified through our research and compared against industry standards:', 50, doc.y, { width: 500 })
+       .moveDown(0.8);
+    
+    // Create a table for financial metrics
+    // Table headers
+    doc.fontSize(11)
+       .fillColor(colors.primary)
+       .font('Helvetica-Bold')
+       .text('Metric', 50, doc.y, { width: 120, continued: true })
+       .text('Value', 170, doc.y, { width: 100, continued: true })
+       .text('Industry Avg', 270, doc.y, { width: 130, continued: true })
+       .text('Trend', 400, doc.y, { width: 100 })
+       .moveDown(0.3);
+    
+    // Draw header separator line
+    doc.lineWidth(1)
+       .strokeColor(colors.secondary)
+       .moveTo(50, doc.y)
+       .lineTo(500, doc.y)
+       .stroke()
+       .moveDown(0.5);
+    
+    // Table rows
+    deepResearchResults.companyAnalysis.financialMetrics.slice(0, 4).forEach((metric, i) => {
+      // Alternate row background
+      const rowEven = i % 2 === 0;
+      const rowBg = rowEven ? '#f5f5f5' : '#ffffff';
+      
+      // Draw row background
+      doc.rect(50, doc.y, 450, 20)
+         .fill(rowBg);
+      
+      // Determine if metric is good or bad compared to industry average
+      const valueNumber = parseFloat(metric.value.replace(/[^0-9.-]+/g, ''));
+      const avgNumber = parseFloat(metric.industryAverage.replace(/[^0-9.-]+/g, ''));
+      const isPositive = !isNaN(valueNumber) && !isNaN(avgNumber) && 
+          ((metric.metric.toLowerCase().includes('debt') && valueNumber < avgNumber) || 
+           (!metric.metric.toLowerCase().includes('debt') && valueNumber > avgNumber));
+      
+      doc.fontSize(10)
+         .fillColor(colors.primary)
+         .font('Helvetica-Bold')
+         .text(metric.metric, 50, doc.y + 5, { width: 120, continued: false })
+         .fillColor(colors.dark)
+         .font('Helvetica')
+         .text(metric.value, 170, doc.y - 10, { width: 100, continued: false })
+         .text(metric.industryAverage, 270, doc.y - 10, { width: 130, continued: false })
+         .fillColor(isPositive ? colors.success : colors.warning)
+         .text(metric.trend, 400, doc.y - 10, { width: 100 })
+         .moveDown(1.2);
+    });
+    
+    doc.moveDown(0.5);
+  }
+  
+  // Specific Events Timeline if available
+  if (deepResearchResults.companyAnalysis.specificEvents && deepResearchResults.companyAnalysis.specificEvents.length > 0) {
+    doc.fontSize(14)
+       .fillColor(colors.primary)
+       .font('Helvetica-Bold')
+       .text('Significant Business Events', 50, doc.y)
+       .moveDown(0.5);
+       
+    // Add explanation of events timeline
+    doc.fontSize(11)
+       .fillColor(colors.dark)
+       .font('Helvetica-Italic')
+       .text('The following specific business events were identified during our research and may impact risk assessment:', 50, doc.y, { width: 500 })
+       .moveDown(0.8);
+    
+    // List specific events
+    deepResearchResults.companyAnalysis.specificEvents.slice(0, 3).forEach((event, i) => {
+      // Determine impact color
+      let impactColor = colors.secondary;
+      if (event.impact.toLowerCase().includes('positive')) {
+        impactColor = colors.success;
+      } else if (event.impact.toLowerCase().includes('negative')) {
+        impactColor = colors.danger;
+      }
+      
+      // Event header with date
+      doc.fontSize(11)
+         .fillColor(colors.primary)
+         .font('Helvetica-Bold')
+         .text(`${event.date}: `, 50, doc.y, { continued: true })
+         .fillColor(colors.dark)
+         .text(event.event)
+         .moveDown(0.4);
+      
+      // Event impact
+      doc.fontSize(10)
+         .fillColor(impactColor)
+         .font('Helvetica-Bold')
+         .text('Impact: ', 70, doc.y, { continued: true })
+         .font('Helvetica')
+         .text(event.impact)
+         .moveDown(0.4);
+      
+      // Source if available
+      if (event.source) {
+        doc.fontSize(9)
+           .fillColor(colors.secondary)
+           .font('Helvetica-Italic')
+           .text(`Source: ${event.source}`, 70, doc.y, { width: 430 })
+           .moveDown(0.6);
+      }
+      
+      // Add space between events
+      doc.moveDown(0.3);
+    });
+    
+    doc.moveDown(1);
+  }
+  
   // Page number
   doc.fontSize(10)
      .fillColor(colors.secondary)
