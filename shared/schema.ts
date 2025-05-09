@@ -48,6 +48,12 @@ export const industries = [
   "Other"
 ];
 
+// Define Owner type
+export type Owner = {
+  name: string;
+  ownership: number; // Ownership percentage
+};
+
 export const loanApplications = pgTable("loan_applications", {
   id: serial("id").primaryKey(),
   businessName: text("business_name").notNull(),
@@ -56,12 +62,21 @@ export const loanApplications = pgTable("loan_applications", {
   annualRevenue: numeric("annual_revenue").notNull(),
   loanAmount: numeric("loan_amount").notNull(),
   email: text("email").notNull(),
+  // Add owners information
+  businessOwners: json("business_owners").$type<Owner[]>(),
   fileUploaded: boolean("file_uploaded").default(false),
   score: text("score"), // Store score as text to avoid type issues
   grade: text("grade"),
   scoringDetails: json("scoring_details").$type<Record<string, number>>(),
   documentAnalysis: json("document_analysis").$type<string[]>(),
   createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const ownerSchema = z.object({
+  name: z.string().min(1, "Owner name is required"),
+  ownership: z.union([z.string(), z.number()]).transform(val => 
+    typeof val === 'string' ? parseFloat(val) : val
+  )
 });
 
 export const insertLoanApplicationSchema = createInsertSchema(loanApplications)
@@ -84,6 +99,10 @@ export const insertLoanApplicationSchema = createInsertSchema(loanApplications)
     loanAmount: z.union([z.string(), z.number()]).transform(val => 
       typeof val === 'string' ? parseFloat(val) : val
     ),
+    // Add validation for business owners
+    businessOwners: z.array(ownerSchema)
+      .min(1, "At least one business owner is required")
+      .default([]),
   });
 
 export type InsertLoanApplication = z.infer<typeof insertLoanApplicationSchema>;

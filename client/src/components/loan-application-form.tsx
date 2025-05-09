@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { apiRequest } from "@/lib/queryClient";
@@ -10,8 +10,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { LoanApplication } from "@/types/loan";
-import { industries } from "@shared/schema";
+import { industries, ownerSchema } from "@shared/schema";
 import { PrivacyConsentDialog } from "./privacy-consent-dialog";
+import { Trash2 } from "lucide-react";
 
 // Form validation schema
 const formSchema = z.object({
@@ -21,6 +22,12 @@ const formSchema = z.object({
   annualRevenue: z.string().min(1, "Annual revenue is required"),
   loanAmount: z.string().min(1, "Loan amount is required"),
   email: z.string().email("Invalid email address"),
+  businessOwners: z.array(z.object({
+    name: z.string().min(1, "Owner name is required"),
+    ownership: z.string().min(1, "Ownership percentage is required")
+      .refine(val => !isNaN(Number(val)), "Must be a number")
+      .refine(val => Number(val) > 0 && Number(val) <= 100, "Must be between 1 and 100")
+  })).min(1, "At least one business owner is required"),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -46,7 +53,14 @@ export default function LoanApplicationForm({ onApplicationSubmit }: LoanApplica
       annualRevenue: "",
       loanAmount: "",
       email: "",
+      businessOwners: [{ name: "", ownership: "" }],
     },
+  });
+  
+  // Set up field array for managing business owners
+  const { fields, append, remove } = useFieldArray({
+    control: form.control,
+    name: "businessOwners",
   });
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
