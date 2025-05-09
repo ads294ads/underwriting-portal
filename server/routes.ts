@@ -53,6 +53,48 @@ function sanitizeForAI(data: any): any {
 // Check if we have the Perplexity API Key
 console.log("Perplexity API Key environment variable exists:", !!process.env.PERPLEXITY_API_KEY);
 
+// Function to call Perplexity API
+async function callPerplexityAPI(
+  prompt: string, 
+  systemPrompt: string = "You are a financial analyst specialized in risk assessment and due diligence for business loans. Provide factual, objective information."
+): Promise<string> {
+  try {
+    const response = await fetch('https://api.perplexity.ai/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${process.env.PERPLEXITY_API_KEY}`
+      },
+      body: JSON.stringify({
+        model: "llama-3.1-sonar-small-128k-online",
+        messages: [
+          {
+            role: "system",
+            content: systemPrompt
+          },
+          {
+            role: "user",
+            content: prompt
+          }
+        ],
+        temperature: 0.1,
+        max_tokens: 2500,
+        response_format: { type: "json_object" }
+      })
+    });
+    
+    if (!response.ok) {
+      throw new Error(`API request failed with status ${response.status}`);
+    }
+    
+    const data = await response.json();
+    return data.choices[0].message.content || "{}";
+  } catch (error) {
+    console.error("Error calling Perplexity API:", error);
+    throw error;
+  }
+}
+
 // Configure multer for file uploads
 const upload = multer({ 
   storage: multer.memoryStorage(),
@@ -1346,17 +1388,9 @@ Each component explanation should clearly justify the exact score given using th
 Format your response as a JSON object with keys matching each scoring component plus an "overall" key for the overall assessment.
 `;
 
-    // The newest OpenAI model is "gpt-4o" which was released May 13, 2024. Do not change this unless explicitly requested by the user
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o",
-      messages: [{ role: "user", content: prompt }],
-      response_format: { type: "json_object" },
-      max_tokens: 1500,
-      temperature: 0.5,
-    });
-    
-    // Parse the JSON response
-    const rationaleText = response.choices[0].message.content || "{}";
+    // Use Perplexity API with llama-3.1 model
+    const systemPrompt = "You are a financial loan analyst providing detailed breakdowns of business loan applications. Your analysis must be thorough, data-driven, and objective. Always format your response as a valid JSON object.";
+    const rationaleText = await callPerplexityAPI(prompt, systemPrompt);
     const rationale = JSON.parse(rationaleText);
     
     // Add an overall summary if not present
@@ -1782,25 +1816,9 @@ For example: "Analysis of the balance sheet reveals a current ratio of 2.3:1, we
 Your analysis should be highly specific, detailed, and provide a clear understanding of why particular component scores were assigned, using professional financial language and concrete metrics.
 `;
 
-    // The newest OpenAI model is "gpt-4o" which was released May 13, 2024. Do not change this unless explicitly requested by the user
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o",
-      messages: [
-        {
-          role: "system",
-          content: "You are an expert financial analyst specializing in commercial lending risk assessment with an emphasis on quantitative analysis. You provide highly detailed, data-driven insights based on financial documents, making clear connections between financial metrics and loan risk factors."
-        },
-        { 
-          role: "user", 
-          content: analysisPrompt 
-        }
-      ],
-      max_tokens: 1000,
-      temperature: 0.3,
-    });
-    
-    // Parse response and extract insights
-    const analysisText = response.choices[0].message.content || "";
+    // Use Perplexity API with llama-3.1 model
+    const systemPrompt = "You are an expert financial analyst specializing in commercial lending risk assessment with an emphasis on quantitative analysis. You provide highly detailed, data-driven insights based on financial documents, making clear connections between financial metrics and loan risk factors.";
+    const analysisText = await callPerplexityAPI(analysisPrompt, systemPrompt);
     
     // Process insights to make them more detailed and useful
     let insights = analysisText
