@@ -16,6 +16,7 @@ import {
   combineDocumentAnalyses, 
   addDocumentAnalysisPagesToPDF 
 } from "./document-analysis";
+import { generateEnhancedPDFReport } from "./enhanced-pdf-generator";
 
 // Get the encryption service instance
 const encryptionService = EncryptionService.getInstance();
