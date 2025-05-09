@@ -639,56 +639,65 @@ function addCompanyAnalysisPages(
        .text('The following specific financial metrics were identified through our research and compared against industry standards:', 50, doc.y, { width: 500 })
        .moveDown(0.8);
     
-    // Create a table for financial metrics
-    // Table headers
-    doc.fontSize(11)
-       .fillColor(colors.primary)
+    // Draw the table headers
+    const tableTop = doc.y;
+    const colWidths = [180, 90, 140, 90];
+    const colStarts = [50, 50 + colWidths[0], 50 + colWidths[0] + colWidths[1], 50 + colWidths[0] + colWidths[1] + colWidths[2]];
+    
+    // Table header background
+    doc.fillColor(colors.primary)
+       .rect(50, tableTop, 500, 25)
+       .fill();
+    
+    // Table header text
+    doc.fillColor('white')
        .font('Helvetica-Bold')
-       .text('Metric', 50, doc.y, { width: 120, continued: true })
-       .text('Value', 170, doc.y, { width: 100, continued: true })
-       .text('Industry Avg', 270, doc.y, { width: 130, continued: true })
-       .text('Trend', 400, doc.y, { width: 100 })
-       .moveDown(0.3);
+       .fontSize(11)
+       .text('Metric', colStarts[0] + 5, tableTop + 7)
+       .text('Value', colStarts[1] + 5, tableTop + 7)
+       .text('Industry Average', colStarts[2] + 5, tableTop + 7)
+       .text('Trend', colStarts[3] + 5, tableTop + 7);
     
-    // Draw header separator line
-    doc.lineWidth(1)
-       .strokeColor(colors.secondary)
-       .moveTo(50, doc.y)
-       .lineTo(500, doc.y)
-       .stroke()
-       .moveDown(0.5);
+    // Draw table rows
+    let rowY = tableTop + 25;
+    let rowColor = true; // Alternate row colors
     
-    // Table rows
-    deepResearchResults.companyAnalysis.financialMetrics.slice(0, 4).forEach((metric, i) => {
-      // Alternate row background
-      const rowEven = i % 2 === 0;
-      const rowBg = rowEven ? '#f5f5f5' : '#ffffff';
+    deepResearchResults.companyAnalysis.financialMetrics.forEach((metric, index) => {
+      // Row background
+      doc.fillColor(rowColor ? '#f5f5f5' : 'white')
+         .rect(50, rowY, 500, 25)
+         .fill();
       
-      // Draw row background
-      doc.rect(50, doc.y, 450, 20)
-         .fill(rowBg);
-      
-      // Determine if metric is good or bad compared to industry average
-      const valueNumber = parseFloat(metric.value.replace(/[^0-9.-]+/g, ''));
-      const avgNumber = parseFloat(metric.industryAverage.replace(/[^0-9.-]+/g, ''));
-      const isPositive = !isNaN(valueNumber) && !isNaN(avgNumber) && 
-          ((metric.metric.toLowerCase().includes('debt') && valueNumber < avgNumber) || 
-           (!metric.metric.toLowerCase().includes('debt') && valueNumber > avgNumber));
-      
-      doc.fontSize(10)
-         .fillColor(colors.primary)
-         .font('Helvetica-Bold')
-         .text(metric.metric, 50, doc.y + 5, { width: 120, continued: false })
-         .fillColor(colors.dark)
+      // Row data
+      doc.fillColor(colors.dark)
          .font('Helvetica')
-         .text(metric.value, 170, doc.y - 10, { width: 100, continued: false })
-         .text(metric.industryAverage, 270, doc.y - 10, { width: 130, continued: false })
-         .fillColor(isPositive ? colors.success : colors.warning)
-         .text(metric.trend, 400, doc.y - 10, { width: 100 })
-         .moveDown(1.2);
+         .fontSize(10)
+         .text(metric.metric, colStarts[0] + 5, rowY + 7, { width: colWidths[0] - 10 })
+         .text(metric.value, colStarts[1] + 5, rowY + 7, { width: colWidths[1] - 10 })
+         .text(metric.industryAverage, colStarts[2] + 5, rowY + 7, { width: colWidths[2] - 10 });
+      
+      // Trend indicator with appropriate color
+      const trendColor = metric.trend.includes('Increasing') || metric.trend.includes('Improving') 
+                        ? colors.success 
+                        : metric.trend.includes('Decreasing') || metric.trend.includes('Declining') 
+                          ? colors.warning 
+                          : colors.info;
+      
+      doc.fillColor(trendColor)
+         .font('Helvetica-Bold')
+         .text(metric.trend, colStarts[3] + 5, rowY + 7, { width: colWidths[3] - 10 });
+      
+      rowY += 25;
+      rowColor = !rowColor; // Toggle row color
     });
     
-    doc.moveDown(0.5);
+    // Draw table border
+    doc.strokeColor(colors.primary)
+       .lineWidth(1)
+       .rect(50, tableTop, 500, rowY - tableTop)
+       .stroke();
+    
+    doc.moveDown(2);
   }
   
   // Specific Events Timeline if available
@@ -1020,27 +1029,35 @@ function addOwnerAnalysisPages(
        .text('The following specific prior business ventures were identified through our research:', 50, doc.y, { width: 500 })
        .moveDown(0.8);
     
-    // Create a table for prior business history
-    // Table headers
-    doc.fontSize(11)
-       .fillColor(colors.primary)
+    // Draw the table headers
+    const tableTop = doc.y;
+    const colWidths = [150, 100, 100, 150];
+    const colStarts = [50, 50 + colWidths[0], 50 + colWidths[0] + colWidths[1], 50 + colWidths[0] + colWidths[1] + colWidths[2]];
+    
+    // Table header background
+    doc.fillColor(colors.primary)
+       .rect(50, tableTop, 500, 25)
+       .fill();
+    
+    // Table header text
+    doc.fillColor('white')
        .font('Helvetica-Bold')
-       .text('Company', 50, doc.y, { width: 150, continued: true })
-       .text('Role', 200, doc.y, { width: 100, continued: true })
-       .text('Years', 300, doc.y, { width: 70, continued: true })
-       .text('Outcome', 370, doc.y, { width: 130 })
-       .moveDown(0.3);
+       .fontSize(11)
+       .text('Company', colStarts[0] + 5, tableTop + 7)
+       .text('Role', colStarts[1] + 5, tableTop + 7)
+       .text('Years', colStarts[2] + 5, tableTop + 7)
+       .text('Outcome', colStarts[3] + 5, tableTop + 7);
+       
+    // Draw table rows
+    let rowY = tableTop + 25;
+    let rowColor = true; // Alternate row colors
     
-    // Draw header separator line
-    doc.lineWidth(1)
-       .strokeColor(colors.secondary)
-       .moveTo(50, doc.y)
-       .lineTo(500, doc.y)
-       .stroke()
-       .moveDown(0.5);
-    
-    // Table rows
-    deepResearchResults.ownerAnalysis.priorBusinessHistory.forEach((history, i) => {
+    deepResearchResults.ownerAnalysis.priorBusinessHistory.forEach((history, index) => {
+      // Row background
+      doc.fillColor(rowColor ? '#f5f5f5' : 'white')
+         .rect(50, rowY, 500, 25)
+         .fill();
+      
       // Determine outcome color
       let outcomeColor = colors.secondary;
       if (history.outcome.toLowerCase().includes('success') || history.outcome.toLowerCase().includes('profitable')) {
@@ -1049,25 +1066,28 @@ function addOwnerAnalysisPages(
         outcomeColor = colors.danger;
       }
       
-      doc.fontSize(10)
-         .fillColor(colors.dark)
+      // Row data
+      doc.fillColor(colors.dark)
          .font('Helvetica')
-         .text(history.companyName, 50, doc.y, { width: 150 })
-         .text(history.role, 200, doc.y - 14, { width: 100 })
-         .text(history.years, 300, doc.y - 14, { width: 70 })
-         .fillColor(outcomeColor)
-         .font('Helvetica-Bold')
-         .text(history.outcome, 370, doc.y - 14, { width: 130 })
-         .moveDown(0.7);
+         .fontSize(10)
+         .text(history.companyName, colStarts[0] + 5, rowY + 7, { width: colWidths[0] - 10 })
+         .text(history.role, colStarts[1] + 5, rowY + 7, { width: colWidths[1] - 10 })
+         .text(history.years, colStarts[2] + 5, rowY + 7, { width: colWidths[2] - 10 });
       
-      // Draw light row separator
-      doc.lineWidth(0.5)
-         .strokeColor('#e0e0e0')
-         .moveTo(50, doc.y - 0.3)
-         .lineTo(500, doc.y - 0.3)
-         .stroke()
-         .moveDown(0.3);
+      // Outcome with appropriate color
+      doc.fillColor(outcomeColor)
+         .font('Helvetica-Bold')
+         .text(history.outcome, colStarts[3] + 5, rowY + 7, { width: colWidths[3] - 10 });
+      
+      rowY += 25;
+      rowColor = !rowColor; // Toggle row color
     });
+    
+    // Draw table border
+    doc.strokeColor(colors.primary)
+       .lineWidth(1)
+       .rect(50, tableTop, 500, rowY - tableTop)
+       .stroke();
     
     doc.moveDown(1);
   }
