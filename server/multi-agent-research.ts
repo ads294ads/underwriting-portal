@@ -1,4 +1,5 @@
 import { LoanApplication } from "../shared/schema";
+import { DeepResearchResult } from "./deepsearch";
 
 // Agent specializations
 enum AgentSpecialization {
@@ -28,60 +29,64 @@ const researchAgents: Agent[] = [
       "operational efficiency", 
       "management team experience", 
       "business history", 
-      "growth trajectory"
+      "competitive positioning",
+      "succession planning"
     ]
   },
   {
     role: AgentSpecialization.LEGAL_RESEARCHER,
     name: "LegalResearcher",
-    specialty: "Legal compliance and litigation analysis",
+    specialty: "Legal history and regulatory compliance",
     researchFocus: [
-      "litigation history",
-      "regulatory compliance",
-      "legal disputes",
-      "intellectual property issues",
-      "contract obligations"
+      "litigation history", 
+      "regulatory compliance", 
+      "legal risks",
+      "contractual obligations",
+      "intellectual property status",
+      "employment lawsuits"
     ]
   },
   {
     role: AgentSpecialization.FINANCIAL_AUDITOR,
     name: "FinancialAuditor",
-    specialty: "Financial health and reporting analysis",
+    specialty: "Financial health and risk assessment",
     researchFocus: [
-      "financial statement accuracy",
-      "cash flow management",
-      "debt structure analysis",
-      "accounting practices",
-      "financial risk assessment"
+      "financial stability", 
+      "debt obligations", 
+      "credit history",
+      "cash flow analysis",
+      "financial ratio evaluation",
+      "capital structure"
     ]
   },
   {
     role: AgentSpecialization.INDUSTRY_SPECIALIST,
     name: "IndustrySpecialist",
-    specialty: "Industry trends and competitive positioning",
+    specialty: "Industry-specific dynamics and trends",
     researchFocus: [
-      "industry growth potential",
-      "competitive landscape",
-      "market share analysis",
-      "industry regulations",
-      "technological disruption impact"
+      "industry positioning", 
+      "market share", 
+      "sector trends",
+      "regulatory environment",
+      "industry-specific risk factors",
+      "technological disruption impacts"
     ]
   },
   {
     role: AgentSpecialization.MARKET_RESEARCHER,
     name: "MarketResearcher",
-    specialty: "Market conditions and customer analysis",
+    specialty: "Market trends and competitive landscape",
     researchFocus: [
-      "target market size",
-      "customer demographics",
-      "market saturation",
-      "customer acquisition costs",
-      "customer retention metrics"
+      "market growth potential", 
+      "competitive landscape", 
+      "consumer trends",
+      "market disruptions",
+      "economic factors",
+      "demographic shifts"
     ]
   }
 ];
 
-// Interface for agent research results
 interface AgentResearchResult {
   agent: Agent;
   findings: {
@@ -96,7 +101,6 @@ interface AgentResearchResult {
   confidenceLevel: number; // 0-100, higher = more confident
 }
 
-// Research coordination
 interface CoordinatedResearchResult {
   companyAnalysis: {
     overview: string;
@@ -107,6 +111,18 @@ interface CoordinatedResearchResult {
     marketTrends: string[];
     executiveSummary: string;
     detailedFindings: Record<string, string[]>;
+    specificEvents?: {
+      event: string;
+      date: string;
+      impact: string;
+      source: string;
+    }[];
+    financialMetrics?: {
+      metric: string;
+      value: string;
+      industryAverage: string;
+      trend: string;
+    }[];
     sources: string[];
     score: number;
   };
@@ -118,6 +134,12 @@ interface CoordinatedResearchResult {
     managementCapabilities: string[];
     executiveSummary: string;
     detailedFindings: Record<string, string[]>;
+    priorBusinessHistory?: {
+      companyName: string;
+      role: string;
+      years: string;
+      outcome: string;
+    }[];
     sources: string[];
     score: number;
   };
@@ -135,100 +157,113 @@ interface CoordinatedResearchResult {
  * @param application The loan application to research
  */
 export async function performMultiAgentResearch(application: LoanApplication): Promise<CoordinatedResearchResult> {
-  try {
-    console.log("Starting multi-agent research system...");
-    
-    if (!process.env.PERPLEXITY_API_KEY) {
-      throw new Error("Perplexity API Key not found.");
-    }
-    
-    // Extract company and owner information
-    const companyName = application.businessName;
-    const industry = application.industry;
-    
-    // Get primary owner information
-    let primaryOwner = { name: "Business Owner", ownership: 100 }; // Default
-    
-    if (application.businessOwners && application.businessOwners.length > 0) {
-      // Find owners with 20% or more ownership
-      const significantOwners = application.businessOwners.filter(owner => 
-        owner.ownership >= 20
-      );
-      
-      if (significantOwners.length > 0) {
-        // Use the owner with the highest ownership percentage
-        primaryOwner = significantOwners.reduce((prev, current) => 
-          (prev.ownership > current.ownership) ? prev : current
-        );
-      }
-    }
-    
-    // Coordinate parallel research tasks
-    console.log(`Deploying research agents to analyze ${companyName} (${industry}) and owner ${primaryOwner.name}`);
-    
-    // Company research - each agent researches in parallel
-    const companyResearchPromises: Promise<AgentResearchResult>[] = researchAgents.map(agent => 
-      agentResearchCompany(agent, companyName, industry, application)
-    );
-    
-    // Owner research - each agent researches in parallel
-    const ownerResearchPromises: Promise<AgentResearchResult>[] = researchAgents.map(agent => 
-      agentResearchPerson(agent, primaryOwner.name, companyName, application)
-    );
-    
-    // Wait for all research to complete
-    const [companyResults, ownerResults] = await Promise.all([
-      Promise.all(companyResearchPromises),
-      Promise.all(ownerResearchPromises)
-    ]);
-    
-    console.log("All research agents have completed their tasks. Synthesizing findings...");
-    
-    // Synthesize company research findings
-    const companyAnalysis = synthesizeCompanyResearch(companyResults);
-    
-    // Synthesize owner research findings
-    const ownerAnalysis = synthesizeOwnerResearch(ownerResults);
-    
-    // Calculate combined score and determine grade
-    const combinedScore = Math.round((companyAnalysis.score + ownerAnalysis.score) / 2);
-    const grade = determineGrade(combinedScore);
-    
-    // Identify highest risk factors
-    const highRiskFactors = [...companyResults, ...ownerResults]
-      .flatMap(result => result.findings.riskFactors.filter((_, i) => i < 2))
-      .filter(factor => factor.toLowerCase().includes("high risk") || 
-                        factor.toLowerCase().includes("serious concern") ||
-                        factor.toLowerCase().includes("critical issue"));
-                        
-    const moderateRiskFactors = [...companyResults, ...ownerResults]
-      .flatMap(result => result.findings.riskFactors)
-      .filter(factor => !highRiskFactors.includes(factor) &&
-                       (factor.toLowerCase().includes("moderate risk") || 
-                        factor.toLowerCase().includes("potential concern")));
-                        
-    const mitigatingFactors = [...companyResults, ...ownerResults]
-      .flatMap(result => result.findings.recommendations)
-      .filter(rec => rec.toLowerCase().includes("strength") || 
-                    rec.toLowerCase().includes("positive") ||
-                    rec.toLowerCase().includes("mitigat"));
-    
-    return {
-      companyAnalysis,
-      ownerAnalysis,
-      combinedScore,
-      grade,
-      riskAssessment: {
-        highRiskFactors: highRiskFactors.slice(0, 5),
-        moderateRiskFactors: moderateRiskFactors.slice(0, 5),
-        mitigatingFactors: mitigatingFactors.slice(0, 5)
-      }
+  console.log(`Starting multi-agent research for ${application.businessName}`);
+  
+  // Step 1: Dispatch specialized agents to research the company
+  const companyResearchPromises = researchAgents.map(agent => 
+    agentResearchCompany(agent, application)
+  );
+  
+  // Step 2: Dispatch specialized agents to research the primary owner
+  // For simplicity, we'll research the first owner with >= 20% ownership
+  const primaryOwner = application.businessOwners?.find(owner => owner.ownership >= 20);
+  const ownerResearchPromises = primaryOwner ? 
+    researchAgents.map(agent => agentResearchPerson(agent, application, primaryOwner.name)) :
+    [];
+  
+  // Step 3: Wait for all research to complete
+  const [companyResearchResults, ownerResearchResults] = await Promise.all([
+    Promise.all(companyResearchPromises),
+    Promise.all(ownerResearchPromises)
+  ]);
+  
+  // Step 4: Synthesize findings across agents
+  const companyAnalysis = synthesizeCompanyResearch(companyResearchResults);
+  const ownerAnalysis = ownerResearchResults.length > 0 ? 
+    synthesizeOwnerResearch(ownerResearchResults) : 
+    {
+      overview: "No majority owner data available for analysis.",
+      legalIssues: [],
+      financialRedFlags: [],
+      reputationInsights: [],
+      managementCapabilities: [],
+      executiveSummary: "Owner analysis skipped due to insufficient data.",
+      detailedFindings: {},
+      sources: [],
+      score: 50 // Neutral score when no data available
     };
-    
-  } catch (error) {
-    console.error("Error in multi-agent research system:", error);
-    throw error;
-  }
+  
+  // Step 5: Combine company and owner scores with appropriate weighting
+  // Company analysis is weighted at 70%, owner analysis at 30%
+  const companyWeight = 0.7;
+  const ownerWeight = 0.3;
+  const weightedCompanyScore = companyAnalysis.score * companyWeight;
+  const weightedOwnerScore = ownerAnalysis.score * ownerWeight;
+  const combinedScore = Math.round(weightedCompanyScore + weightedOwnerScore);
+  
+  // Step 6: Determine overall risk assessment
+  const companyHighRisks = companyResearchResults.flatMap(r => 
+    r.findings.riskFactors.filter(risk => 
+      risk.toLowerCase().includes("critical") || 
+      risk.toLowerCase().includes("high risk") || 
+      risk.toLowerCase().includes("major concern")
+    )
+  );
+  
+  const ownerHighRisks = ownerResearchResults.flatMap(r => 
+    r.findings.riskFactors.filter(risk => 
+      risk.toLowerCase().includes("critical") || 
+      risk.toLowerCase().includes("high risk") || 
+      risk.toLowerCase().includes("major concern")
+    )
+  );
+  
+  const companyModerateRisks = companyResearchResults.flatMap(r => 
+    r.findings.riskFactors.filter(risk => 
+      risk.toLowerCase().includes("moderate") || 
+      risk.toLowerCase().includes("medium risk") || 
+      risk.toLowerCase().includes("potential issue")
+    )
+  );
+  
+  const ownerModerateRisks = ownerResearchResults.flatMap(r => 
+    r.findings.riskFactors.filter(risk => 
+      risk.toLowerCase().includes("moderate") || 
+      risk.toLowerCase().includes("medium risk") || 
+      risk.toLowerCase().includes("potential issue")
+    )
+  );
+  
+  const companyStrengths = companyResearchResults.flatMap(r => 
+    r.findings.keyPoints.filter(point => 
+      point.toLowerCase().includes("strength") || 
+      point.toLowerCase().includes("positive") || 
+      point.toLowerCase().includes("advantage")
+    )
+  );
+  
+  const ownerStrengths = ownerResearchResults.flatMap(r => 
+    r.findings.keyPoints.filter(point => 
+      point.toLowerCase().includes("strength") || 
+      point.toLowerCase().includes("positive") || 
+      point.toLowerCase().includes("advantage")
+    )
+  );
+  
+  // Generate final result
+  const researchResult: CoordinatedResearchResult = {
+    companyAnalysis,
+    ownerAnalysis,
+    combinedScore,
+    grade: determineGrade(combinedScore),
+    riskAssessment: {
+      highRiskFactors: [...sampleItems(companyHighRisks, 3), ...sampleItems(ownerHighRisks, 2)],
+      moderateRiskFactors: [...sampleItems(companyModerateRisks, 3), ...sampleItems(ownerModerateRisks, 2)],
+      mitigatingFactors: [...sampleItems(companyStrengths, 3), ...sampleItems(ownerStrengths, 2)]
+    }
+  };
+  
+  return researchResult;
 }
 
 /**
@@ -236,51 +271,27 @@ export async function performMultiAgentResearch(application: LoanApplication): P
  */
 async function agentResearchCompany(
   agent: Agent, 
-  companyName: string, 
-  industry: string,
   application: LoanApplication
 ): Promise<AgentResearchResult> {
-  try {
-    console.log(`Agent ${agent.name} researching company ${companyName}`);
-    
-    // Create specialized prompt based on agent specialty
-    const prompt = generateCompanyResearchPrompt(agent, companyName, industry, application);
-    
-    // Perform in-depth research with specialized focus
-    const researchResponse = await callPerplexityAPI(prompt, agent.role);
-    
-    // Parse and structure the response
-    const findings = parseAgentResearchResponse(researchResponse);
-    
-    // Calculate risk scores based on findings
-    const riskScore = calculateRiskScore(findings);
-    const confidenceLevel = calculateConfidenceLevel(findings);
-    
-    return {
-      agent,
-      findings,
-      riskScore,
-      confidenceLevel
-    };
-    
-  } catch (error) {
-    console.error(`Error in agent ${agent.name} company research:`, error);
-    
-    // Return fallback research with error note
-    return {
-      agent,
-      findings: {
-        summary: `Research by ${agent.name} on ${companyName} could not be completed.`,
-        detailedAnalysis: "Error occurred during research process.",
-        keyPoints: ["Research incomplete due to technical issues."],
-        recommendations: ["Manual review recommended due to incomplete automated analysis."],
-        riskFactors: ["Unknown risk due to incomplete analysis."],
-        sources: []
-      },
-      riskScore: 50, // Neutral score
-      confidenceLevel: 0 // Zero confidence
-    };
-  }
+  // Generate specialized prompt for this agent
+  const prompt = generateCompanyResearchPrompt(agent, application);
+  
+  // Send prompt to Perplexity API
+  const response = await callPerplexityAPI(prompt, agent.role);
+  
+  // Parse structured findings from the response
+  const findings = parseAgentResearchResponse(response);
+  
+  // Calculate risk score and confidence based on findings
+  const riskScore = calculateRiskScore(findings);
+  const confidenceLevel = calculateConfidenceLevel(findings);
+  
+  return {
+    agent,
+    findings,
+    riskScore,
+    confidenceLevel
+  };
 }
 
 /**
@@ -288,51 +299,28 @@ async function agentResearchCompany(
  */
 async function agentResearchPerson(
   agent: Agent, 
-  ownerName: string, 
-  companyName: string,
-  application: LoanApplication
+  application: LoanApplication,
+  ownerName: string
 ): Promise<AgentResearchResult> {
-  try {
-    console.log(`Agent ${agent.name} researching owner ${ownerName}`);
-    
-    // Create specialized prompt based on agent specialty
-    const prompt = generateOwnerResearchPrompt(agent, ownerName, companyName, application);
-    
-    // Perform in-depth research
-    const researchResponse = await callPerplexityAPI(prompt, agent.role);
-    
-    // Parse and structure the response
-    const findings = parseAgentResearchResponse(researchResponse);
-    
-    // Calculate risk scores based on findings
-    const riskScore = calculateRiskScore(findings);
-    const confidenceLevel = calculateConfidenceLevel(findings);
-    
-    return {
-      agent,
-      findings,
-      riskScore,
-      confidenceLevel
-    };
-    
-  } catch (error) {
-    console.error(`Error in agent ${agent.name} owner research:`, error);
-    
-    // Return fallback research with error note
-    return {
-      agent,
-      findings: {
-        summary: `Research by ${agent.name} on ${ownerName} could not be completed.`,
-        detailedAnalysis: "Error occurred during research process.",
-        keyPoints: ["Research incomplete due to technical issues."],
-        recommendations: ["Manual review recommended due to incomplete automated analysis."],
-        riskFactors: ["Unknown risk due to incomplete analysis."],
-        sources: []
-      },
-      riskScore: 50, // Neutral score
-      confidenceLevel: 0 // Zero confidence
-    };
-  }
+  // Generate specialized prompt for this agent
+  const prompt = generateOwnerResearchPrompt(agent, application, ownerName);
+  
+  // Send prompt to Perplexity API
+  const response = await callPerplexityAPI(prompt, agent.role);
+  
+  // Parse structured findings from the response
+  const findings = parseAgentResearchResponse(response);
+  
+  // Calculate risk score and confidence based on findings
+  const riskScore = calculateRiskScore(findings);
+  const confidenceLevel = calculateConfidenceLevel(findings);
+  
+  return {
+    agent,
+    findings,
+    riskScore,
+    confidenceLevel
+  };
 }
 
 /**
@@ -340,105 +328,64 @@ async function agentResearchPerson(
  */
 function generateCompanyResearchPrompt(
   agent: Agent, 
-  companyName: string, 
-  industry: string,
   application: LoanApplication
 ): string {
-  // Common context for all agents
-  const commonContext = `
-Company Name: ${companyName}
-Industry: ${industry}
-Annual Revenue: $${application.annualRevenue}
-Years in Business: ${application.yearsInBusiness}
-Loan Amount Requested: $${application.loanAmount}
-  `;
+  const { businessName, industry, yearsInBusiness, annualRevenue } = application;
   
-  // Specialized questions based on agent role
-  let specializedQuestions = "";
+  // Common prompt prefix
+  const promptPrefix = `
+You are an expert ${agent.specialty} specialist conducting deep research on ${businessName}, a company in the ${industry} industry that has been in business for ${yearsInBusiness} years with annual revenue of ${annualRevenue}.
+
+Your task is to provide a comprehensive analysis focused specifically on ${agent.researchFocus.join(", ")}. This is part of a business loan assessment, so focus on risk factors and strengths that would impact loan repayment ability.
+
+Conduct a thorough web search and provide a detailed analysis with specific findings, not general statements. Include specific dates, numbers, events, and sources when available.
+
+Structure your response as follows:
+1. Summary (2-3 sentences overview)
+2. Detailed Analysis (minimum 3 paragraphs with specific details)
+3. Key Points (5-7 bullet points highlighting strengths)
+4. Recommendations (2-3 bullet points)
+5. Risk Factors (5-7 bullet points, each labeled as Low, Moderate, or High risk)
+6. Sources (list specific sources of information)
+`;
+
+  // Agent-specific prompt additions
+  let agentSpecificPrompt = "";
   
   switch (agent.role) {
     case AgentSpecialization.BUSINESS_ANALYST:
-      specializedQuestions = `
-1. What is the business model of ${companyName} and how sustainable is it in the current market?
-2. How experienced is the management team and what is their track record?
-3. What is the company's growth trajectory over the past 3-5 years?
-4. How does the company's operational efficiency compare to industry standards?
-5. What strategic initiatives has the company undertaken recently?
-      `;
+      agentSpecificPrompt = `
+Focus on business operations, management team quality, operational efficiency, and business model viability.
+Include specific metrics on employee count, growth trajectory, management team experience, and operational strengths/weaknesses.
+`;
       break;
-      
     case AgentSpecialization.LEGAL_RESEARCHER:
-      specializedQuestions = `
-1. Has ${companyName} been involved in any significant litigation in the past 5 years?
-2. Are there any regulatory compliance issues or investigations involving the company?
-3. What is the company's intellectual property position and are there any disputes?
-4. Are there any pending legal actions that could affect the company's financial stability?
-5. Has the company faced any consumer complaints or regulatory fines?
-      `;
+      agentSpecificPrompt = `
+Focus on litigation history, regulatory compliance issues, legal risks, and intellectual property status.
+Mention specific lawsuits, regulatory violations, compliance matters with dates and outcomes when available.
+`;
       break;
-      
     case AgentSpecialization.FINANCIAL_AUDITOR:
-      specializedQuestions = `
-1. What are the key financial ratios for ${companyName} and how do they compare to industry benchmarks?
-2. Are there any red flags in the company's financial reporting history?
-3. How is the company's debt structured and what is their debt service capacity?
-4. What is the company's cash flow situation and liquidity position?
-5. Are there any concerning accounting practices or financial inconsistencies?
-      `;
+      agentSpecificPrompt = `
+Focus on financial health indicators, debt obligations, profitability trends, and cash flow stability.
+Include specific financial ratios, debt levels, profitability percentages and compare to industry averages.
+`;
       break;
-      
     case AgentSpecialization.INDUSTRY_SPECIALIST:
-      specializedQuestions = `
-1. What is the current state and outlook of the ${industry} industry?
-2. How does ${companyName} compare to key competitors in the industry?
-3. What market share does the company have and is it growing or declining?
-4. What regulatory changes might impact this industry in the near future?
-5. How is technological disruption affecting this industry and the company specifically?
-      `;
+      agentSpecificPrompt = `
+Focus on industry positioning, market share, competitive advantages/disadvantages, and industry-specific risks.
+Include specific market position data, key competitors, industry growth rates and regulatory challenges.
+`;
       break;
-      
     case AgentSpecialization.MARKET_RESEARCHER:
-      specializedQuestions = `
-1. What is the size and growth potential of ${companyName}'s target market?
-2. Who are the company's primary customers and what is their satisfaction level?
-3. What are the customer acquisition costs and retention rates for businesses in this sector?
-4. How saturated is the market and what barriers to entry exist?
-5. What consumer or market trends might affect demand for the company's products/services?
-      `;
+      agentSpecificPrompt = `
+Focus on market growth potential, competitive landscape, consumer trends, and market disruptions.
+Include specific market size data, growth projections, competitor actions, and emerging trends.
+`;
       break;
   }
   
-  // Construct the full prompt
-  return `
-You are ${agent.name}, a specialized AI agent focusing on ${agent.specialty}. You are part of a multi-agent system performing deep due diligence on a business loan application.
-
-BUSINESS CONTEXT:
-${commonContext}
-
-Your task is to research ${companyName} with a specific focus on your specialization areas:
-${agent.researchFocus.join(', ')}
-
-RESEARCH QUESTIONS:
-${specializedQuestions}
-
-INSTRUCTIONS:
-1. Conduct deep research on the company using the available information.
-2. Focus specifically on your area of expertise and the questions above.
-3. Be thorough, detailed, and analytical in your assessment.
-4. Cite specific facts, figures, dates, and sources whenever possible.
-5. Provide both supporting evidence and contrary evidence for balance.
-
-REQUIRED RESPONSE FORMAT:
-Provide your response in JSON format with the following structure:
-{
-  "summary": "A concise 2-3 paragraph summary of your key findings",
-  "detailedAnalysis": "A detailed 4-6 paragraph analysis with specific evidence and data points",
-  "keyPoints": ["List 5-8 key points from your research"],
-  "recommendations": ["List 3-5 recommendations based on your findings"],
-  "riskFactors": ["List specific risk factors with severity indicators (High/Medium/Low)"],
-  "sources": ["List all sources of information consulted"]
-}
-`;
+  return promptPrefix + agentSpecificPrompt;
 }
 
 /**
@@ -446,104 +393,65 @@ Provide your response in JSON format with the following structure:
  */
 function generateOwnerResearchPrompt(
   agent: Agent, 
-  ownerName: string, 
-  companyName: string,
-  application: LoanApplication
+  application: LoanApplication,
+  ownerName: string
 ): string {
-  // Common context for all agents
-  const commonContext = `
-Owner Name: ${ownerName}
-Company Name: ${companyName}
-Industry: ${application.industry}
-Years in Business: ${application.yearsInBusiness}
-  `;
+  const { businessName, industry } = application;
   
-  // Specialized questions based on agent role
-  let specializedQuestions = "";
+  // Common prompt prefix
+  const promptPrefix = `
+You are an expert ${agent.specialty} specialist conducting deep research on ${ownerName}, the owner of ${businessName}, a company in the ${industry} industry.
+
+Your task is to provide a comprehensive analysis focused specifically on the owner's ${agent.researchFocus.join(", ")}. This is part of a business loan assessment, so focus on owner-specific risk factors and strengths that would impact loan repayment ability.
+
+Conduct a thorough web search and provide a detailed analysis with specific findings, not general statements. Include specific dates, numbers, events, and sources when available.
+
+Structure your response as follows:
+1. Summary (2-3 sentences overview)
+2. Detailed Analysis (minimum 3 paragraphs with specific details)
+3. Key Points (5-7 bullet points highlighting strengths)
+4. Recommendations (2-3 bullet points)
+5. Risk Factors (5-7 bullet points, each labeled as Low, Moderate, or High risk)
+6. Sources (list specific sources of information)
+`;
+
+  // Agent-specific prompt additions
+  let agentSpecificPrompt = "";
   
   switch (agent.role) {
     case AgentSpecialization.BUSINESS_ANALYST:
-      specializedQuestions = `
-1. What is ${ownerName}'s leadership style and management philosophy?
-2. What previous business ventures has the owner been involved with?
-3. How does the owner's experience align with the current business needs?
-4. What is the owner's educational background and relevant certifications?
-5. How involved is the owner in day-to-day operations vs. strategic decision-making?
-      `;
+      agentSpecificPrompt = `
+Focus on the owner's management experience, business track record, leadership style, and prior business successes/failures.
+Include specific details about previous businesses owned/managed, leadership roles, management approach, and business successes or failures.
+`;
       break;
-      
     case AgentSpecialization.LEGAL_RESEARCHER:
-      specializedQuestions = `
-1. Has ${ownerName} been involved in any personal or business litigation?
-2. Are there any regulatory actions or investigations involving the owner?
-3. Are there any legal issues in the owner's background that might affect lending risk?
-4. Has the owner been involved with any businesses that faced regulatory issues?
-5. Are there any conflicts of interest in the owner's business relationships?
-      `;
+      agentSpecificPrompt = `
+Focus on the owner's personal legal history, bankruptcies, liens, legal disputes, and regulatory issues.
+Mention specific legal issues, bankruptcies, tax liens, or other legal matters with dates and outcomes when available.
+`;
       break;
-      
     case AgentSpecialization.FINANCIAL_AUDITOR:
-      specializedQuestions = `
-1. What is ${ownerName}'s personal financial history and stability?
-2. Has the owner been involved with any bankruptcies or financial restructurings?
-3. What is the owner's approach to financial management in current and past businesses?
-4. Are there any tax liens or personal financial issues that could affect the business?
-5. How has the owner handled business finances in previous ventures?
-      `;
+      agentSpecificPrompt = `
+Focus on the owner's personal financial history, credit issues, investment patterns, and wealth management.
+Include specific financial events, credit history issues, investment successes/failures, and wealth indicators if available.
+`;
       break;
-      
     case AgentSpecialization.INDUSTRY_SPECIALIST:
-      specializedQuestions = `
-1. What is ${ownerName}'s reputation within the ${application.industry} industry?
-2. How long has the owner been active in this specific industry?
-3. Does the owner have recognized expertise or thought leadership in this field?
-4. Has the owner adapted to major industry changes and trends in the past?
-5. What industry relationships and connections does the owner maintain?
-      `;
+      agentSpecificPrompt = `
+Focus on the owner's industry reputation, industry expertise, specialization, and industry relationships.
+Include specific industry roles, contributions to the industry, specialization areas, and industry recognition.
+`;
       break;
-      
     case AgentSpecialization.MARKET_RESEARCHER:
-      specializedQuestions = `
-1. How does ${ownerName} engage with customers and understand market needs?
-2. What is the owner's approach to marketing and brand development?
-3. Has the owner demonstrated ability to identify and capitalize on market opportunities?
-4. What is the owner's public reputation and media presence?
-5. How does the owner respond to market feedback and customer concerns?
-      `;
+      agentSpecificPrompt = `
+Focus on the owner's market innovations, competitive strategies, market positioning, and customer relationship approach.
+Include specific market innovations introduced, competitive strategies employed, and market positioning approaches.
+`;
       break;
   }
   
-  // Construct the full prompt
-  return `
-You are ${agent.name}, a specialized AI agent focusing on ${agent.specialty}. You are part of a multi-agent system performing deep due diligence on a business owner for a loan application.
-
-BUSINESS OWNER CONTEXT:
-${commonContext}
-
-Your task is to research ${ownerName} with a specific focus on your specialization areas:
-${agent.researchFocus.join(', ')}
-
-RESEARCH QUESTIONS:
-${specializedQuestions}
-
-INSTRUCTIONS:
-1. Conduct deep research on the business owner using the available information.
-2. Focus specifically on your area of expertise and the questions above.
-3. Be thorough, detailed, and analytical in your assessment.
-4. Cite specific facts, figures, dates, and sources whenever possible.
-5. Provide both supporting evidence and contrary evidence for balance.
-
-REQUIRED RESPONSE FORMAT:
-Provide your response in JSON format with the following structure:
-{
-  "summary": "A concise 2-3 paragraph summary of your key findings",
-  "detailedAnalysis": "A detailed 4-6 paragraph analysis with specific evidence and data points",
-  "keyPoints": ["List 5-8 key points from your research"],
-  "recommendations": ["List 3-5 recommendations based on your findings"],
-  "riskFactors": ["List specific risk factors with severity indicators (High/Medium/Low)"],
-  "sources": ["List all sources of information consulted"]
-}
-`;
+  return promptPrefix + agentSpecificPrompt;
 }
 
 /**
@@ -557,65 +465,65 @@ function parseAgentResearchResponse(response: string): {
   riskFactors: string[];
   sources: string[];
 } {
-  try {
-    // Attempt to parse JSON response
-    let parsed;
-    
-    try {
-      parsed = JSON.parse(response);
-    } catch (jsonError) {
-      console.warn("Failed to parse JSON response from Perplexity API:", jsonError);
-      
-      // Attempt to extract JSON from markdown code blocks
-      const jsonMatch = response.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
-      if (jsonMatch && jsonMatch[1]) {
-        try {
-          parsed = JSON.parse(jsonMatch[1]);
-        } catch (secondJsonError) {
-          throw new Error("Failed to parse JSON from code block");
-        }
-      } else {
-        throw new Error("Response is not in JSON format and no JSON code block found");
-      }
+  // Extract sections based on common patterns
+  const summaryMatch = response.match(/(?:Summary|SUMMARY):\s*([\s\S]*?)(?=\n\s*(?:Detailed Analysis|DETAILED ANALYSIS)|$)/i);
+  const detailedAnalysisMatch = response.match(/(?:Detailed Analysis|DETAILED ANALYSIS):\s*([\s\S]*?)(?=\n\s*(?:Key Points|KEY POINTS)|$)/i);
+  const keyPointsMatch = response.match(/(?:Key Points|KEY POINTS):\s*([\s\S]*?)(?=\n\s*(?:Recommendations|RECOMMENDATIONS)|$)/i);
+  const recommendationsMatch = response.match(/(?:Recommendations|RECOMMENDATIONS):\s*([\s\S]*?)(?=\n\s*(?:Risk Factors|RISK FACTORS)|$)/i);
+  const riskFactorsMatch = response.match(/(?:Risk Factors|RISK FACTORS):\s*([\s\S]*?)(?=\n\s*(?:Sources|SOURCES)|$)/i);
+  const sourcesMatch = response.match(/(?:Sources|SOURCES):\s*([\s\S]*?)$/i);
+  
+  // Parse structured sections
+  const summary = summaryMatch?.[1]?.trim() || "No summary provided";
+  const detailedAnalysis = detailedAnalysisMatch?.[1]?.trim() || "No detailed analysis provided";
+  
+  // Parse bulleted lists
+  const keyPoints = extractBulletedList(keyPointsMatch?.[1] || "");
+  const recommendations = extractBulletedList(recommendationsMatch?.[1] || "");
+  const riskFactors = extractBulletedList(riskFactorsMatch?.[1] || "");
+  const sources = extractBulletedList(sourcesMatch?.[1] || "");
+  
+  return {
+    summary,
+    detailedAnalysis,
+    keyPoints,
+    recommendations,
+    riskFactors,
+    sources
+  };
+}
+
+/**
+ * Extract bulleted list from text
+ */
+function extractBulletedList(text: string): string[] {
+  if (!text) return [];
+  
+  // Match different bullet point styles
+  const bulletPatterns = [
+    /(?:^|\n)[-•*] +(.*?)(?=\n[-•*]|\n\n|$)/g,  // Hyphen, bullet, or asterisk
+    /(?:^|\n)\d+\. +(.*?)(?=\n\d+\.|\n\n|$)/g,  // Numbered list
+    /(?:^|\n)(?:\*\*|__)?(?:\w+)(?:\*\*|__)?: +(.*?)(?=\n(?:\*\*|__)?(?:\w+)(?:\*\*|__)?:|\n\n|$)/g  // Bold/underlined keyword followed by colon
+  ];
+  
+  const results: string[] = [];
+  
+  // Try each bullet pattern
+  for (const pattern of bulletPatterns) {
+    const matches = Array.from(text.matchAll(pattern));
+    if (matches.length > 0) {
+      return matches.map(match => match[1].trim());
     }
-    
-    return {
-      summary: parsed.summary || "No summary provided.",
-      detailedAnalysis: parsed.detailedAnalysis || "No detailed analysis provided.",
-      keyPoints: Array.isArray(parsed.keyPoints) ? parsed.keyPoints : [],
-      recommendations: Array.isArray(parsed.recommendations) ? parsed.recommendations : [],
-      riskFactors: Array.isArray(parsed.riskFactors) ? parsed.riskFactors : [],
-      sources: Array.isArray(parsed.sources) ? parsed.sources : []
-    };
-  } catch (error) {
-    console.error("Error parsing agent research response:", error);
-    
-    // Extract what we can from the text response
-    const lines = response.split('\n');
-    const keyPoints: string[] = [];
-    const recommendations: string[] = [];
-    const riskFactors: string[] = [];
-    
-    lines.forEach(line => {
-      if (line.includes("risk") || line.includes("concern")) {
-        riskFactors.push(line.trim());
-      } else if (line.includes("recommend") || line.includes("should")) {
-        recommendations.push(line.trim());
-      } else if (line.startsWith("- ") || line.startsWith("* ")) {
-        keyPoints.push(line.trim().substring(2));
-      }
-    });
-    
-    // Construct a minimal response
-    return {
-      summary: response.substring(0, 500) + "...",
-      detailedAnalysis: response,
-      keyPoints: keyPoints.slice(0, 5),
-      recommendations: recommendations.slice(0, 3),
-      riskFactors: riskFactors.slice(0, 3),
-      sources: []
-    };
   }
+  
+  // If no bullet patterns matched, try splitting by newlines
+  if (results.length === 0) {
+    return text.split('\n')
+      .map(line => line.trim())
+      .filter(line => line.length > 0);
+  }
+  
+  return results;
 }
 
 /**
@@ -627,55 +535,46 @@ function calculateRiskScore(findings: {
   keyPoints: string[];
   recommendations: string[];
   riskFactors: string[];
-  sources: string[];
 }): number {
-  // Start with a neutral score
-  let riskScore = 50;
+  // Base score starts at middle (50)
+  let score = 50;
   
-  // Count high/medium/low risk factors
-  const highRiskCount = findings.riskFactors.filter(risk => 
+  // Count risk factors by severity
+  const highRisks = findings.riskFactors.filter(risk => 
     risk.toLowerCase().includes("high risk") || 
-    risk.toLowerCase().includes("critical")
+    risk.toLowerCase().includes("critical") ||
+    risk.toLowerCase().includes("major")
   ).length;
   
-  const mediumRiskCount = findings.riskFactors.filter(risk => 
-    risk.toLowerCase().includes("medium risk") || 
-    risk.toLowerCase().includes("moderate")
+  const moderateRisks = findings.riskFactors.filter(risk => 
+    risk.toLowerCase().includes("moderate risk") || 
+    risk.toLowerCase().includes("medium") ||
+    risk.toLowerCase().includes("potential")
   ).length;
   
-  const lowRiskCount = findings.riskFactors.filter(risk => 
+  const lowRisks = findings.riskFactors.filter(risk => 
     risk.toLowerCase().includes("low risk") || 
     risk.toLowerCase().includes("minor")
   ).length;
   
-  // Add risk points for each factor
-  riskScore += highRiskCount * 10;
-  riskScore += mediumRiskCount * 5;
-  riskScore += lowRiskCount * 2;
+  // Adjust score based on risk factors
+  score += highRisks * 10;      // +10 points per high risk
+  score += moderateRisks * 5;   // +5 points per moderate risk
+  score += lowRisks * 2;        // +2 points per low risk
   
-  // Adjust for positive recommendations
-  const positiveRecommendations = findings.recommendations.filter(rec => 
-    rec.toLowerCase().includes("strength") || 
-    rec.toLowerCase().includes("positive") ||
-    rec.toLowerCase().includes("advantage")
+  // Look for mitigating factors in key points
+  const strengths = findings.keyPoints.filter(point => 
+    point.toLowerCase().includes("strength") || 
+    point.toLowerCase().includes("positive") ||
+    point.toLowerCase().includes("strong") ||
+    point.toLowerCase().includes("excellent")
   ).length;
   
-  riskScore -= positiveRecommendations * 3;
+  // Reduce score based on strengths
+  score -= strengths * 3;       // -3 points per strength
   
-  // Check for specific concerning terms in the analysis
-  const concerningTerms = [
-    "bankruptcy", "litigation", "lawsuit", "fraud", "investigation", 
-    "regulatory action", "default", "late payment", "criminal", "violation"
-  ];
-  
-  concerningTerms.forEach(term => {
-    if (findings.detailedAnalysis.toLowerCase().includes(term)) {
-      riskScore += 3;
-    }
-  });
-  
-  // Cap score between 0-100
-  return Math.max(0, Math.min(100, riskScore));
+  // Ensure score stays within 0-100 range
+  return Math.max(0, Math.min(100, score));
 }
 
 /**
@@ -689,31 +588,31 @@ function calculateConfidenceLevel(findings: {
   riskFactors: string[];
   sources: string[];
 }): number {
-  // Base confidence on amount of information and specificity
+  // Base confidence level
   let confidence = 50;
   
-  // More sources = higher confidence
-  confidence += Math.min(findings.sources.length * 5, 20);
+  // Increase confidence based on level of detail
+  confidence += Math.min(20, findings.detailedAnalysis.length / 100); // Up to +20 for detailed analysis
+  confidence += Math.min(10, findings.keyPoints.length * 2);          // Up to +10 for key points
+  confidence += Math.min(10, findings.riskFactors.length * 2);        // Up to +10 for risk factors
   
-  // More specific key points = higher confidence
-  const specificKeyPoints = findings.keyPoints.filter(point => 
-    /\d+%|\$\d+|\d+\.?\d*|[Jj]anuary|[Ff]ebruary|[Mm]arch|[Aa]pril|[Mm]ay|[Jj]une|[Jj]uly|[Aa]ugust|[Ss]eptember|[Oo]ctober|[Nn]ovember|[Dd]ecember|\d{4}/.test(point)
-  ).length;
+  // Increase confidence based on sources
+  confidence += Math.min(20, findings.sources.length * 4);            // Up to +20 for sources
   
-  confidence += specificKeyPoints * 3;
-  
-  // Check for hedging language that reduces confidence
-  const hedgingPhrases = [
-    "may be", "could be", "possibly", "potentially", "unclear", 
-    "insufficient data", "limited information", "uncertain", "seems to be", "appears to"
+  // Decrease confidence for vague language
+  const vaguePhrases = [
+    "may be", "could be", "might be", "possibly", "potentially",
+    "unclear", "unknown", "limited information", "insufficient data"
   ];
   
-  hedgingPhrases.forEach(phrase => {
-    const matches = (findings.detailedAnalysis.match(new RegExp(phrase, "gi")) || []).length;
-    confidence -= matches * 2;
-  });
+  let vagueCount = 0;
+  for (const phrase of vaguePhrases) {
+    vagueCount += (findings.detailedAnalysis.toLowerCase().match(new RegExp(phrase, 'g')) || []).length;
+  }
   
-  // Cap confidence between 0-100
+  confidence -= Math.min(30, vagueCount * 3); // Up to -30 for vague language
+  
+  // Ensure confidence stays within 0-100 range
   return Math.max(0, Math.min(100, confidence));
 }
 
@@ -725,65 +624,44 @@ async function callPerplexityAPI(
   agentRole: AgentSpecialization
 ): Promise<string> {
   try {
-    console.log(`Agent ${agentRole} calling Perplexity API...`);
-    
-    if (!process.env.PERPLEXITY_API_KEY) {
-      throw new Error("Perplexity API key not found");
+    // Get Perplexity API key from environment variables
+    const apiKey = process.env.PERPLEXITY_API_KEY;
+    if (!apiKey) {
+      throw new Error("PERPLEXITY_API_KEY is not set in environment variables");
     }
     
-    // Customize system prompt based on agent role
-    let systemPrompt = "You are a specialized AI agent performing deep research for business loan due diligence.";
+    // Create message payload
+    const messages = [
+      {
+        role: "system",
+        content: `You are a specialized AI agent with expertise in ${agentRole.replace('_', ' ')}. Provide detailed, factual analysis focused specifically on your area of expertise.`
+      },
+      {
+        role: "user",
+        content: prompt
+      }
+    ];
     
-    switch (agentRole) {
-      case AgentSpecialization.BUSINESS_ANALYST:
-        systemPrompt = "You are a business operations analyst with over 20 years of experience evaluating business models, operational efficiency, and management quality. Your analysis focuses on business fundamentals and execution capability.";
-        break;
-      case AgentSpecialization.LEGAL_RESEARCHER:
-        systemPrompt = "You are a legal researcher with expertise in corporate law, regulatory compliance, and litigation research. Your analysis focuses on identifying legal risks and compliance issues.";
-        break;
-      case AgentSpecialization.FINANCIAL_AUDITOR:
-        systemPrompt = "You are a financial auditor with expertise in financial statement analysis, accounting practices, and financial risk assessment. Your analysis focuses on financial health and transparency.";
-        break;
-      case AgentSpecialization.INDUSTRY_SPECIALIST:
-        systemPrompt = "You are an industry specialist with deep knowledge of market dynamics, competitive positioning, and industry trends. Your analysis focuses on industry-specific success factors and challenges.";
-        break;
-      case AgentSpecialization.MARKET_RESEARCHER:
-        systemPrompt = "You are a market researcher with expertise in consumer behavior, market trends, and competitive analysis. Your analysis focuses on market potential and customer-related factors.";
-        break;
-    }
-    
-    // Prepare the API request
+    // Call Perplexity API
     const response = await fetch('https://api.perplexity.ai/chat/completions', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.PERPLEXITY_API_KEY}`
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({
         model: "llama-3.1-sonar-small-128k-online",
-        messages: [
-          {
-            role: "system",
-            content: systemPrompt
-          },
-          {
-            role: "user",
-            content: prompt
-          }
-        ],
-        temperature: 0.1,
-        max_tokens: 4000,
-        // Enhanced search parameters
-        search_focus: "internet",
-        search_queries: ["auto"],
-        search_recency_filter: "month",
-        search_domain_filter: ["finance", "legal", "news", "research"],
-        return_citations: true
+        messages,
+        temperature: 0.2,
+        max_tokens: 2048,
+        frequency_penalty: 1.0,
+        presence_penalty: 0.0
       })
     });
     
     if (!response.ok) {
-      throw new Error(`API request failed with status ${response.status}`);
+      const errorText = await response.text();
+      throw new Error(`Perplexity API error: ${response.status} ${response.statusText} - ${errorText}`);
     }
     
     const data = await response.json();
@@ -792,6 +670,342 @@ async function callPerplexityAPI(
     console.error("Error calling Perplexity API for agent research:", error);
     throw error;
   }
+}
+
+/**
+ * Extract financial metrics from financial auditor's findings
+ */
+function extractFinancialMetrics(detailedAnalysis: string): {
+  metric: string;
+  value: string;
+  industryAverage: string;
+  trend: string;
+}[] {
+  if (!detailedAnalysis) return [];
+  
+  const metrics = [];
+  
+  // Common financial metrics to look for
+  const metricPatterns = [
+    { name: "Debt-to-Equity Ratio", regex: /debt[- ]to[- ]equity\s+ratio\s+(?:of|is|at|around|approximately)?\s+([\d.]+)[^\d.]*(?:compared to|vs\.?|industry average|benchmark)?\s+([\d.]+)?/i },
+    { name: "Current Ratio", regex: /current\s+ratio\s+(?:of|is|at|around|approximately)?\s+([\d.]+)[^\d.]*(?:compared to|vs\.?|industry average|benchmark)?\s+([\d.]+)?/i },
+    { name: "Quick Ratio", regex: /quick\s+ratio\s+(?:of|is|at|around|approximately)?\s+([\d.]+)[^\d.]*(?:compared to|vs\.?|industry average|benchmark)?\s+([\d.]+)?/i },
+    { name: "Profit Margin", regex: /profit\s+margin\s+(?:of|is|at|around|approximately)?\s+([\d.]+)%[^\d.]*(?:compared to|vs\.?|industry average|benchmark)?\s+([\d.]+)%?/i },
+    { name: "Return on Assets", regex: /return\s+on\s+assets\s+(?:of|is|at|around|approximately)?\s+([\d.]+)%[^\d.]*(?:compared to|vs\.?|industry average|benchmark)?\s+([\d.]+)%?/i },
+    { name: "Return on Equity", regex: /return\s+on\s+equity\s+(?:of|is|at|around|approximately)?\s+([\d.]+)%[^\d.]*(?:compared to|vs\.?|industry average|benchmark)?\s+([\d.]+)%?/i },
+    { name: "Inventory Turnover", regex: /inventory\s+turnover\s+(?:of|is|at|around|approximately)?\s+([\d.]+)[^\d.]*(?:compared to|vs\.?|industry average|benchmark)?\s+([\d.]+)?/i },
+    { name: "Revenue Growth", regex: /revenue\s+growth\s+(?:of|is|at|around|approximately)?\s+([\d.]+)%[^\d.]*(?:compared to|vs\.?|industry average|benchmark)?\s+([\d.]+)%?/i },
+    { name: "Cash Reserves", regex: /cash\s+reserves\s+(?:of|is|at|around|approximately)?\s+\$?([\d.]+)(?:k|M|B|million|billion|thousand)?[^\d.]*(?:compared to|vs\.?|industry average|benchmark)?\s+\$?([\d.]+)(?:k|M|B|million|billion|thousand)?/i },
+    { name: "Operating Margin", regex: /operating\s+margin\s+(?:of|is|at|around|approximately)?\s+([\d.]+)%[^\d.]*(?:compared to|vs\.?|industry average|benchmark)?\s+([\d.]+)%?/i },
+  ];
+  
+  // Look for trend indicators
+  const trendPatterns = [
+    { keyword: "increas", trend: "Increasing 📈" },
+    { keyword: "upward", trend: "Increasing 📈" },
+    { keyword: "rising", trend: "Increasing 📈" }, 
+    { keyword: "grown", trend: "Increasing 📈" },
+    { keyword: "grew", trend: "Increasing 📈" },
+    { keyword: "improv", trend: "Improving 📈" },
+    { keyword: "decreas", trend: "Decreasing 📉" },
+    { keyword: "declin", trend: "Declining 📉" },
+    { keyword: "downward", trend: "Decreasing 📉" },
+    { keyword: "falling", trend: "Decreasing 📉" },
+    { keyword: "fell", trend: "Decreasing 📉" },
+    { keyword: "deterior", trend: "Deteriorating 📉" },
+    { keyword: "stable", trend: "Stable ↔️" },
+    { keyword: "consistent", trend: "Stable ↔️" },
+    { keyword: "steady", trend: "Stable ↔️" },
+    { keyword: "flat", trend: "Stable ↔️" },
+    { keyword: "plateau", trend: "Stable ↔️" },
+    { keyword: "maintained", trend: "Stable ↔️" },
+  ];
+  
+  // Process each paragraph looking for metrics
+  const paragraphs = detailedAnalysis.split('\n\n');
+  
+  for (const metric of metricPatterns) {
+    for (const paragraph of paragraphs) {
+      const match = paragraph.match(metric.regex);
+      if (match) {
+        // Found a metric - extract the value and industry average
+        const value = match[1];
+        let industryAverage = match[2] || "N/A";
+        if (industryAverage === "N/A") {
+          // Try to find industry average mentioned separately
+          const avgMatch = paragraph.match(/industry\s+average\s+(?:of|is|at|around|approximately)?\s+([\d.]+)%?/i);
+          if (avgMatch) {
+            industryAverage = avgMatch[1];
+          }
+        }
+        
+        // Look for trend indicators in the paragraph
+        let trend = "Neutral";
+        for (const trendPattern of trendPatterns) {
+          if (paragraph.toLowerCase().includes(trendPattern.keyword)) {
+            trend = trendPattern.trend;
+            break;
+          }
+        }
+        
+        metrics.push({
+          metric: metric.name,
+          value: metric.name.toLowerCase().includes("margin") || metric.name.toLowerCase().includes("growth") || metric.name.toLowerCase().includes("return") ? 
+            `${value}%` : value.includes("$") ? value : `${value}`,
+          industryAverage: industryAverage === "N/A" ? "N/A" : 
+            metric.name.toLowerCase().includes("margin") || metric.name.toLowerCase().includes("growth") || metric.name.toLowerCase().includes("return") ? 
+            `${industryAverage}%` : `${industryAverage}`,
+          trend: trend
+        });
+        
+        break; // Found this metric, move to the next one
+      }
+    }
+  }
+  
+  // If no metrics found via patterns, create some basic ones from keywords
+  if (metrics.length === 0) {
+    // Look for any financial metrics mentioned with numbers
+    const basicMetricRegex = /(\w+(?:\s+\w+){0,2})\s+(?:ratio|percentage|rate|value)\s+(?:of|is|at|around|approximately)?\s+([\d.]+)/gi;
+    let match;
+    while ((match = basicMetricRegex.exec(detailedAnalysis)) !== null) {
+      metrics.push({
+        metric: match[1].charAt(0).toUpperCase() + match[1].slice(1),
+        value: match[2],
+        industryAverage: "N/A",
+        trend: "Neutral"
+      });
+    }
+  }
+  
+  return metrics.slice(0, 5); // Return top 5 metrics
+}
+
+/**
+ * Extract specific events with dates from text
+ */
+function extractSpecificEvents(detailedAnalysis: string): {
+  event: string;
+  date: string;
+  impact: string;
+  source: string;
+}[] {
+  if (!detailedAnalysis) return [];
+  
+  const events = [];
+  const paragraphs = detailedAnalysis.split('\n\n');
+  
+  // Date pattern: looking for months and years in various formats
+  const datePattern = /(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)[.,]?\s+\d{4}|\d{1,2}[\/\-.]\d{1,2}[\/\-.]\d{2,4}|\d{4}/i;
+  
+  // Impact patterns
+  const positiveImpacts = ["positive", "beneficial", "favorable", "improvement", "success", "strengthen", "growth", "increase"];
+  const negativeImpacts = ["negative", "unfavorable", "adverse", "decline", "decrease", "loss", "weaken", "liability", "risk", "damage"];
+  
+  // Event types to look for
+  const eventKeywords = [
+    "acquisition", "merger", "expansion", "launch", "introduced", "release", "contract", 
+    "partnership", "alliance", "litigation", "lawsuit", "settlement", "regulatory", 
+    "compliance", "financing", "funding", "investment", "divest", "appointed", "hired",
+    "restructuring", "downsizing", "layoff", "bankruptcy", "patent", "award"
+  ];
+  
+  // Source keywords
+  const sourceKeywords = ["reported by", "according to", "published in", "announced in", "press release", "filing", "disclosure"];
+  
+  // Process each paragraph
+  for (const paragraph of paragraphs) {
+    // Check if paragraph contains date and event keywords
+    const dateMatch = paragraph.match(datePattern);
+    if (!dateMatch) continue;
+    
+    const date = dateMatch[0];
+    let hasEventKeyword = false;
+    let eventType = "";
+    
+    for (const keyword of eventKeywords) {
+      if (paragraph.toLowerCase().includes(keyword)) {
+        hasEventKeyword = true;
+        eventType = keyword;
+        break;
+      }
+    }
+    
+    if (!hasEventKeyword) continue;
+    
+    // Extract event description - take the sentence containing both the date and the event keyword
+    const sentences = paragraph.match(/[^.!?]+[.!?]+/g) || [paragraph];
+    let eventDescription = "";
+    
+    for (const sentence of sentences) {
+      if (sentence.includes(date) && sentence.toLowerCase().includes(eventType)) {
+        eventDescription = sentence.trim();
+        break;
+      }
+    }
+    
+    if (!eventDescription) {
+      // If we couldn't find a sentence with both, take the first 100 chars after removing the date
+      eventDescription = paragraph.replace(date, "").trim().slice(0, 100) + "...";
+    }
+    
+    // Determine impact
+    let impact = "Neutral impact on business operations";
+    for (const positive of positiveImpacts) {
+      if (paragraph.toLowerCase().includes(positive)) {
+        impact = "Positive impact on business performance";
+        break;
+      }
+    }
+    
+    for (const negative of negativeImpacts) {
+      if (paragraph.toLowerCase().includes(negative)) {
+        impact = "Negative impact requiring risk assessment";
+        break;
+      }
+    }
+    
+    // Find source if available
+    let source = "Industry publications";
+    for (const sourceKeyword of sourceKeywords) {
+      const sourceIndex = paragraph.toLowerCase().indexOf(sourceKeyword);
+      if (sourceIndex !== -1) {
+        const sourceEnd = paragraph.indexOf(".", sourceIndex);
+        if (sourceEnd !== -1) {
+          source = paragraph.substring(sourceIndex, sourceEnd).trim();
+        }
+        break;
+      }
+    }
+    
+    events.push({
+      event: eventDescription,
+      date: date,
+      impact: impact,
+      source: source
+    });
+  }
+  
+  return events.slice(0, 3); // Return top 3 events
+}
+
+/**
+ * Extract prior business history from text
+ */
+function extractPriorBusinessHistory(detailedAnalysis: string): {
+  companyName: string;
+  role: string;
+  years: string;
+  outcome: string;
+}[] {
+  if (!detailedAnalysis) return [];
+  
+  const history = [];
+  const paragraphs = detailedAnalysis.split('\n\n');
+  
+  // Look for paragraphs that mention previous businesses
+  const priorBusinessKeywords = [
+    "previous business", "prior business", "previous company", "prior company", 
+    "previously owned", "prior ownership", "previously founded", "prior venture",
+    "previous venture", "former business", "earlier venture", "past business"
+  ];
+  
+  // Common business roles
+  const roles = ["CEO", "founder", "co-founder", "owner", "president", "director", "partner", "executive"];
+  
+  // Year pattern: could be a range like 2015-2020 or just years mentioned
+  const yearPattern = /(?:from\s+)?(\d{4})(?:\s*-\s*|\s+to\s+)(\d{4})|(\d{4})/gi;
+  
+  // Outcome keywords
+  const positiveOutcomes = ["success", "profitable", "growth", "increased", "expanded", "acquired by", "acquisition", "sold for"];
+  const negativeOutcomes = ["failure", "bankrupt", "bankruptcy", "closed", "shut down", "dissolved", "losses", "unsuccessful"];
+  
+  // Process each paragraph
+  for (const paragraph of paragraphs) {
+    let hasPriorBusinessKeyword = false;
+    for (const keyword of priorBusinessKeywords) {
+      if (paragraph.toLowerCase().includes(keyword)) {
+        hasPriorBusinessKeyword = true;
+        break;
+      }
+    }
+    
+    if (!hasPriorBusinessKeyword) continue;
+    
+    // Try to extract company name using patterns
+    const companyNamePatterns = [
+      /(?:at|with|founded|owned|ran|managed|operated)\s+([A-Z][A-Za-z0-9\s&\.,]+)(?:,|\s+in|\s+from|\s+between)/,
+      /([A-Z][A-Za-z0-9\s&\.,]+)(?:\s+(?:Inc|LLC|Ltd|Corp|Corporation|Company|Co)\.?)(?:,|\s+)/,
+      /(?:company|business|venture)\s+(?:called|named)\s+([A-Z][A-Za-z0-9\s&\.,]+)(?:,|\s+)/
+    ];
+    
+    let companyName = "";
+    for (const pattern of companyNamePatterns) {
+      const match = paragraph.match(pattern);
+      if (match) {
+        companyName = match[1].trim();
+        break;
+      }
+    }
+    
+    if (!companyName) {
+      // If we couldn't extract a name, look for text in quotes or just call it "Previous Venture"
+      const quoteMatch = paragraph.match(/"([^"]+)"/);
+      companyName = quoteMatch ? quoteMatch[1] : "Previous Venture";
+    }
+    
+    // Extract role
+    let role = "Owner";
+    for (const r of roles) {
+      if (paragraph.toLowerCase().includes(r.toLowerCase())) {
+        role = r.charAt(0).toUpperCase() + r.slice(1);
+        break;
+      }
+    }
+    
+    // Extract years
+    let years = "Unspecified period";
+    // Look for years like 2010-2015 or year ranges mentioned
+    const yearMatches = paragraph.match(/\b(19|20)\d{2}\s*[-–—]\s*(19|20)\d{2}\b/);
+    if (yearMatches) {
+      years = yearMatches[0].replace(/\s+/g, '');
+    } else {
+      // Look for single years, might indicate current position
+      const singleYearMatches = paragraph.match(/\b(19|20)\d{2}\b/g);
+      if (singleYearMatches && singleYearMatches.length >= 2) {
+        // Use first two years found
+        years = `${singleYearMatches[0]}-${singleYearMatches[1]}`;
+      } else if (singleYearMatches && singleYearMatches.length === 1) {
+        // Just one year found, assume to present
+        years = `${singleYearMatches[0]}-present`;
+      }
+    }
+    
+    // Determine outcome
+    let outcome = "Unspecified outcome";
+    for (const positive of positiveOutcomes) {
+      if (paragraph.toLowerCase().includes(positive)) {
+        outcome = "Successful";
+        break;
+      }
+    }
+    
+    for (const negative of negativeOutcomes) {
+      if (paragraph.toLowerCase().includes(negative)) {
+        outcome = "Unsuccessful";
+        break;
+      }
+    }
+    
+    history.push({
+      companyName,
+      role,
+      years,
+      outcome
+    });
+  }
+  
+  return history.slice(0, 3); // Return top 3 prior businesses
 }
 
 /**

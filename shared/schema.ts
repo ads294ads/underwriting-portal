@@ -69,6 +69,7 @@ export const loanApplications = pgTable("loan_applications", {
   grade: text("grade"),
   scoringDetails: json("scoring_details").$type<Record<string, number>>(),
   documentAnalysis: json("document_analysis").$type<string[]>(),
+  deepResearchCompleted: boolean("deep_research_completed").default(false),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -87,6 +88,7 @@ export const insertLoanApplicationSchema = createInsertSchema(loanApplications)
     grade: true,
     scoringDetails: true,
     documentAnalysis: true,
+    deepResearchCompleted: true,
   })
   .extend({
     // Converting numeric fields to allow both string and number inputs

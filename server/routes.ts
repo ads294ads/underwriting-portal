@@ -168,7 +168,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const deepResearchResults = await performDeepResearch(loanApplication);
         
         // Update the loan application score with the deep research component
-        const currentScore = parseFloat(loanApplication.score);
+        const currentScore = parseFloat(loanApplication.score || "0");
         
         // Calculate new score: original score * (1 - deep research weight) + deep research score * weight
         const deepResearchWeight = DEEP_RESEARCH_COMPONENT_WEIGHT / 100;
