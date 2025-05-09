@@ -1016,7 +1016,7 @@ Current Ratio: ${(Math.random() * 1.5 + 1.0).toFixed(2)}`;
          .fontSize(11)
          .fillColor(colors.dark)
          .font('Helvetica')
-         .text(`${loanToRevenueRatio.toFixed(1)}%`, leftCol + metricLabelWidth, yPos, { link: false })
+         .text(`${loanToRevenueRatio.toFixed(1)}%`, leftCol + metricLabelWidth, yPos)
          .moveDown(0.7);
       
       doc.fontSize(11)
@@ -1026,7 +1026,7 @@ Current Ratio: ${(Math.random() * 1.5 + 1.0).toFixed(2)}`;
          .fontSize(11)
          .fillColor(colors.dark)
          .font('Helvetica')
-         .text(formatCurrency(Number(application.loanAmount || 0)), leftCol + metricLabelWidth, doc.y - 13, { link: false })
+         .text(formatCurrency(Number(application.loanAmount || 0)), leftCol + metricLabelWidth, doc.y - 13)
          .moveDown(0.7);
       
       const startRightCol = yPos;
@@ -1039,7 +1039,7 @@ Current Ratio: ${(Math.random() * 1.5 + 1.0).toFixed(2)}`;
          .fontSize(11)
          .fillColor(colors.dark)
          .font('Helvetica')
-         .text(String(application.yearsInBusiness || 0), rightCol + metricLabelWidth, startRightCol, { link: false })
+         .text(String(application.yearsInBusiness || 0), rightCol + metricLabelWidth, startRightCol)
          .moveDown(0.7);
       
       doc.fontSize(11)
@@ -1049,7 +1049,7 @@ Current Ratio: ${(Math.random() * 1.5 + 1.0).toFixed(2)}`;
          .fontSize(11)
          .fillColor(colors.dark)
          .font('Helvetica')
-         .text(formatCurrency(Number(application.annualRevenue || 0)), rightCol + metricLabelWidth, doc.y - 13, { link: false })
+         .text(formatCurrency(Number(application.annualRevenue || 0)), rightCol + metricLabelWidth, doc.y - 13)
          .moveDown(2);
       
       // Scoring summary section
@@ -2054,7 +2054,7 @@ function generateDetailedDocumentInsights(documentTypes: string[], metrics: stri
   
   // Realistic metrics from the text or random ones
   const getMetric = (type: string): string => {
-    const metricMap = {
+    const metricMap: Record<string, string> = {
       'debtToEquity': metrics.find(m => m.includes('debt')) || randomMetrics.debtToEquity[0],
       'currentRatio': metrics.find(m => m.includes('ratio')) || randomMetrics.currentRatio[0],
       'profitMargin': metrics.find(m => m.includes('%')) || `${randomMetrics.profitMargin[0]}%`,
