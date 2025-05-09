@@ -82,6 +82,9 @@ export async function performDeepResearch(application: LoanApplication): Promise
         marketTrends: multiAgentResults.companyAnalysis.marketTrends,
         executiveSummary: multiAgentResults.companyAnalysis.executiveSummary,
         detailedFindings: multiAgentResults.companyAnalysis.detailedFindings,
+        // Include the new specific events and financial metrics fields
+        specificEvents: multiAgentResults.companyAnalysis.specificEvents || [],
+        financialMetrics: multiAgentResults.companyAnalysis.financialMetrics || [],
         sources: multiAgentResults.companyAnalysis.sources,
         score: multiAgentResults.companyAnalysis.score
       },
@@ -93,6 +96,8 @@ export async function performDeepResearch(application: LoanApplication): Promise
         managementCapabilities: multiAgentResults.ownerAnalysis.managementCapabilities,
         executiveSummary: multiAgentResults.ownerAnalysis.executiveSummary,
         detailedFindings: multiAgentResults.ownerAnalysis.detailedFindings,
+        // Include the new prior business history field
+        priorBusinessHistory: multiAgentResults.ownerAnalysis.priorBusinessHistory || [],
         sources: multiAgentResults.ownerAnalysis.sources,
         score: multiAgentResults.ownerAnalysis.score
       },
@@ -526,6 +531,13 @@ function generateFallbackResearchResults(): DeepResearchResult {
       legalIssues: [],
       financialRedFlags: [],
       reputationInsights: [],
+      industryPosition: [],
+      marketTrends: [],
+      executiveSummary: "Deep analysis unavailable due to API connection issues. Please check Perplexity API key and try again.",
+      detailedFindings: {},
+      specificEvents: [],
+      financialMetrics: [],
+      sources: [],
       score: 70
     },
     ownerAnalysis: {
@@ -533,6 +545,11 @@ function generateFallbackResearchResults(): DeepResearchResult {
       legalIssues: [],
       financialRedFlags: [],
       reputationInsights: [],
+      managementCapabilities: [],
+      executiveSummary: "Deep analysis unavailable due to API connection issues. Please check Perplexity API key and try again.",
+      detailedFindings: {},
+      priorBusinessHistory: [],
+      sources: [],
       score: 70
     },
     combinedScore: 70,
