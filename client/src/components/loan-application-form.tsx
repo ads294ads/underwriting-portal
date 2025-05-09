@@ -408,6 +408,98 @@ export default function LoanApplicationForm({ onApplicationSubmit }: LoanApplica
                 )}
               />
             </div>
+            
+            {/* Business Owners Section */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-md font-medium text-neutral-800">Business Owners <span className="text-red-500">*</span></h3>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => append({ name: "", ownership: "" })}
+                  className="text-sm"
+                >
+                  Add Owner
+                </Button>
+              </div>
+              
+              <div className="space-y-4">
+                {fields.map((field, index) => (
+                  <div key={field.id} className="flex items-end gap-4 p-4 border border-neutral-200 rounded-md bg-neutral-50">
+                    <div className="flex-1">
+                      <FormField
+                        control={form.control}
+                        name={`businessOwners.${index}.name`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-sm font-medium text-neutral-700">
+                              Owner Name
+                            </FormLabel>
+                            <FormControl>
+                              <Input
+                                placeholder="Full Name"
+                                {...field}
+                                className="w-full px-3 py-2 border border-neutral-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                    
+                    <div className="w-1/4">
+                      <FormField
+                        control={form.control}
+                        name={`businessOwners.${index}.ownership`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-sm font-medium text-neutral-700">
+                              Ownership %
+                            </FormLabel>
+                            <FormControl>
+                              <div className="relative">
+                                <Input
+                                  type="number"
+                                  min="1"
+                                  max="100"
+                                  placeholder="e.g. 51"
+                                  {...field}
+                                  className="w-full px-3 py-2 border border-neutral-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
+                                />
+                                <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                                  <span className="text-neutral-500">%</span>
+                                </div>
+                              </div>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                    
+                    {fields.length > 1 && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => remove(index)}
+                        className="text-red-500 hover:text-red-700 self-end mb-2"
+                      >
+                        <Trash2 className="h-5 w-5" />
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </div>
+              
+              {form.formState.errors.businessOwners?.message && (
+                <p className="text-sm font-medium text-red-500">
+                  {form.formState.errors.businessOwners.message}
+                </p>
+              )}
+            </div>
 
             <div className="md:col-span-2">
               <FormLabel className="block text-sm font-medium text-neutral-700 mb-1">

@@ -38,10 +38,26 @@ export async function performDeepResearch(application: LoanApplication): Promise
     const companyName = application.businessName;
     const industry = application.industry;
     
-    // Sanitize owner information for privacy
-    // In a real app, owner name would be extracted from uploaded tax documents
-    // For demo, we'll use a privacy-safe placeholder
-    const ownerName = "Business Owner"; // Would be extracted from documents in production
+    // Get owner information
+    let ownerName = "Business Owner"; // Default fallback
+    
+    // Check if we have business owners with 20% or more ownership
+    if (application.businessOwners && application.businessOwners.length > 0) {
+      // Find owners with 20% or more ownership
+      const significantOwners = application.businessOwners.filter(owner => 
+        owner.ownership >= 20
+      );
+      
+      if (significantOwners.length > 0) {
+        // Use the owner with the highest ownership percentage
+        const primaryOwner = significantOwners.reduce((prev, current) => 
+          (prev.ownership > current.ownership) ? prev : current
+        );
+        ownerName = primaryOwner.name;
+      }
+    }
+    
+    console.log(`Researching company: ${companyName} and owner: ${ownerName}`);
     
     // Perform company research
     const companyAnalysis = await researchCompany(companyName, industry);
