@@ -435,17 +435,17 @@ Current Ratio: ${(Math.random() * 1.5 + 1.0).toFixed(2)}`;
               fileName,
               keyFindings: [
                 `The ${docType.toLowerCase()} shows strong financial health`,
-                `Business demonstrates ${Number(application.yearsInBusiness) > 5 ? 'established' : 'developing'} operational stability`
+                `Business demonstrates ${Number(application.yearsInBusiness || 0) > 5 ? 'established' : 'developing'} operational stability`
               ],
               financialMetrics: {
                 "Debt Service Coverage": {
-                  value: `${((Number(application.annualRevenue) * 0.15) / (application.loanAmount * 0.12)).toFixed(2)}`,
+                  value: `${((Number(application.annualRevenue || 0) * 0.15) / (Number(application.loanAmount || 0) * 0.12)).toFixed(2)}`,
                   trend: "Stable",
                   comparisonToIndustry: "Within expected range",
                   impact: "Critical factor in loan repayment capacity"
                 },
                 "Current Ratio": {
-                  value: `${((Number(application.annualRevenue) * 0.35) / (Number(application.annualRevenue) * 0.22)).toFixed(2)}`,
+                  value: `${((Number(application.annualRevenue || 0) * 0.35) / (Number(application.annualRevenue || 0) * 0.22)).toFixed(2)}`,
                   trend: "Improving",
                   comparisonToIndustry: "Above industry average",
                   impact: "Positive indicator of short-term financial health"
@@ -453,33 +453,33 @@ Current Ratio: ${(Math.random() * 1.5 + 1.0).toFixed(2)}`;
               },
               underwritingEvaluation: {
                 strengths: [
-                  `${application.yearsInBusiness > 5 ? 'Proven business model with consistent performance' : 'Innovative business approach with growth potential'}`,
-                  `${Number(application.annualRevenue) > 1000000 ? 'Strong revenue generation capacity' : 'Efficient operations relative to business size'}`
+                  `${Number(application.yearsInBusiness || 0) > 5 ? 'Proven business model with consistent performance' : 'Innovative business approach with growth potential'}`,
+                  `${Number(application.annualRevenue || 0) > 1000000 ? 'Strong revenue generation capacity' : 'Efficient operations relative to business size'}`
                 ],
                 weaknesses: [
-                  `${(application.loanAmount / Number(application.annualRevenue)) > 0.5 ? 'High loan-to-revenue ratio may strain cash flow' : 'Limited capital reserves for expansion'}`,
-                  `${application.yearsInBusiness < 3 ? 'Limited operating history increases uncertainty' : 'Market concentration risk in current customer base'}`
+                  `${(Number(application.loanAmount || 0) / Number(application.annualRevenue || 1)) > 0.5 ? 'High loan-to-revenue ratio may strain cash flow' : 'Limited capital reserves for expansion'}`,
+                  `${Number(application.yearsInBusiness || 0) < 3 ? 'Limited operating history increases uncertainty' : 'Market concentration risk in current customer base'}`
                 ],
                 risks: [
-                  `${(application.loanAmount / Number(application.annualRevenue)) > 0.5 ? 'Debt service burden could impact operational flexibility' : 'Industry competition may pressure profit margins'}`,
-                  `${application.yearsInBusiness < 3 ? 'Unproven business model sustainability in economic downturns' : 'Potential regulatory changes in the industry'}`
+                  `${(Number(application.loanAmount || 0) / Number(application.annualRevenue || 1)) > 0.5 ? 'Debt service burden could impact operational flexibility' : 'Industry competition may pressure profit margins'}`,
+                  `${Number(application.yearsInBusiness || 0) < 3 ? 'Unproven business model sustainability in economic downturns' : 'Potential regulatory changes in the industry'}`
                 ],
                 mitigatingFactors: [
-                  `${application.yearsInBusiness > 5 ? 'Demonstrated resilience through market cycles' : 'Strong management team with relevant expertise'}`,
-                  `${Number(application.annualRevenue) > 1000000 ? 'Diversified revenue streams reduce concentration risk' : 'Low overhead structure enables flexibility'}`
+                  `${Number(application.yearsInBusiness || 0) > 5 ? 'Demonstrated resilience through market cycles' : 'Strong management team with relevant expertise'}`,
+                  `${Number(application.annualRevenue || 0) > 1000000 ? 'Diversified revenue streams reduce concentration risk' : 'Low overhead structure enables flexibility'}`
                 ]
               },
               overallAssessment: `This ${docType.toLowerCase()} indicates that ${application.businessName} is a ${
-                application.grade.startsWith('A') ? 'strong' : 
-                application.grade.startsWith('B') ? 'moderate' : 'higher risk'
+                (application.grade || '').startsWith('A') ? 'strong' : 
+                (application.grade || '').startsWith('B') ? 'moderate' : 'higher risk'
               } candidate for lending consideration. The financial metrics demonstrate ${
-                application.grade.startsWith('A') ? 'solid fundamentals with strong repayment capacity' : 
-                application.grade.startsWith('B') ? 'adequate performance with some areas requiring monitoring' :
+                (application.grade || '').startsWith('A') ? 'solid fundamentals with strong repayment capacity' : 
+                (application.grade || '').startsWith('B') ? 'adequate performance with some areas requiring monitoring' :
                 'concerning trends that require substantial risk mitigation'
               }. The business shows ${
-                application.yearsInBusiness > 5 ? 'established market presence' : 'promising potential'
+                Number(application.yearsInBusiness || 0) > 5 ? 'established market presence' : 'promising potential'
               } in the ${application.industry} industry.`,
-              impactOnScore: application.grade.startsWith('A') ? 8 : application.grade.startsWith('B') ? 6 : 4
+              impactOnScore: (application.grade || '').startsWith('A') ? 8 : (application.grade || '').startsWith('B') ? 6 : 4
             };
             
             documentAnalysisResults.push(analysisResult);
@@ -958,9 +958,9 @@ Current Ratio: ${(Math.random() * 1.5 + 1.0).toFixed(2)}`;
       doc.fillColor('white')
          .fontSize(36)
          .font('Helvetica-Bold')
-         .text(application.grade, centerX - 20, centerY - 20, { width: 40, align: 'center' })
+         .text(application.grade || 'B', centerX - 20, centerY - 20, { width: 40, align: 'center' })
          .fontSize(14)
-         .text(`${application.score}/100`, centerX - 30, centerY + 20, { width: 60, align: 'center' });
+         .text(`${application.score || '70'}/100`, centerX - 30, centerY + 20, { width: 60, align: 'center' });
       
       // Add grade description
       doc.moveDown(5)
@@ -1026,7 +1026,7 @@ Current Ratio: ${(Math.random() * 1.5 + 1.0).toFixed(2)}`;
          .fontSize(11)
          .fillColor(colors.dark)
          .font('Helvetica')
-         .text(formatCurrency(Number(application.loanAmount)), leftCol + metricLabelWidth, doc.y - 13, { link: false })
+         .text(formatCurrency(Number(application.loanAmount || 0)), leftCol + metricLabelWidth, doc.y - 13, { link: false })
          .moveDown(0.7);
       
       const startRightCol = yPos;
@@ -1039,7 +1039,7 @@ Current Ratio: ${(Math.random() * 1.5 + 1.0).toFixed(2)}`;
          .fontSize(11)
          .fillColor(colors.dark)
          .font('Helvetica')
-         .text(application.yearsInBusiness.toString(), rightCol + metricLabelWidth, startRightCol, { link: false })
+         .text(String(application.yearsInBusiness || 0), rightCol + metricLabelWidth, startRightCol, { link: false })
          .moveDown(0.7);
       
       doc.fontSize(11)
@@ -1049,7 +1049,7 @@ Current Ratio: ${(Math.random() * 1.5 + 1.0).toFixed(2)}`;
          .fontSize(11)
          .fillColor(colors.dark)
          .font('Helvetica')
-         .text(formatCurrency(Number(application.annualRevenue)), rightCol + metricLabelWidth, doc.y - 13, { link: false })
+         .text(formatCurrency(Number(application.annualRevenue || 0)), rightCol + metricLabelWidth, doc.y - 13, { link: false })
          .moveDown(2);
       
       // Scoring summary section
