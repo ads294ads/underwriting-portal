@@ -806,6 +806,18 @@ function synthesizeCompanyResearch(agentResults: AgentResearchResult[]): {
   marketTrends: string[];
   executiveSummary: string;
   detailedFindings: Record<string, string[]>;
+  specificEvents?: {
+    event: string;
+    date: string;
+    impact: string;
+    source: string;
+  }[];
+  financialMetrics?: {
+    metric: string;
+    value: string;
+    industryAverage: string;
+    trend: string;
+  }[];
   sources: string[];
   score: number;
 } {
@@ -848,6 +860,14 @@ function synthesizeCompanyResearch(agentResults: AgentResearchResult[]): {
   const allSources = new Set<string>();
   agentResults.forEach(r => r.findings.sources.forEach(source => allSources.add(source)));
   
+  // Generate financial metrics from the financial auditor's findings
+  const financialMetrics = financialAuditorFindings ? extractFinancialMetrics(financialAuditorFindings.detailedAnalysis) : [];
+  
+  // Generate specific events from business analyst and industry specialist findings
+  const specificEvents = extractSpecificEvents(
+    [businessAnalystFindings?.detailedAnalysis, industrySpecialistFindings?.detailedAnalysis].filter(Boolean).join("\n\n")
+  );
+  
   // Organize findings by category
   return {
     overview,
@@ -867,6 +887,8 @@ function synthesizeCompanyResearch(agentResults: AgentResearchResult[]): {
       industryContext: industrySpecialistFindings?.detailedAnalysis ? [industrySpecialistFindings.detailedAnalysis] : [],
       marketPosition: marketResearcherFindings?.detailedAnalysis ? [marketResearcherFindings.detailedAnalysis] : []
     },
+    financialMetrics,
+    specificEvents,
     sources: Array.from(allSources),
     score: safetyScore
   };
@@ -883,6 +905,12 @@ function synthesizeOwnerResearch(agentResults: AgentResearchResult[]): {
   managementCapabilities: string[];
   executiveSummary: string;
   detailedFindings: Record<string, string[]>;
+  priorBusinessHistory?: {
+    companyName: string;
+    role: string;
+    years: string;
+    outcome: string;
+  }[];
   sources: string[];
   score: number;
 } {
@@ -924,6 +952,9 @@ function synthesizeOwnerResearch(agentResults: AgentResearchResult[]): {
   const allSources = new Set<string>();
   agentResults.forEach(r => r.findings.sources.forEach(source => allSources.add(source)));
   
+  // Extract prior business history from business analyst findings
+  const priorBusinessHistory = businessAnalystFindings ? extractPriorBusinessHistory(businessAnalystFindings.detailedAnalysis) : [];
+  
   // Organize findings by category
   return {
     overview,
@@ -941,6 +972,7 @@ function synthesizeOwnerResearch(agentResults: AgentResearchResult[]): {
       financialBackground: financialAuditorFindings?.detailedAnalysis ? [financialAuditorFindings.detailedAnalysis] : [],
       industryExperience: industrySpecialistFindings?.detailedAnalysis ? [industrySpecialistFindings.detailedAnalysis] : []
     },
+    priorBusinessHistory,
     sources: Array.from(allSources),
     score: safetyScore
   };

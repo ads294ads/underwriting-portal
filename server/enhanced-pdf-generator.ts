@@ -1005,6 +1005,73 @@ function addOwnerAnalysisPages(
        .moveDown(1);
   }
   
+  // Prior Business History if available
+  if (deepResearchResults.ownerAnalysis.priorBusinessHistory && deepResearchResults.ownerAnalysis.priorBusinessHistory.length > 0) {
+    doc.fontSize(14)
+       .fillColor(colors.primary)
+       .font('Helvetica-Bold')
+       .text('Prior Business History', 50, doc.y)
+       .moveDown(0.5);
+    
+    // Add explanation
+    doc.fontSize(11)
+       .fillColor(colors.dark)
+       .font('Helvetica-Italic')
+       .text('The following specific prior business ventures were identified through our research:', 50, doc.y, { width: 500 })
+       .moveDown(0.8);
+    
+    // Create a table for prior business history
+    // Table headers
+    doc.fontSize(11)
+       .fillColor(colors.primary)
+       .font('Helvetica-Bold')
+       .text('Company', 50, doc.y, { width: 150, continued: true })
+       .text('Role', 200, doc.y, { width: 100, continued: true })
+       .text('Years', 300, doc.y, { width: 70, continued: true })
+       .text('Outcome', 370, doc.y, { width: 130 })
+       .moveDown(0.3);
+    
+    // Draw header separator line
+    doc.lineWidth(1)
+       .strokeColor(colors.secondary)
+       .moveTo(50, doc.y)
+       .lineTo(500, doc.y)
+       .stroke()
+       .moveDown(0.5);
+    
+    // Table rows
+    deepResearchResults.ownerAnalysis.priorBusinessHistory.forEach((history, i) => {
+      // Determine outcome color
+      let outcomeColor = colors.secondary;
+      if (history.outcome.toLowerCase().includes('success') || history.outcome.toLowerCase().includes('profitable')) {
+        outcomeColor = colors.success;
+      } else if (history.outcome.toLowerCase().includes('fail') || history.outcome.toLowerCase().includes('bankruptcy')) {
+        outcomeColor = colors.danger;
+      }
+      
+      doc.fontSize(10)
+         .fillColor(colors.dark)
+         .font('Helvetica')
+         .text(history.companyName, 50, doc.y, { width: 150 })
+         .text(history.role, 200, doc.y - 14, { width: 100 })
+         .text(history.years, 300, doc.y - 14, { width: 70 })
+         .fillColor(outcomeColor)
+         .font('Helvetica-Bold')
+         .text(history.outcome, 370, doc.y - 14, { width: 130 })
+         .moveDown(0.7);
+      
+      // Draw light row separator
+      doc.lineWidth(0.5)
+         .strokeColor('#e0e0e0')
+         .moveTo(50, doc.y - 0.3)
+         .lineTo(500, doc.y - 0.3)
+         .stroke()
+         .moveDown(0.3);
+    });
+    
+    doc.moveDown(1);
+  }
+  
   // Page number
   doc.fontSize(10)
      .fillColor(colors.secondary)
