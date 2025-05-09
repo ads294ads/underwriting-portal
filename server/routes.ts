@@ -110,13 +110,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const grade = determineGrade(score);
       
       // Create loan application with score as string and grade
-      const loanApplication = await storage.createLoanApplication({
+      let loanApplication = await storage.createLoanApplication({
         ...validatedData,
         score: score.toString(), // Convert score to string to match schema
         grade,
         scoringDetails: generateScoringDetails(validatedData),
         documentAnalysis: [],
       });
+      
+      // Immediately perform deep research in the background
+      console.log("Starting automatic deep research for new application...");
+      
+      try {
+        // Perform the deep research analysis
+        const deepResearchResults = await performDeepResearch(loanApplication);
+        
+        // Update the loan application score with the deep research component
+        const currentScore = parseFloat(loanApplication.score);
+        
+        // Calculate new score: original score * (1 - deep research weight) + deep research score * weight
+        const deepResearchWeight = DEEP_RESEARCH_COMPONENT_WEIGHT / 100;
+        const newScore = (currentScore * (1 - deepResearchWeight)) + 
+                         (deepResearchResults.combinedScore * deepResearchWeight);
+        
+        // Update scoring details
+        const scoringDetails = loanApplication.scoringDetails || {};
+        scoringDetails.deepResearch = deepResearchResults.combinedScore;
+        
+        // Update application with new details
+        const updatedData: Partial<LoanApplication> = {
+          score: newScore.toString(),
+          grade: determineGrade(newScore),
+          scoringDetails: scoringDetails,
+        };
+        
+        loanApplication = await storage.updateLoanApplication(loanApplication.id, updatedData);
+        console.log("Deep research completed and application updated with results");
+      } catch (deepResearchError) {
+        console.error("Error performing automatic deep research:", deepResearchError);
+        // Continue with the application creation process even if deep research fails
+      }
       
       res.status(201).json(loanApplication);
     } catch (error) {
@@ -369,7 +402,7 @@ Current Ratio: ${(Math.random() * 1.5 + 1.0).toFixed(2)}`;
   
   // Generate and download PDF rationale report for a loan application
   app.get("/api/loan-applications/:id/rationale-pdf", async (req, res) => {
-    // Perform deep research if not already done
+    // Always perform deep research to get the most up-to-date results
     let deepResearchResults: DeepResearchResult | null = null;
     try {
       const id = parseInt(req.params.id);
@@ -379,19 +412,41 @@ Current Ratio: ${(Math.random() * 1.5 + 1.0).toFixed(2)}`;
         return res.status(404).json({ message: "Loan application not found" });
       }
       
-      // Check if this application has a deep research score component
-      // If it exists, attempt to retrieve the deep research results
-      if (application.scoringDetails && application.scoringDetails.deepResearch) {
-        console.log("Deep research already performed, retrieving results for PDF report");
-        try {
-          // Perform the deep research again to get the detailed results
-          // This is efficient because if the Perplexity API fails, we already have the score
-          deepResearchResults = await performDeepResearch(application);
-          console.log("Deep research results retrieved for PDF report");
-        } catch (drError) {
-          console.error("Error retrieving deep research results:", drError);
-          // Continue with PDF generation even if deep research retrieval fails
+      console.log("Performing deep research for PDF report generation");
+      try {
+        // Always perform the deep research for the most up-to-date results
+        deepResearchResults = await performDeepResearch(application);
+        console.log("Deep research results retrieved for PDF report");
+        
+        // Update the application with deep research results if they're new or improved
+        const currentScore = application.score ? parseFloat(application.score) : 0;
+        const deepResearchWeight = DEEP_RESEARCH_COMPONENT_WEIGHT / 100;
+        
+        // Only update if we don't already have a deep research component or if the score improved
+        if (!application.scoringDetails?.deepResearch || 
+            deepResearchResults.combinedScore > application.scoringDetails.deepResearch) {
+          
+          // Calculate new score with deep research component
+          const newScore = (currentScore * (1 - deepResearchWeight)) + 
+                          (deepResearchResults.combinedScore * deepResearchWeight);
+          
+          // Update scoring details
+          const scoringDetails = application.scoringDetails || {};
+          scoringDetails.deepResearch = deepResearchResults.combinedScore;
+          
+          // Update application with new details
+          const updatedData: Partial<LoanApplication> = {
+            score: newScore.toString(),
+            grade: determineGrade(newScore),
+            scoringDetails: scoringDetails,
+          };
+          
+          await storage.updateLoanApplication(id, updatedData);
+          console.log("Application updated with latest deep research results");
         }
+      } catch (drError) {
+        console.error("Error performing deep research for PDF:", drError);
+        // Continue with PDF generation even if deep research fails
       }
       
       // Check for any document analysis that needs to be included in the report

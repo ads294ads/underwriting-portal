@@ -19,11 +19,19 @@ export function addDeepResearchPages(
   doc.addPage();
   
   // Page header
-  doc.fontSize(18)
+  doc.fontSize(20)
      .fillColor(colors.primary)
      .font('Helvetica-Bold')
-     .text('DEEP SEARCH - COMPANY ANALYSIS', 50, 50, { align: 'left' })
-     .moveDown(1);
+     .text('DEEP SEARCH - COMPANY ANALYSIS', 50, 50, { align: 'center' })
+     .moveDown(0.5);
+     
+  // Subheader with explanation
+  doc.fontSize(12)
+     .fillColor(colors.dark)
+     .font('Helvetica-Oblique')
+     .text('Comprehensive analysis of company background, legal issues, and financial red flags', 
+            { align: 'center' })
+     .moveDown(1.5);
   
   // Company overview section
   const drawSectionHeader = (text: string, y: number) => {
