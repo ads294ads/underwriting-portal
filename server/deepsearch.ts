@@ -1,5 +1,6 @@
 import { LoanApplication } from "../shared/schema";
 import crypto from "crypto";
+import { performMultiAgentResearch } from "./multi-agent-research";
 
 // Score component dedicated to deep research findings
 export const DEEP_RESEARCH_COMPONENT_WEIGHT = 10; // 10% of total score
@@ -11,6 +12,11 @@ export interface DeepResearchResult {
     legalIssues: string[];
     financialRedFlags: string[];
     reputationInsights: string[];
+    industryPosition?: string[];
+    marketTrends?: string[];
+    executiveSummary?: string;
+    detailedFindings?: Record<string, string[]>;
+    sources?: string[];
     score: number; // 0-100 score for the company research component
   };
   ownerAnalysis: {
@@ -18,68 +24,118 @@ export interface DeepResearchResult {
     legalIssues: string[];
     financialRedFlags: string[];
     reputationInsights: string[];
+    managementCapabilities?: string[];
+    executiveSummary?: string;
+    detailedFindings?: Record<string, string[]>;
+    sources?: string[];
     score: number; // 0-100 score for the owner research component
   };
   combinedScore: number; // Weighted combined score (0-100)
   grade: string; // Letter grade for deep research component
+  riskAssessment?: {
+    highRiskFactors: string[];
+    moderateRiskFactors: string[];
+    mitigatingFactors: string[];
+  };
 }
 
 // Function to perform deep research on company and owner
 export async function performDeepResearch(application: LoanApplication): Promise<DeepResearchResult> {
   try {
-    console.log("Starting deep research analysis...");
+    console.log("Starting deep multi-agent research analysis...");
     
     if (!process.env.PERPLEXITY_API_KEY) {
       console.log("Perplexity API Key not found, using fallback research results");
       return generateFallbackResearchResults();
     }
     
-    // Research company
-    const companyName = application.businessName;
-    const industry = application.industry;
-    
-    // Get owner information
-    let ownerName = "Business Owner"; // Default fallback
-    
-    // Check if we have business owners with 20% or more ownership
-    if (application.businessOwners && application.businessOwners.length > 0) {
-      // Find owners with 20% or more ownership
-      const significantOwners = application.businessOwners.filter(owner => 
-        owner.ownership >= 20
-      );
-      
-      if (significantOwners.length > 0) {
-        // Use the owner with the highest ownership percentage
-        const primaryOwner = significantOwners.reduce((prev, current) => 
-          (prev.ownership > current.ownership) ? prev : current
-        );
-        ownerName = primaryOwner.name;
-      }
-    }
-    
-    console.log(`Researching company: ${companyName} and owner: ${ownerName}`);
-    
-    // Perform company research
-    const companyAnalysis = await researchCompany(companyName, industry);
-    
-    // Perform owner research
-    const ownerAnalysis = await researchPerson(ownerName, companyName);
-    
-    // Calculate combined score
-    const combinedScore = Math.round((companyAnalysis.score + ownerAnalysis.score) / 2);
-    
-    // Determine grade
-    const grade = determineDeepResearchGrade(combinedScore);
+    // Use new multi-agent research system for more comprehensive analysis
+    console.log("Deploying multi-agent research system...");
+    const multiAgentResults = await performMultiAgentResearch(application);
+    console.log("Multi-agent research complete!");
     
     return {
-      companyAnalysis,
-      ownerAnalysis,
-      combinedScore,
-      grade
+      companyAnalysis: {
+        overview: multiAgentResults.companyAnalysis.overview,
+        legalIssues: multiAgentResults.companyAnalysis.legalIssues,
+        financialRedFlags: multiAgentResults.companyAnalysis.financialRedFlags,
+        reputationInsights: multiAgentResults.companyAnalysis.reputationInsights,
+        industryPosition: multiAgentResults.companyAnalysis.industryPosition,
+        marketTrends: multiAgentResults.companyAnalysis.marketTrends,
+        executiveSummary: multiAgentResults.companyAnalysis.executiveSummary,
+        detailedFindings: multiAgentResults.companyAnalysis.detailedFindings,
+        sources: multiAgentResults.companyAnalysis.sources,
+        score: multiAgentResults.companyAnalysis.score
+      },
+      ownerAnalysis: {
+        overview: multiAgentResults.ownerAnalysis.overview,
+        legalIssues: multiAgentResults.ownerAnalysis.legalIssues,
+        financialRedFlags: multiAgentResults.ownerAnalysis.financialRedFlags,
+        reputationInsights: multiAgentResults.ownerAnalysis.reputationInsights,
+        managementCapabilities: multiAgentResults.ownerAnalysis.managementCapabilities,
+        executiveSummary: multiAgentResults.ownerAnalysis.executiveSummary,
+        detailedFindings: multiAgentResults.ownerAnalysis.detailedFindings,
+        sources: multiAgentResults.ownerAnalysis.sources,
+        score: multiAgentResults.ownerAnalysis.score
+      },
+      combinedScore: multiAgentResults.combinedScore,
+      grade: multiAgentResults.grade,
+      riskAssessment: multiAgentResults.riskAssessment
     };
   } catch (error) {
-    console.error("Error performing deep research:", error);
-    return generateFallbackResearchResults();
+    console.error("Error performing multi-agent deep research:", error);
+    
+    // Fallback to traditional research method if multi-agent approach fails
+    console.log("Falling back to traditional research method...");
+    
+    try {
+      // Research company
+      const companyName = application.businessName;
+      const industry = application.industry;
+      
+      // Get owner information
+      let ownerName = "Business Owner"; // Default fallback
+      
+      // Check if we have business owners with 20% or more ownership
+      if (application.businessOwners && application.businessOwners.length > 0) {
+        // Find owners with 20% or more ownership
+        const significantOwners = application.businessOwners.filter(owner => 
+          owner.ownership >= 20
+        );
+        
+        if (significantOwners.length > 0) {
+          // Use the owner with the highest ownership percentage
+          const primaryOwner = significantOwners.reduce((prev, current) => 
+            (prev.ownership > current.ownership) ? prev : current
+          );
+          ownerName = primaryOwner.name;
+        }
+      }
+      
+      console.log(`Falling back to researching company: ${companyName} and owner: ${ownerName}`);
+      
+      // Perform company research
+      const companyAnalysis = await researchCompany(companyName, industry);
+      
+      // Perform owner research
+      const ownerAnalysis = await researchPerson(ownerName, companyName);
+      
+      // Calculate combined score
+      const combinedScore = Math.round((companyAnalysis.score + ownerAnalysis.score) / 2);
+      
+      // Determine grade
+      const grade = determineDeepResearchGrade(combinedScore);
+      
+      return {
+        companyAnalysis,
+        ownerAnalysis,
+        combinedScore,
+        grade
+      };
+    } catch (fallbackError) {
+      console.error("Error in fallback research:", fallbackError);
+      return generateFallbackResearchResults();
+    }
   }
 }
 
