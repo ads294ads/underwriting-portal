@@ -559,7 +559,25 @@ function parseAgentResearchResponse(response: string): {
 } {
   try {
     // Attempt to parse JSON response
-    const parsed = JSON.parse(response);
+    let parsed;
+    
+    try {
+      parsed = JSON.parse(response);
+    } catch (jsonError) {
+      console.warn("Failed to parse JSON response from Perplexity API:", jsonError);
+      
+      // Attempt to extract JSON from markdown code blocks
+      const jsonMatch = response.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+      if (jsonMatch && jsonMatch[1]) {
+        try {
+          parsed = JSON.parse(jsonMatch[1]);
+        } catch (secondJsonError) {
+          throw new Error("Failed to parse JSON from code block");
+        }
+      } else {
+        throw new Error("Response is not in JSON format and no JSON code block found");
+      }
+    }
     
     return {
       summary: parsed.summary || "No summary provided.",
@@ -707,6 +725,12 @@ async function callPerplexityAPI(
   agentRole: AgentSpecialization
 ): Promise<string> {
   try {
+    console.log(`Agent ${agentRole} calling Perplexity API...`);
+    
+    if (!process.env.PERPLEXITY_API_KEY) {
+      throw new Error("Perplexity API key not found");
+    }
+    
     // Customize system prompt based on agent role
     let systemPrompt = "You are a specialized AI agent performing deep research for business loan due diligence.";
     
