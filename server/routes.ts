@@ -258,25 +258,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
             // Remove non-printable characters for readability
             fileContent = fileContent.replace(/[^\x20-\x7E]/g, ' ').trim();
             
-            // If content is too small or appears to be binary garbage, use placeholder for demo
+            // If content is too small or appears to be binary garbage, use filename and application context
             if (fileContent.length < 100 || fileContent.split(' ').length < 20) {
-              console.log(`File ${file.originalname} content appears to be binary or too short - using placeholder data for demo`);
-              // Financial data placeholder to simulate extraction for demo purposes
-              fileContent = `Financial Data for ${application.businessName}
-                
-Revenue: $${application.annualRevenue}
-Net Income: $${Number(application.annualRevenue) * 0.12}
-Current Assets: $${Number(application.annualRevenue) * 0.35}
-Total Assets: $${Number(application.annualRevenue) * 0.85}
-Current Liabilities: $${Number(application.annualRevenue) * 0.22}
-Total Liabilities: $${Number(application.annualRevenue) * 0.52}
-                
-Years in Business: ${application.yearsInBusiness}
+              console.log(`File ${file.originalname} content appears to be binary or too short - using filename and application context for analysis`);
+              
+              // Create context information based on the filename and application details
+              const documentType = file.originalname.toLowerCase().includes("tax") ? "Tax Return" :
+                                 file.originalname.toLowerCase().includes("balance") ? "Balance Sheet" :
+                                 file.originalname.toLowerCase().includes("income") ? "Income Statement" :
+                                 file.originalname.toLowerCase().includes("bank") ? "Bank Statement" :
+                                 file.originalname.toLowerCase().includes("business") ? "Business Plan" :
+                                 "Financial Document";
+              
+              fileContent = `Document Analysis Request for: ${file.originalname}
+Document Type: ${documentType}
+
+BUSINESS CONTEXT:
+Business Name: ${application.businessName}
 Industry: ${application.industry}
-                
-Cash Flow from Operations: $${Number(application.annualRevenue) * 0.18}
-Debt to Equity Ratio: ${(Math.random() * 1.5 + 0.5).toFixed(2)}
-Current Ratio: ${(Math.random() * 1.5 + 1.0).toFixed(2)}`;
+Years in Business: ${application.yearsInBusiness}
+Annual Revenue: $${application.annualRevenue}
+Loan Amount Requested: $${application.loanAmount}
+Business Description: A business operating in the ${application.industry} industry
+
+ANALYSIS REQUEST:
+This document was uploaded as part of a loan application. Please provide an expert analysis of what financial metrics would typically be available in this type of document, how they would impact the loan decision, and any industry-specific considerations for the ${application.industry} sector.`;
             }
           }
           
@@ -429,57 +435,22 @@ Current Ratio: ${(Math.random() * 1.5 + 1.0).toFixed(2)}`;
                            
             const fileName = `${docType}_${index + 1}.pdf`;
             
-            // Create rich document analysis result with meaningful data
+            // Create a document analysis result using the actual analysis text
             const analysisResult: DocumentAnalysisResult = {
               documentType: docType as any,
               fileName,
               keyFindings: [
-                `The ${docType.toLowerCase()} shows strong financial health`,
-                `Business demonstrates ${Number(application.yearsInBusiness || 0) > 5 ? 'established' : 'developing'} operational stability`
+                analysisText
               ],
-              financialMetrics: {
-                "Debt Service Coverage": {
-                  value: `${((Number(application.annualRevenue || 0) * 0.15) / (Number(application.loanAmount || 0) * 0.12)).toFixed(2)}`,
-                  trend: "Stable",
-                  comparisonToIndustry: "Within expected range",
-                  impact: "Critical factor in loan repayment capacity"
-                },
-                "Current Ratio": {
-                  value: `${((Number(application.annualRevenue || 0) * 0.35) / (Number(application.annualRevenue || 0) * 0.22)).toFixed(2)}`,
-                  trend: "Improving",
-                  comparisonToIndustry: "Above industry average",
-                  impact: "Positive indicator of short-term financial health"
-                }
-              },
+              financialMetrics: {},
               underwritingEvaluation: {
-                strengths: [
-                  `${Number(application.yearsInBusiness || 0) > 5 ? 'Proven business model with consistent performance' : 'Innovative business approach with growth potential'}`,
-                  `${Number(application.annualRevenue || 0) > 1000000 ? 'Strong revenue generation capacity' : 'Efficient operations relative to business size'}`
-                ],
-                weaknesses: [
-                  `${(Number(application.loanAmount || 0) / Number(application.annualRevenue || 1)) > 0.5 ? 'High loan-to-revenue ratio may strain cash flow' : 'Limited capital reserves for expansion'}`,
-                  `${Number(application.yearsInBusiness || 0) < 3 ? 'Limited operating history increases uncertainty' : 'Market concentration risk in current customer base'}`
-                ],
-                risks: [
-                  `${(Number(application.loanAmount || 0) / Number(application.annualRevenue || 1)) > 0.5 ? 'Debt service burden could impact operational flexibility' : 'Industry competition may pressure profit margins'}`,
-                  `${Number(application.yearsInBusiness || 0) < 3 ? 'Unproven business model sustainability in economic downturns' : 'Potential regulatory changes in the industry'}`
-                ],
-                mitigatingFactors: [
-                  `${Number(application.yearsInBusiness || 0) > 5 ? 'Demonstrated resilience through market cycles' : 'Strong management team with relevant expertise'}`,
-                  `${Number(application.annualRevenue || 0) > 1000000 ? 'Diversified revenue streams reduce concentration risk' : 'Low overhead structure enables flexibility'}`
-                ]
+                strengths: [],
+                weaknesses: [],
+                risks: [],
+                mitigatingFactors: []
               },
-              overallAssessment: `This ${docType.toLowerCase()} indicates that ${application.businessName} is a ${
-                (application.grade || '').startsWith('A') ? 'strong' : 
-                (application.grade || '').startsWith('B') ? 'moderate' : 'higher risk'
-              } candidate for lending consideration. The financial metrics demonstrate ${
-                (application.grade || '').startsWith('A') ? 'solid fundamentals with strong repayment capacity' : 
-                (application.grade || '').startsWith('B') ? 'adequate performance with some areas requiring monitoring' :
-                'concerning trends that require substantial risk mitigation'
-              }. The business shows ${
-                Number(application.yearsInBusiness || 0) > 5 ? 'established market presence' : 'promising potential'
-              } in the ${application.industry} industry.`,
-              impactOnScore: (application.grade || '').startsWith('A') ? 8 : (application.grade || '').startsWith('B') ? 6 : 4
+              overallAssessment: `The document analysis has been incorporated into the loan evaluation process`,
+              impactOnScore: 5 // Neutral impact
             };
             
             documentAnalysisResults.push(analysisResult);
