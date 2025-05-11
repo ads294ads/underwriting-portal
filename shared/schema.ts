@@ -51,8 +51,31 @@ export const industries = [
 // Define Owner type
 export type Owner = {
   name: string;
-  ownership: number; // Ownership percentage
+  ownershipPercentage: number; // Ownership percentage
+  title?: string;
 };
+
+// Extended Loan Application type for use with enhanced research features
+export interface LoanApplication {
+  id: number;
+  businessName: string;
+  industry: string;
+  yearsInBusiness: string | number;
+  annualRevenue: string | number;
+  loanAmount: string | number;
+  email: string;
+  businessOwners?: Owner[] | null;
+  owners?: Owner[]; // Alias for businessOwners for compatibility
+  city?: string;
+  state?: string;
+  fileUploaded?: boolean | null;
+  score?: string;
+  grade?: string;
+  scoringDetails?: Record<string, number>;
+  documentAnalysis?: string[];
+  deepResearchCompleted?: boolean;
+  createdAt?: Date | null;
+}
 
 export const loanApplications = pgTable("loan_applications", {
   id: serial("id").primaryKey(),
