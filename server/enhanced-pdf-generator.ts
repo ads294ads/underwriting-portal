@@ -793,11 +793,20 @@ function addOwnerAnalysisPages(
   // Get owner information
   let ownerName = "Business Owner"; // Default
   if (application.businessOwners && application.businessOwners.length > 0) {
-    const significantOwners = application.businessOwners.filter(owner => owner.ownership >= 20);
+    const significantOwners = application.businessOwners.filter(owner => 
+      owner.ownershipPercentage !== undefined ? 
+      owner.ownershipPercentage >= 20 : 
+      (owner as any).ownership >= 20);
     if (significantOwners.length > 0) {
-      const primaryOwner = significantOwners.reduce((prev, current) => 
-        (prev.ownership > current.ownership) ? prev : current
-      );
+      const primaryOwner = significantOwners.reduce((prev, current) => {
+        const prevOwnership = prev.ownershipPercentage !== undefined ? 
+          prev.ownershipPercentage : 
+          (prev as any).ownership;
+        const currentOwnership = current.ownershipPercentage !== undefined ? 
+          current.ownershipPercentage : 
+          (current as any).ownership;
+        return (prevOwnership > currentOwnership) ? prev : current;
+      });
       ownerName = primaryOwner.name;
     }
   }

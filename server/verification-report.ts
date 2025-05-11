@@ -134,8 +134,9 @@ export function addVerificationDetailsPage(
     ['Field', 'Application Data', 'Verified Data'],
     ['Company Name', application.businessName, 'Company legal name verification attempted'],
     ['Industry', application.industry, 'Industry verification attempted'],
-    ['Years in Business', application.yearsInBusiness, 'Business history verification attempted'],
-    ['Annual Revenue', `$${application.annualRevenue}`, 'Financial data verification attempted']
+    ['Years in Business', String(application.yearsInBusiness), 'Business history verification attempted'],
+    ['Annual Revenue', `$${typeof application.annualRevenue === 'number' ? 
+      application.annualRevenue.toLocaleString() : String(application.annualRevenue)}`, 'Financial data verification attempted']
   ];
   
   // Draw the table
@@ -153,7 +154,7 @@ export function addVerificationDetailsPage(
   
   tableData[0].forEach((text, i) => {
     const xPos = 50 + colWidths.slice(0, i).reduce((sum, w) => sum + w, 0);
-    doc.text(text, xPos + 5, startY + 7);
+    doc.text(String(text), xPos + 5, startY + 7);
   });
   
   // Draw data rows
@@ -174,13 +175,13 @@ export function addVerificationDetailsPage(
       .font('Helvetica-Bold')
       .fontSize(11);
     
-    doc.text(tableData[rowIndex][0], 55, startY + 7);
+    doc.text(String(tableData[rowIndex][0]), 55, startY + 7);
     
     doc.font('Helvetica')
-      .text(tableData[rowIndex][1], 50 + colWidths[0] + 5, startY + 7);
+      .text(String(tableData[rowIndex][1]), 50 + colWidths[0] + 5, startY + 7);
     
     doc.font('Helvetica-Italic')
-      .text(tableData[rowIndex][2], 50 + colWidths[0] + colWidths[1] + 5, startY + 7);
+      .text(String(tableData[rowIndex][2]), 50 + colWidths[0] + colWidths[1] + 5, startY + 7);
   }
   
   doc.moveDown(4);
