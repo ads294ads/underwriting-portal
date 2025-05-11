@@ -1,6 +1,7 @@
 import { LoanApplication } from "../shared/schema";
 import crypto from "crypto";
 import { performMultiAgentResearch } from "./multi-agent-research";
+import { performClaudeResearch } from "./anthropic-agent";
 
 // Score component dedicated to deep research findings
 export const DEEP_RESEARCH_COMPONENT_WEIGHT = 10; // 10% of total score
