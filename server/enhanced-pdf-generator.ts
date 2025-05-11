@@ -3,6 +3,7 @@ import fs from "fs";
 import { LoanApplication } from "../shared/schema";
 import { DeepResearchResult } from "./deepsearch";
 import { DocumentAnalysisResult } from "./document-analysis";
+import { addVerificationDetailsPage } from "./verification-report";
 
 /**
  * Generate a comprehensive loan assessment PDF report
@@ -45,6 +46,11 @@ export function generateEnhancedPDFReport(
   
   // Executive summary page
   addExecutiveSummaryPage(doc, application, deepResearchResults, colors);
+  
+  // Add entity verification page if verification data is available
+  if (deepResearchResults.verificationConfidence !== undefined) {
+    addVerificationDetailsPage(doc, deepResearchResults, application, colors);
+  }
   
   // Add detailed company analysis pages
   addCompanyAnalysisPages(doc, application, deepResearchResults, colors);

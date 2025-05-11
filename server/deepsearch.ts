@@ -570,32 +570,71 @@ function determineDeepResearchGrade(score: number): string {
 function generateFallbackResearchResults(): DeepResearchResult {
   return {
     companyAnalysis: {
-      overview: "Unable to perform deep company analysis at this time. This section requires an active Perplexity API connection.",
+      overview: "Unable to perform deep company analysis at this time. This section requires an active API connection.",
       legalIssues: [],
       financialRedFlags: [],
       reputationInsights: [],
       industryPosition: [],
       marketTrends: [],
-      executiveSummary: "Deep analysis unavailable due to API connection issues. Please check Perplexity API key and try again.",
+      executiveSummary: "Deep analysis unavailable due to API connection issues. Please check API keys and try again.",
       detailedFindings: {},
       specificEvents: [],
       financialMetrics: [],
       sources: [],
-      score: 70
+      highRiskFactors: [
+        "Limited company verification - identity confidence low.",
+        "Unable to verify legal standing with current search parameters."
+      ],
+      moderateRiskFactors: [
+        "Industry trends unavailable with current search depth.",
+        "Financial metrics require standard verification."
+      ],
+      mitigatingFactors: [
+        "Standard industry risk assessment can be applied.",
+        "Traditional due diligence recommended."
+      ],
+      score: 65
     },
     ownerAnalysis: {
-      overview: "Unable to perform deep owner analysis at this time. This section requires an active Perplexity API connection.",
+      overview: "Unable to perform deep owner analysis at this time. This section requires an active API connection.",
       legalIssues: [],
       financialRedFlags: [],
       reputationInsights: [],
       managementCapabilities: [],
-      executiveSummary: "Deep analysis unavailable due to API connection issues. Please check Perplexity API key and try again.",
+      executiveSummary: "Deep analysis unavailable due to API connection issues. Please check API keys and try again.",
       detailedFindings: {},
       priorBusinessHistory: [],
       sources: [],
-      score: 70
+      highRiskFactors: [
+        "Owner identity verification limited - confidence low.",
+        "Unable to assess relationship to company with current search parameters."
+      ],
+      moderateRiskFactors: [
+        "Management history unavailable with current search depth.",
+        "Prior business ventures require standard verification."
+      ],
+      mitigatingFactors: [
+        "Standard background checks can be applied.",
+        "Traditional reference verification recommended."
+      ],
+      score: 65
     },
-    combinedScore: 70,
-    grade: "B"
+    combinedScore: 65,
+    grade: "B-",
+    riskAssessment: {
+      highRiskFactors: [
+        "Deep research capabilities limited - uncertain risk level.",
+        "Entity verification confidence very low."
+      ],
+      moderateRiskFactors: [
+        "Standard industry risks apply.",
+        "Limited verification of business history and performance."
+      ],
+      mitigatingFactors: [
+        "Recommend standard due diligence to identify mitigating factors.",
+        "Additional documentation can offset limited online research."
+      ]
+    },
+    verificationConfidence: 0.2
   };
 }
