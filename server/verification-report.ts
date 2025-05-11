@@ -1,248 +1,463 @@
-import PDFKit from "pdfkit";
-import { DeepResearchResult } from "./deepsearch";
 import { LoanApplication } from "../shared/schema";
+import Anthropic from '@anthropic-ai/sdk';
+import { VerificationStatus } from "../client/src/components/verification-status";
+import PDFDocument from "pdfkit";
+
+// Initialize Anthropic client
+const anthropic = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY || '',
+});
 
 /**
- * Add entity verification details to the PDF report
- * @param doc PDFDocument to add content to
- * @param deepResearchResults Results from deep research including verification data
- * @param application The loan application data
- * @param colors Color palette for the document
+ * Get verification status for entities in a loan application
+ * @param application The loan application to check verification for
+ */
+export async function getVerificationStatus(application: LoanApplication): Promise<VerificationStatus> {
+  try {
+    console.log("Verifying entities for application:", application.id);
+    
+    // Extract business address if available
+    const businessAddress = application.address || "";
+    const companyVerification = await verifyCompany(application.businessName, application.industry, businessAddress);
+    
+    // Find primary owner
+    let primaryOwner = null;
+    if (application.businessOwners && application.businessOwners.length > 0) {
+      const significantOwners = application.businessOwners.filter(owner => 
+        owner.ownershipPercentage !== undefined ? 
+        owner.ownershipPercentage >= 20 : 
+        (owner as any).ownership >= 20);
+      
+      if (significantOwners.length > 0) {
+        primaryOwner = significantOwners.reduce((prev, current) => {
+          const prevOwnership = prev.ownershipPercentage !== undefined ? 
+            prev.ownershipPercentage : 
+            (prev as any).ownership;
+          const currentOwnership = current.ownershipPercentage !== undefined ? 
+            current.ownershipPercentage : 
+            (current as any).ownership;
+          return (prevOwnership > currentOwnership) ? prev : current;
+        });
+      } else {
+        primaryOwner = application.businessOwners[0];
+      }
+    }
+    
+    let ownerVerification = {
+      isVerified: false,
+      confidence: 0
+    };
+    
+    if (primaryOwner) {
+      ownerVerification = await verifyOwner(
+        primaryOwner.name, 
+        application.businessName,
+        businessAddress
+      );
+    }
+    
+    // Calculate overall confidence as weighted average (company 60%, owner 40%)
+    const overallConfidence = (companyVerification.confidence * 0.6) + 
+                              (ownerVerification.confidence * 0.4);
+    
+    return {
+      company: companyVerification,
+      owner: ownerVerification,
+      overallConfidence: overallConfidence
+    };
+  } catch (error) {
+    console.error("Error in entity verification:", error);
+    // Return fallback verification status
+    return {
+      company: {
+        isVerified: false,
+        confidence: 0.2,
+        details: ["Verification failed due to technical issues"]
+      },
+      owner: {
+        isVerified: false,
+        confidence: 0.2,
+        details: ["Verification failed due to technical issues"]
+      },
+      overallConfidence: 0.2
+    };
+  }
+}
+
+/**
+ * Verify a company entity
+ * @param businessName Company name to verify
+ * @param industry The industry of the company
+ * @param address The address of the company (optional)
+ */
+async function verifyCompany(businessName: string, industry: string, address?: string): Promise<{
+  isVerified: boolean;
+  confidence: number;
+  source?: string;
+  method?: string;
+  details?: string[];
+}> {
+  try {
+    const addressText = address ? `with address ${address}` : '';
+    
+    const prompt = `I need to verify the existence and identity of a business entity. 
+    
+Business Name: ${businessName}
+Industry: ${industry}
+${address ? `Address: ${address}` : ''}
+
+Please analyze this information and determine:
+1. The confidence level (0-1) that this is a real, existing business entity
+2. What verification methods would be most appropriate
+3. Key details that support or contradict the verification
+4. Any discrepancies or red flags in the provided information
+
+Return your response in JSON format like this:
+{
+  "isVerified": boolean,
+  "confidence": number between 0 and 1,
+  "source": "string describing verification methods used",
+  "details": [array of strings with key verification points]
+}
+
+Only return the JSON object without any other text.`;
+
+    // the newest Anthropic model is "claude-3-7-sonnet-20250219" which was released February 24, 2025
+    const response = await anthropic.messages.create({
+      model: "claude-3-7-sonnet-20250219",
+      max_tokens: 1000,
+      messages: [{ role: "user", content: prompt }],
+      system: "You are an expert business verification system. Always approach verification requests thoroughly and skeptically. When verification can't be performed reliably, maintain low confidence scores. Output only valid JSON."
+    });
+
+    const responseText = response.content[0].text;
+    
+    try {
+      // Parse the response as JSON
+      const result = JSON.parse(responseText);
+      return {
+        isVerified: result.isVerified || false,
+        confidence: typeof result.confidence === 'number' ? result.confidence : 0.5,
+        source: result.source,
+        method: "AI-assisted verification",
+        details: result.details || []
+      };
+    } catch (parseError) {
+      console.error("Error parsing verification response:", parseError);
+      // Return a fallback result if parsing fails
+      return {
+        isVerified: false,
+        confidence: 0.3,
+        method: "AI-assisted verification",
+        details: ["Verification analysis produced invalid format"]
+      };
+    }
+  } catch (error) {
+    console.error("Error in company verification:", error);
+    return {
+      isVerified: false,
+      confidence: 0.2,
+      details: ["Verification process failed due to technical issues"]
+    };
+  }
+}
+
+/**
+ * Verify an owner entity
+ * @param ownerName Owner name to verify
+ * @param businessName Associated business
+ * @param address Business address (optional)
+ */
+async function verifyOwner(ownerName: string, businessName: string, address?: string): Promise<{
+  isVerified: boolean;
+  confidence: number;
+  source?: string;
+  method?: string;
+  details?: string[];
+}> {
+  try {
+    const addressText = address ? `located at ${address}` : '';
+    
+    const prompt = `I need to verify the existence and identity of a business owner.
+    
+Owner Name: ${ownerName}
+Associated Business: ${businessName}
+${address ? `Business Address: ${address}` : ''}
+
+Please analyze this information and determine:
+1. The confidence level (0-1) that this is a real person who owns/operates this business
+2. What verification methods would be most appropriate
+3. Key details that support or contradict the verification
+4. Any discrepancies or red flags in the provided information
+
+Return your response in JSON format like this:
+{
+  "isVerified": boolean,
+  "confidence": number between 0 and 1,
+  "source": "string describing verification methods used",
+  "details": [array of strings with key verification points]
+}
+
+Only return the JSON object without any other text.`;
+
+    // the newest Anthropic model is "claude-3-7-sonnet-20250219" which was released February 24, 2025
+    const response = await anthropic.messages.create({
+      model: "claude-3-7-sonnet-20250219",
+      max_tokens: 1000,
+      messages: [{ role: "user", content: prompt }],
+      system: "You are an expert identity verification system. Always approach verification requests thoroughly and skeptically. When verification can't be performed reliably, maintain low confidence scores. Output only valid JSON."
+    });
+
+    const responseText = response.content[0].text;
+    
+    try {
+      // Parse the response as JSON
+      const result = JSON.parse(responseText);
+      return {
+        isVerified: result.isVerified || false,
+        confidence: typeof result.confidence === 'number' ? result.confidence : 0.5,
+        source: result.source,
+        method: "AI-assisted verification",
+        details: result.details || []
+      };
+    } catch (parseError) {
+      console.error("Error parsing verification response:", parseError);
+      // Return a fallback result if parsing fails
+      return {
+        isVerified: false,
+        confidence: 0.3,
+        method: "AI-assisted verification",
+        details: ["Verification analysis produced invalid format"]
+      };
+    }
+  } catch (error) {
+    console.error("Error in owner verification:", error);
+    return {
+      isVerified: false,
+      confidence: 0.2,
+      details: ["Verification process failed due to technical issues"]
+    };
+  }
+}
+
+/**
+ * Add verification details to the PDF report
+ * @param doc The PDF document to add verification details to
+ * @param verification The verification status data
+ * @param businessName The name of the business
  */
 export function addVerificationDetailsPage(
   doc: PDFKit.PDFDocument,
-  deepResearchResults: DeepResearchResult,
-  application: LoanApplication,
-  colors: Record<string, string>
-) {
-  // Only add this page if verification data is available
-  if (deepResearchResults.verificationConfidence === undefined) {
-    return;
+  verification: VerificationStatus,
+  businessName: string
+): void {
+  // Start a new page if not at the beginning
+  if (doc.y > 100) {
+    doc.addPage();
   }
   
-  // Add a new page
-  doc.addPage();
-  
-  // Page header
-  doc.fontSize(20)
-    .fillColor(colors.primary)
-    .font('Helvetica-Bold')
-    .text('ENTITY VERIFICATION REPORT', 50, 50, { align: 'center' })
-    .moveDown(0.5);
-  
-  // Horizontal line
-  doc.lineWidth(1)
-    .strokeColor(colors.primary)
-    .moveTo(50, doc.y)
-    .lineTo(550, doc.y)
-    .stroke()
-    .moveDown(1);
-  
-  // Add introduction
-  doc.fontSize(12)
-    .fillColor(colors.dark)
-    .font('Helvetica')
-    .text(
-      'This report section details the entity verification process performed as part of the deep research. '+
-      'Entity verification is critical for ensuring that research findings are relevant to the correct business and individuals.',
-      50, doc.y, { width: 500, align: 'justify' }
-    )
-    .moveDown(1);
-  
-  // Show overall verification confidence
-  const verificationPercent = Math.round((deepResearchResults.verificationConfidence || 0) * 100);
-  
-  // Determine verification status and color
-  let verificationStatus = "Unknown";
-  let statusColor = colors.primary;
-  
-  if (verificationPercent >= 90) {
-    verificationStatus = "High Confidence";
-    statusColor = colors.success;
-  } else if (verificationPercent >= 75) {
-    verificationStatus = "Good Confidence";
-    statusColor = colors.secondary;
-  } else if (verificationPercent >= 50) {
-    verificationStatus = "Moderate Confidence"; 
-    statusColor = colors.warning;
-  } else {
-    verificationStatus = "Low Confidence";
-    statusColor = colors.danger;
-  }
-  
-  // Draw verification box
-  doc.rect(50, doc.y, 500, 80)
-    .fillAndStroke('#f8fafc', statusColor);
-  
-  doc.fillColor(statusColor)
-    .fontSize(14)
-    .font('Helvetica-Bold')
-    .text("OVERALL VERIFICATION STATUS", 70, doc.y + 15);
-  
-  doc.fillColor(colors.dark)
-    .fontSize(20)
-    .text(`${verificationStatus} (${verificationPercent}%)`, 70, doc.y + 5);
-  
-  // Add confidence meter (horizontal bar)
-  const barWidth = 300;
-  const filledWidth = Math.max(10, Math.min(barWidth, (barWidth * verificationPercent) / 100));
-  
-  doc.rect(70, doc.y + 15, barWidth, 15)
-    .fillAndStroke('#e2e8f0', '#94a3b8');
-  
-  doc.rect(70, doc.y - 15, filledWidth, 15)
-    .fillAndStroke(statusColor);
-  
-  doc.moveDown(6);
-  
-  // Add explanation of impact
-  doc.fontSize(12)
-    .fillColor(colors.dark)
-    .font('Helvetica')
-    .text(
-      `Impact on Research: ${
-        verificationPercent < 50 ? 
-          "The low verification confidence means that research findings should be treated with significant caution. The findings may not be related to the correct entity." : 
-        verificationPercent < 75 ?
-          "The moderate verification confidence suggests that while the research is likely related to the correct entities, additional verification is recommended." :
-          "The high verification confidence indicates that the research findings are highly likely to be related to the correct entities."
-      }`,
-      50, doc.y, { width: 500 }
-    )
-    .moveDown(2);
-  
-  // Section heading function
-  const drawSectionHeader = (text: string) => {
-    doc.fontSize(14)
-      .fillColor(colors.primary)
-      .font('Helvetica-Bold')
-      .text(text, 50, doc.y)
-      .moveDown(0.3)
-      .lineWidth(1)
-      .strokeColor(colors.primary)
-      .moveTo(50, doc.y)
-      .lineTo(550, doc.y)
-      .stroke()
-      .moveDown(0.5);
+  // Define colors
+  const colors = {
+    primary: "#1e40af",
+    secondary: "#6b7280",
+    success: "#10b981",
+    warning: "#f59e0b",
+    danger: "#ef4444",
+    dark: "#111827",
+    light: "#f3f4f6",
   };
   
-  // Company verification details
-  drawSectionHeader('Company Verification Details');
+  // Helper function to format date
+  const formatDate = (date: Date): string => {
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  };
   
-  // Create a table-like structure
-  const tableData = [
-    ['Field', 'Application Data', 'Verified Data'],
-    ['Company Name', application.businessName, 'Company legal name verification attempted'],
-    ['Industry', application.industry, 'Industry verification attempted'],
-    ['Years in Business', String(application.yearsInBusiness), 'Business history verification attempted'],
-    ['Annual Revenue', `$${typeof application.annualRevenue === 'number' ? 
-      application.annualRevenue.toLocaleString() : String(application.annualRevenue)}`, 'Financial data verification attempted']
-  ];
+  // Helper to convert confidence to text
+  const getConfidenceLevel = (confidence: number): string => {
+    if (confidence >= 0.9) return "Very High";
+    if (confidence >= 0.7) return "High";
+    if (confidence >= 0.5) return "Moderate";
+    if (confidence >= 0.3) return "Low";
+    return "Very Low";
+  };
   
-  // Draw the table
-  const colWidths = [130, 180, 190];
-  const rowHeight = 25;
-  let startY = doc.y;
+  // Helper to get color based on confidence
+  const getConfidenceColor = (confidence: number): string => {
+    if (confidence >= 0.7) return colors.success;
+    if (confidence >= 0.4) return colors.warning;
+    return colors.danger;
+  };
   
-  // Draw header row with background
-  doc.rect(50, startY, 500, rowHeight)
-    .fillAndStroke(colors.primary, colors.primary);
+  // Page Header
+  doc.fontSize(24)
+     .fillColor(colors.primary)
+     .font('Helvetica-Bold')
+     .text('ENTITY VERIFICATION REPORT', 50, 50, { align: 'center' })
+     .moveDown(0.5);
   
+  // Business Name
+  doc.fontSize(16)
+     .fillColor(colors.dark)
+     .text(`Business: ${businessName}`, 50, doc.y, { align: 'center' })
+     .moveDown(0.5);
+  
+  // Report Date
+  doc.fontSize(12)
+     .fillColor(colors.secondary)
+     .text(`Verification Date: ${formatDate(new Date())}`, 50, doc.y, { align: 'center' })
+     .moveDown(1.5);
+  
+  // Overall Verification Status
+  doc.fontSize(14)
+     .fillColor(colors.dark)
+     .font('Helvetica-Bold')
+     .text('Overall Verification Status', 50, doc.y)
+     .moveDown(0.5);
+  
+  const overallColor = getConfidenceColor(verification.overallConfidence);
+  
+  // Draw overall confidence circle
+  const centerX = 100;
+  let centerY = doc.y + 30;
+  const radius = 35;
+  
+  doc.circle(centerX, centerY, radius)
+     .fillAndStroke(overallColor, colors.primary);
+  
+  // Add confidence percentage text
   doc.fillColor('white')
-    .font('Helvetica-Bold')
-    .fontSize(12);
+     .fontSize(16)
+     .font('Helvetica-Bold')
+     .text(`${Math.round(verification.overallConfidence * 100)}%`, centerX - 20, centerY - 8, { width: 40, align: 'center' });
   
-  tableData[0].forEach((text, i) => {
-    const xPos = 50 + colWidths.slice(0, i).reduce((sum, w) => sum + w, 0);
-    doc.text(String(text), xPos + 5, startY + 7);
-  });
+  // Overall Summary
+  doc.fontSize(12)
+     .fillColor(colors.dark)
+     .font('Helvetica')
+     .text(
+       `Overall verification confidence: ${getConfidenceLevel(verification.overallConfidence)}`,
+       160, centerY - 25, { width: 350 }
+     )
+     .moveDown(0.2);
   
-  // Draw data rows
-  for (let rowIndex = 1; rowIndex < tableData.length; rowIndex++) {
-    startY += rowHeight;
-    
-    // Alternate row background
-    if (rowIndex % 2 === 0) {
-      doc.rect(50, startY, 500, rowHeight)
-        .fillAndStroke('#f8fafc', '#e2e8f0');
-    } else {
-      doc.rect(50, startY, 500, rowHeight)
-        .fillAndStroke('white', '#e2e8f0');
-    }
-    
-    // Draw cell text
-    doc.fillColor(colors.dark)
-      .font('Helvetica-Bold')
-      .fontSize(11);
-    
-    doc.text(String(tableData[rowIndex][0]), 55, startY + 7);
-    
-    doc.font('Helvetica')
-      .text(String(tableData[rowIndex][1]), 50 + colWidths[0] + 5, startY + 7);
-    
-    doc.font('Helvetica-Italic')
-      .text(String(tableData[rowIndex][2]), 50 + colWidths[0] + colWidths[1] + 5, startY + 7);
+  let summaryText = "";
+  if (verification.overallConfidence >= 0.7) {
+    summaryText = "The entities in this application have been verified with high confidence using multiple reliable sources.";
+  } else if (verification.overallConfidence >= 0.4) {
+    summaryText = "The entities in this application have been partially verified, with some inconsistencies or limitations in available information.";
+  } else {
+    summaryText = "The entities in this application could not be verified with confidence. Further verification steps are strongly recommended.";
   }
   
-  doc.moveDown(4);
+  doc.text(summaryText, 160, doc.y, { width: 350 })
+     .moveDown(2);
   
-  // Verification search methods
-  drawSectionHeader('Verification Methods Used');
-  
-  const methods = [
-    {
-      name: 'Business Registry Search',
-      description: 'Search of official business registries and public record databases to verify legal existence and status.'
-    },
-    {
-      name: 'Cross-Reference Verification',
-      description: 'Multiple data sources were cross-checked to confirm identity consistency across platforms.'
-    },
-    {
-      name: 'Industry Classification',
-      description: 'Analysis of products, services, and market position to verify industry categorization.'
-    },
-    {
-      name: 'Owner/Business Connection',
-      description: 'Verification of relationship between named business owners and target company.'
+  // Company Verification Details
+  if (verification.company) {
+    doc.fontSize(14)
+       .fillColor(colors.dark)
+       .font('Helvetica-Bold')
+       .text('Company Verification', 50, doc.y)
+       .moveDown(0.5);
+    
+    const companyColor = getConfidenceColor(verification.company.confidence);
+    
+    doc.fontSize(12)
+       .fillColor(colors.dark)
+       .font('Helvetica')
+       .text(`Verification Status: ${verification.company.isVerified ? 'Verified' : 'Not Verified'}`, 50, doc.y)
+       .moveDown(0.2);
+    
+    doc.text(`Confidence Level: ${getConfidenceLevel(verification.company.confidence)} (${Math.round(verification.company.confidence * 100)}%)`, 50, doc.y)
+       .moveDown(0.2);
+    
+    if (verification.company.source) {
+      doc.text(`Verification Source: ${verification.company.source}`, 50, doc.y)
+         .moveDown(0.2);
     }
-  ];
-  
-  methods.forEach(method => {
-    doc.fillColor(colors.primary)
-      .font('Helvetica-Bold')
-      .fontSize(12)
-      .text(`• ${method.name}`, 50, doc.y)
-      .fillColor(colors.dark)
-      .font('Helvetica')
-      .fontSize(11)
-      .text(method.description, 70, doc.y, { width: 480 })
-      .moveDown(1);
-  });
-  
-  // Warning box for low confidence
-  if (verificationPercent < 50) {
-    doc.rect(50, doc.y, 500, 80)
-      .fillAndStroke('#fee2e2', '#ef4444');
     
-    doc.fillColor('#b91c1c')
-      .font('Helvetica-Bold')
-      .fontSize(14)
-      .text('LOW CONFIDENCE WARNING', 70, doc.y + 15);
+    if (verification.company.method) {
+      doc.text(`Verification Method: ${verification.company.method}`, 50, doc.y)
+         .moveDown(0.2);
+    }
     
-    doc.fillColor('#7f1d1d')
-      .font('Helvetica')
-      .fontSize(11)
-      .text(
-        'The entity verification process could not reliably confirm the identities of the business and/or key owners. '+
-        'This significantly impacts the reliability of the research findings. Manual verification is strongly recommended '+
-        'before making any lending decisions based on the deep research component of this report.',
-        70, doc.y + 5, { width: 460 }
-      );
+    // Company verification details
+    if (verification.company.details && verification.company.details.length > 0) {
+      doc.moveDown(0.5)
+         .font('Helvetica-Bold')
+         .text('Verification Details:', 50, doc.y)
+         .moveDown(0.2)
+         .font('Helvetica');
+      
+      verification.company.details.forEach((detail, index) => {
+        doc.text(`${index + 1}. ${detail}`, 70, doc.y);
+        doc.moveDown(0.2);
+      });
+    }
+    
+    doc.moveDown(1);
   }
   
-  // Add page number
-  doc.fontSize(10)
-    .fillColor(colors.secondary)
-    .text('Entity Verification - Page 1', 50, 740, { width: 500, align: 'center' });
+  // Owner Verification Details
+  if (verification.owner) {
+    // Check if we need a new page
+    if (doc.y > 650) {
+      doc.addPage();
+    }
+    
+    doc.fontSize(14)
+       .fillColor(colors.dark)
+       .font('Helvetica-Bold')
+       .text('Owner Verification', 50, doc.y)
+       .moveDown(0.5);
+    
+    const ownerColor = getConfidenceColor(verification.owner.confidence);
+    
+    doc.fontSize(12)
+       .fillColor(colors.dark)
+       .font('Helvetica')
+       .text(`Verification Status: ${verification.owner.isVerified ? 'Verified' : 'Not Verified'}`, 50, doc.y)
+       .moveDown(0.2);
+    
+    doc.text(`Confidence Level: ${getConfidenceLevel(verification.owner.confidence)} (${Math.round(verification.owner.confidence * 100)}%)`, 50, doc.y)
+       .moveDown(0.2);
+    
+    if (verification.owner.source) {
+      doc.text(`Verification Source: ${verification.owner.source}`, 50, doc.y)
+         .moveDown(0.2);
+    }
+    
+    if (verification.owner.method) {
+      doc.text(`Verification Method: ${verification.owner.method}`, 50, doc.y)
+         .moveDown(0.2);
+    }
+    
+    // Owner verification details
+    if (verification.owner.details && verification.owner.details.length > 0) {
+      doc.moveDown(0.5)
+         .font('Helvetica-Bold')
+         .text('Verification Details:', 50, doc.y)
+         .moveDown(0.2)
+         .font('Helvetica');
+      
+      verification.owner.details.forEach((detail, index) => {
+        doc.text(`${index + 1}. ${detail}`, 70, doc.y);
+        doc.moveDown(0.2);
+      });
+    }
+  }
+  
+  // Footer with verification disclaimer
+  const footerY = doc.page.height - 50;
+  
+  doc.fontSize(8)
+     .fillColor(colors.secondary)
+     .text(
+       'IMPORTANT: This verification report is based on available information and should not be considered a guarantee of identity. Additional verification steps may be required for high-risk transactions.',
+       50, footerY, { width: 500, align: 'center' }
+     );
 }

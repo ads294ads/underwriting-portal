@@ -1510,6 +1510,107 @@ Loan Amount Requested: $${application.loanAmount}`;
     }
   });
 
+  // Enhanced company reviews
+  app.post("/api/loan-applications/:id/company-reviews", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const application = await storage.getLoanApplication(id);
+      
+      if (!application) {
+        return res.status(404).json({ message: "Loan application not found" });
+      }
+      
+      console.log(`Starting company reviews analysis for application ID: ${id}`);
+      
+      // Import here to avoid circular dependencies
+      const { analyzeCompanyReviews } = require('./company-reviews');
+      
+      // Perform company reviews analysis
+      const reviewsAnalysis = await analyzeCompanyReviews(application);
+      
+      return res.json({ success: true, data: reviewsAnalysis });
+    } catch (error) {
+      console.error("Error in company reviews analysis:", error);
+      return res.status(500).json({ 
+        error: "Error analyzing company reviews",
+        details: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+  
+  // Owner background research
+  app.post("/api/loan-applications/:id/owner-research", async (req, res) => {
+    const { ownerName } = req.body;
+    
+    if (!ownerName) {
+      return res.status(400).json({ error: "Owner name is required" });
+    }
+    
+    try {
+      const id = parseInt(req.params.id);
+      const application = await storage.getLoanApplication(id);
+      
+      if (!application) {
+        return res.status(404).json({ message: "Loan application not found" });
+      }
+      
+      // Get the owner from the application
+      const owner = application.businessOwners?.find(o => o.name === ownerName);
+      
+      if (!owner) {
+        return res.status(404).json({ error: "Owner not found in application" });
+      }
+      
+      console.log(`Starting owner research for ${ownerName} in application ID: ${id}`);
+      
+      // Import here to avoid circular dependencies
+      const { conductEnhancedOwnerResearch } = require('./owner-research');
+      
+      // Perform owner research
+      const ownerResearch = await conductEnhancedOwnerResearch(
+        owner.name,
+        application.businessName,
+        application.industry
+      );
+      
+      return res.json({ success: true, data: ownerResearch });
+    } catch (error) {
+      console.error("Error in owner research:", error);
+      return res.status(500).json({ 
+        error: "Error performing owner research",
+        details: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // Enhanced verification component
+  app.post("/api/loan-applications/:id/verification-status", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const application = await storage.getLoanApplication(id);
+      
+      if (!application) {
+        return res.status(404).json({ message: "Loan application not found" });
+      }
+      
+      console.log(`Checking verification status for application ID: ${id}`);
+      
+      // Import here to avoid circular dependencies
+      const { getVerificationStatus } = require('./verification-report');
+      
+      // Get verification status
+      const verificationStatus = await getVerificationStatus(application);
+      
+      return res.json({ success: true, data: verificationStatus });
+    } catch (error) {
+      console.error("Error in verification status check:", error);
+      return res.status(500).json({ 
+        error: "Error checking verification status",
+        details: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

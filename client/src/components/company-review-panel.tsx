@@ -138,9 +138,12 @@ export const CompanyReviewPanel: React.FC<CompanyReviewPanelProps> = ({
             </CardDescription>
           </div>
           <Badge 
-            variant={reviewData.reputationScore >= 80 ? "success" : 
-                   reviewData.reputationScore >= 60 ? "outline" : "destructive"} 
-            className="text-lg px-3 py-1 font-semibold">
+            variant={reviewData.reputationScore >= 80 ? "outline" : 
+                   reviewData.reputationScore >= 60 ? "secondary" : "destructive"} 
+            className={`text-lg px-3 py-1 font-semibold ${
+              reviewData.reputationScore >= 80 ? "bg-green-100 text-green-800" : 
+              reviewData.reputationScore >= 60 ? "" : ""
+            }`}>
             Reputation Score: {reviewData.reputationScore}/100
           </Badge>
         </div>

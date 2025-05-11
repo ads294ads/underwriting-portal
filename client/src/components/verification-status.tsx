@@ -1,185 +1,174 @@
 import React from 'react';
-import {
-  Alert,
-  AlertTitle,
-  AlertDescription,
-} from "@/components/ui/alert";
+import { 
+  Card, 
+  CardContent, 
+  CardDescription,
+  CardHeader, 
+  CardTitle 
+} from "@/components/ui/card";
+import { 
+  Shield, 
+  Building, 
+  User, 
+  CheckCircle2, 
+  XCircle, 
+  AlertTriangle
+} from 'lucide-react';
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { ShieldCheck, ShieldAlert, ShieldQuestion } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
 
-// Define verification status levels
-export type VerificationLevel = 'high' | 'moderate' | 'low' | 'unknown';
-
-interface VerificationStatusProps {
+// Types for verification status
+export interface VerificationResults {
+  isVerified: boolean;
   confidence: number;
-  entity: string;
-  showDetails?: boolean;
+  source?: string;
+  method?: string;
+  details?: string[];
 }
 
-/**
- * Component that displays verification status with visual indicators
- * for entity verification confidence
- */
-export const VerificationStatus: React.FC<VerificationStatusProps> = ({ 
-  confidence, 
-  entity,
-  showDetails = false
-}) => {
-  // Convert confidence from 0-1 to 0-100 percentage
-  const confidencePercent = Math.round(confidence * 100);
-  
-  /**
-   * Get verification level based on confidence percentage
-   */
-  const getVerificationLevel = (): VerificationLevel => {
-    if (confidencePercent >= 90) return 'high';
-    if (confidencePercent >= 60) return 'moderate';
-    if (confidencePercent > 0) return 'low';
-    return 'unknown';
-  };
+export interface VerificationStatus {
+  company?: VerificationResults;
+  owner?: VerificationResults;
+  overallConfidence: number;
+}
 
-  /**
-   * Get color scheme based on verification level
-   */
-  const getColorScheme = () => {
-    switch (getVerificationLevel()) {
-      case 'high':
-        return {
-          badge: 'bg-green-100 text-green-800',
-          icon: <ShieldCheck className="h-6 w-6 text-green-600" />,
-          alertVariant: 'default' as const,
-          progressColor: 'bg-green-500'
-        };
-      case 'moderate':
-        return {
-          badge: 'bg-amber-100 text-amber-800',
-          icon: <ShieldCheck className="h-6 w-6 text-amber-600" />,
-          alertVariant: 'default' as const,
-          progressColor: 'bg-amber-500'
-        };
-      case 'low':
-        return {
-          badge: 'bg-red-100 text-red-800',
-          icon: <ShieldAlert className="h-6 w-6 text-red-600" />,
-          alertVariant: 'destructive' as const,
-          progressColor: 'bg-red-500'
-        };
-      default:
-        return {
-          badge: 'bg-gray-100 text-gray-800',
-          icon: <ShieldQuestion className="h-6 w-6 text-gray-600" />,
-          alertVariant: 'default' as const,
-          progressColor: 'bg-gray-500'
-        };
-    }
-  };
-
-  /**
-   * Get CSS class for progress bar color
-   */
-  const getProgressColor = () => {
-    return getColorScheme().progressColor;
-  };
-
-  /**
-   * Get status message based on verification level
-   */
-  const getStatusMessage = () => {
-    switch (getVerificationLevel()) {
-      case 'high':
-        return `Research findings for ${entity} have high confidence. The entity has been verified through multiple reliable sources.`;
-      case 'moderate':
-        return `Research findings for ${entity} have moderate confidence. Additional verification may be helpful.`;
-      case 'low':
-        return `Research findings for ${entity} have low confidence. Verification was limited, and findings may not relate to the correct entity.`;
-      default:
-        return `Unable to verify ${entity}. Research findings should be treated with significant caution.`;
-    }
-  };
-
-  const { icon, badge, alertVariant } = getColorScheme();
-
-  /**
-   * Minimal display when details not needed
-   */
-  if (!showDetails) {
-    return (
-      <div className="flex items-center space-x-2 text-sm">
-        {icon}
-        <span>
-          Verification: <span className={badge}>{confidencePercent}%</span>
-        </span>
-      </div>
-    );
-  }
-
-  /**
-   * Detailed display with full alert and progress bar
-   */
-  return (
-    <Alert variant={alertVariant} className="mb-4">
-      <div className="flex items-start space-x-2">
-        <div className="mt-0.5">{icon}</div>
-        <div className="flex-1">
-          <AlertTitle className="flex items-center justify-between">
-            {entity} Verification
-            <Badge variant="outline" className={`ml-2 ${badge}`}>
-              {confidencePercent}% Confidence
-            </Badge>
-          </AlertTitle>
-          <div className="mt-2 mb-1">
-            <Progress 
-              value={confidencePercent} 
-              className={`h-2 ${getProgressColor()}`}
-            />
-          </div>
-          <AlertDescription className="mt-2">
-            {getStatusMessage()}
-            
-            {getVerificationLevel() === 'low' && (
-              <div className="mt-2 text-red-600 font-medium">
-                Warning: Research findings should be manually verified before making lending decisions.
-              </div>
-            )}
-          </AlertDescription>
-        </div>
-      </div>
-    </Alert>
-  );
-};
-
-/**
- * Component for displaying verification status for the entire application
- */
-export const ApplicationVerificationStatus: React.FC<{
+export interface ApplicationVerificationStatusProps {
   companyConfidence: number;
   ownerConfidence: number;
   overallConfidence: number;
-}> = ({ companyConfidence, ownerConfidence, overallConfidence }) => {
+}
+
+// Helper function to get confidence level text
+const getConfidenceLevel = (confidence: number): string => {
+  if (confidence >= 0.9) return "Very High";
+  if (confidence >= 0.7) return "High";
+  if (confidence >= 0.5) return "Moderate";
+  if (confidence >= 0.3) return "Low";
+  return "Very Low";
+};
+
+// Helper function to get confidence badge variant
+const getConfidenceBadge = (confidence: number) => {
+  let variant: "outline" | "destructive" | "secondary" | "default" = "default";
+  let extraClass = "";
+  
+  if (confidence >= 0.9) {
+    variant = "outline";
+    extraClass = "bg-green-100 text-green-800";
+  } else if (confidence >= 0.7) {
+    variant = "outline";
+    extraClass = "bg-emerald-50 text-emerald-800";
+  } else if (confidence >= 0.5) {
+    variant = "outline";
+  } else if (confidence >= 0.3) {
+    variant = "secondary";
+  } else {
+    variant = "destructive";
+  }
+  
   return (
-    <div className="space-y-4">
-      <h3 className="text-lg font-medium">Verification Status</h3>
-      <VerificationStatus 
-        confidence={companyConfidence} 
-        entity="Company" 
-        showDetails={true} 
-      />
-      <VerificationStatus 
-        confidence={ownerConfidence} 
-        entity="Owner" 
-        showDetails={true}
-      />
-      <div className="border-t pt-4 mt-4">
-        <h4 className="text-md font-medium mb-2">Overall Verification</h4>
-        <VerificationStatus 
-          confidence={overallConfidence} 
-          entity="Overall Research" 
-          showDetails={true}
-        />
+    <Badge variant={variant} className={extraClass}>
+      {getConfidenceLevel(confidence)} ({Math.round(confidence * 100)}%)
+    </Badge>
+  );
+};
+
+// Helper function to get verification icon
+const getVerificationIcon = (confidence: number) => {
+  if (confidence >= 0.7) {
+    return <CheckCircle2 className="h-5 w-5 text-green-600" />;
+  } else if (confidence >= 0.4) {
+    return <AlertTriangle className="h-5 w-5 text-amber-600" />;
+  } else {
+    return <XCircle className="h-5 w-5 text-red-600" />;
+  }
+};
+
+/**
+ * Component that displays detailed verification status
+ */
+export const VerificationDisplay: React.FC<{name: string, icon: React.ReactNode, confidence: number}> = ({
+  name,
+  icon,
+  confidence
+}) => {
+  return (
+    <div className="flex items-center space-x-2 mb-2">
+      <div className="flex-shrink-0">
+        {icon}
+      </div>
+      <div className="flex-grow">
+        <div className="flex justify-between items-center mb-1">
+          <span className="font-medium">{name}</span>
+          {getConfidenceBadge(confidence)}
+        </div>
+        <Progress value={confidence * 100} className="h-2" />
+      </div>
+      <div className="flex-shrink-0">
+        {getVerificationIcon(confidence)}
       </div>
     </div>
   );
 };
 
-export default VerificationStatus;
+/**
+ * Component that displays verification status for an application
+ */
+export const ApplicationVerificationStatus: React.FC<ApplicationVerificationStatusProps> = ({
+  companyConfidence,
+  ownerConfidence,
+  overallConfidence
+}) => {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center">
+          <Shield className="mr-2 h-5 w-5" />
+          Verification Status
+        </CardTitle>
+        <CardDescription>
+          Confidence in the verification of entities in this application
+        </CardDescription>
+      </CardHeader>
+      
+      <CardContent className="space-y-4">
+        <div className="space-y-2">
+          <VerificationDisplay 
+            name="Company Verification" 
+            icon={<Building className="h-5 w-5 text-blue-600" />}
+            confidence={companyConfidence}
+          />
+          
+          <VerificationDisplay 
+            name="Owner Verification" 
+            icon={<User className="h-5 w-5 text-indigo-600" />}
+            confidence={ownerConfidence}
+          />
+        </div>
+        
+        <Separator />
+        
+        <div>
+          <div className="flex justify-between items-center mb-1">
+            <span className="font-semibold text-primary">Overall Verification</span>
+            {getConfidenceBadge(overallConfidence)}
+          </div>
+          <Progress value={overallConfidence * 100} className="h-3" />
+        </div>
+        
+        <div className="text-sm text-gray-500 mt-4">
+          {overallConfidence >= 0.7 ? (
+            <p>High confidence verification means we have identified and confirmed these entities through multiple reliable sources.</p>
+          ) : overallConfidence >= 0.4 ? (
+            <p>Moderate confidence verification means we've found matches but with some inconsistencies or limited sources.</p>
+          ) : (
+            <p>Low confidence verification means we found limited or conflicting information. Further verification is recommended.</p>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
+
+export default ApplicationVerificationStatus;

@@ -139,7 +139,7 @@ export const OwnerResearchPanel: React.FC<OwnerResearchPanelProps> = ({
   const getVerificationBadge = (status: string) => {
     switch (status) {
       case 'verified':
-        return <Badge variant="success">Verified</Badge>;
+        return <Badge variant="outline" className="bg-green-100 text-green-800">Verified</Badge>;
       case 'likely':
         return <Badge variant="outline">Likely</Badge>;
       case 'possible':
@@ -195,10 +195,13 @@ export const OwnerResearchPanel: React.FC<OwnerResearchPanelProps> = ({
         {ownerProfile.verificationConfidence > 0 && (
           <div className="mt-2">
             <Badge 
-              variant={ownerProfile.verificationConfidence >= 0.8 ? "success" : 
+              variant={ownerProfile.verificationConfidence >= 0.8 ? "outline" : 
                      ownerProfile.verificationConfidence >= 0.5 ? "outline" : 
                      "destructive"}
-              className="flex items-center"
+              className={`flex items-center ${
+                ownerProfile.verificationConfidence >= 0.8 ? "bg-green-100 text-green-800" : 
+                ownerProfile.verificationConfidence >= 0.5 ? "" : ""
+              }`}
             >
               {Math.round(ownerProfile.verificationConfidence * 100)}% Verification Confidence
             </Badge>
@@ -374,10 +377,11 @@ export const OwnerResearchPanel: React.FC<OwnerResearchPanelProps> = ({
                             <CardTitle className="text-base">{license.type}</CardTitle>
                             <Badge 
                               variant={
-                                license.status === 'active' ? "success" : 
+                                license.status === 'active' ? "outline" : 
                                 license.status === 'inactive' || license.status === 'expired' ? "secondary" : 
                                 "destructive"
                               }
+                              className={license.status === 'active' ? "bg-green-100 text-green-800" : ""}
                             >
                               {license.status}
                             </Badge>
