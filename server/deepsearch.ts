@@ -1,7 +1,7 @@
 import { LoanApplication } from "../shared/schema";
 import crypto from "crypto";
 import { performMultiAgentResearch } from "./multi-agent-research";
-import { performClaudeResearch } from "./anthropic-agent";
+import { performClaudeResearch } from "./claude-agent";
 
 // Score component dedicated to deep research findings
 export const DEEP_RESEARCH_COMPONENT_WEIGHT = 10; // 10% of total score
@@ -61,56 +61,70 @@ export interface DeepResearchResult {
 // Function to perform deep research on company and owner
 export async function performDeepResearch(application: LoanApplication): Promise<DeepResearchResult> {
   try {
-    console.log("Starting deep multi-agent research analysis...");
+    console.log("Starting deep research analysis...");
     
-    if (!process.env.PERPLEXITY_API_KEY) {
-      console.log("Perplexity API Key not found, using fallback research results");
-      return generateFallbackResearchResults();
+    // Try to use Anthropic Claude API first (higher quality results)
+    if (process.env.ANTHROPIC_API_KEY) {
+      try {
+        console.log("Using Anthropic Claude for deep research...");
+        const claudeResults = await performClaudeResearch(application);
+        console.log("Claude research complete with high-quality results!");
+        return claudeResults;
+      } catch (claudeError) {
+        console.error("Error with Claude research, falling back to multi-agent approach:", claudeError);
+      }
     }
     
-    // Use new multi-agent research system for more comprehensive analysis
-    console.log("Deploying multi-agent research system...");
-    const multiAgentResults = await performMultiAgentResearch(application);
-    console.log("Multi-agent research complete!");
+    // Fall back to Perplexity if Anthropic fails or isn't available
+    if (process.env.PERPLEXITY_API_KEY) {
+      console.log("Using Perplexity multi-agent system for deep research...");
+      const multiAgentResults = await performMultiAgentResearch(application);
+      console.log("Multi-agent research complete!");
+      
+      return {
+        companyAnalysis: {
+          overview: multiAgentResults.companyAnalysis.overview,
+          legalIssues: multiAgentResults.companyAnalysis.legalIssues,
+          financialRedFlags: multiAgentResults.companyAnalysis.financialRedFlags,
+          reputationInsights: multiAgentResults.companyAnalysis.reputationInsights,
+          industryPosition: multiAgentResults.companyAnalysis.industryPosition,
+          marketTrends: multiAgentResults.companyAnalysis.marketTrends,
+          executiveSummary: multiAgentResults.companyAnalysis.executiveSummary,
+          detailedFindings: multiAgentResults.companyAnalysis.detailedFindings,
+          // Include the new specific events and financial metrics fields
+          specificEvents: multiAgentResults.companyAnalysis.specificEvents || [],
+          financialMetrics: multiAgentResults.companyAnalysis.financialMetrics || [],
+          sources: multiAgentResults.companyAnalysis.sources,
+          score: multiAgentResults.companyAnalysis.score
+        },
+        ownerAnalysis: {
+          overview: multiAgentResults.ownerAnalysis.overview,
+          legalIssues: multiAgentResults.ownerAnalysis.legalIssues,
+          financialRedFlags: multiAgentResults.ownerAnalysis.financialRedFlags,
+          reputationInsights: multiAgentResults.ownerAnalysis.reputationInsights,
+          managementCapabilities: multiAgentResults.ownerAnalysis.managementCapabilities,
+          executiveSummary: multiAgentResults.ownerAnalysis.executiveSummary,
+          detailedFindings: multiAgentResults.ownerAnalysis.detailedFindings,
+          // Include the new prior business history field
+          priorBusinessHistory: multiAgentResults.ownerAnalysis.priorBusinessHistory || [],
+          sources: multiAgentResults.ownerAnalysis.sources,
+          score: multiAgentResults.ownerAnalysis.score
+        },
+        combinedScore: multiAgentResults.combinedScore,
+        grade: multiAgentResults.grade,
+        riskAssessment: multiAgentResults.riskAssessment
+      };
+    }
     
-    return {
-      companyAnalysis: {
-        overview: multiAgentResults.companyAnalysis.overview,
-        legalIssues: multiAgentResults.companyAnalysis.legalIssues,
-        financialRedFlags: multiAgentResults.companyAnalysis.financialRedFlags,
-        reputationInsights: multiAgentResults.companyAnalysis.reputationInsights,
-        industryPosition: multiAgentResults.companyAnalysis.industryPosition,
-        marketTrends: multiAgentResults.companyAnalysis.marketTrends,
-        executiveSummary: multiAgentResults.companyAnalysis.executiveSummary,
-        detailedFindings: multiAgentResults.companyAnalysis.detailedFindings,
-        // Include the new specific events and financial metrics fields
-        specificEvents: multiAgentResults.companyAnalysis.specificEvents || [],
-        financialMetrics: multiAgentResults.companyAnalysis.financialMetrics || [],
-        sources: multiAgentResults.companyAnalysis.sources,
-        score: multiAgentResults.companyAnalysis.score
-      },
-      ownerAnalysis: {
-        overview: multiAgentResults.ownerAnalysis.overview,
-        legalIssues: multiAgentResults.ownerAnalysis.legalIssues,
-        financialRedFlags: multiAgentResults.ownerAnalysis.financialRedFlags,
-        reputationInsights: multiAgentResults.ownerAnalysis.reputationInsights,
-        managementCapabilities: multiAgentResults.ownerAnalysis.managementCapabilities,
-        executiveSummary: multiAgentResults.ownerAnalysis.executiveSummary,
-        detailedFindings: multiAgentResults.ownerAnalysis.detailedFindings,
-        // Include the new prior business history field
-        priorBusinessHistory: multiAgentResults.ownerAnalysis.priorBusinessHistory || [],
-        sources: multiAgentResults.ownerAnalysis.sources,
-        score: multiAgentResults.ownerAnalysis.score
-      },
-      combinedScore: multiAgentResults.combinedScore,
-      grade: multiAgentResults.grade,
-      riskAssessment: multiAgentResults.riskAssessment
-    };
+    // If no API keys are available, use fallback
+    console.log("No API keys available, using fallback research results");
+    return generateFallbackResearchResults();
+    
   } catch (error) {
-    console.error("Error performing multi-agent deep research:", error);
+    console.error("Error performing deep research:", error);
     
-    // Fallback to traditional research method if multi-agent approach fails
-    console.log("Falling back to traditional research method...");
+    // Fallback to simpler research method if all else fails
+    console.log("All research methods failed, using basic research fallback...");
     
     try {
       // Research company
