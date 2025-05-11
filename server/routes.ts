@@ -1,4 +1,4 @@
-import type { Express, Request, Response } from "express";
+import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import multer from "multer";
@@ -17,6 +17,150 @@ import {
   addDocumentAnalysisPagesToPDF 
 } from "./document-analysis";
 import { generateEnhancedPDFReport } from "./enhanced-pdf-generator";
+
+// Helper function to extract text content from various file types
+function extractTextContentFromFile(file: Express.Multer.File): string {
+  // Get file extension
+  const fileExt = file.originalname.split('.').pop()?.toLowerCase() || '';
+  
+  // Based on file type, extract content appropriately
+  if (['txt', 'csv', 'json', 'xml', 'html', 'md'].includes(fileExt)) {
+    // Text files can be converted directly
+    return file.buffer.toString('utf-8');
+  } else if (['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx'].includes(fileExt)) {
+    // Binary documents - extract what we can
+    // This is a simplified approach - in production you'd use dedicated parsers
+    
+    // Try to find text chunks in the binary data
+    let content = '';
+    
+    // Extract ASCII and UTF-8 text chunks from binary
+    const buffer = file.buffer;
+    let currentChunk = '';
+    
+    for (let i = 0; i < buffer.length; i++) {
+      const byte = buffer[i];
+      // Check if it's a printable ASCII character
+      if (byte >= 32 && byte <= 126) {
+        currentChunk += String.fromCharCode(byte);
+      } else if (byte === 10 || byte === 13) {
+        // Newline characters
+        currentChunk += '\n';
+      } else {
+        // Non-printable character - if we have accumulated text, save it
+        if (currentChunk.length > 20) {
+          content += currentChunk + '\n';
+        }
+        currentChunk = '';
+      }
+    }
+    
+    // Add the last chunk if it's meaningful
+    if (currentChunk.length > 20) {
+      content += currentChunk;
+    }
+    
+    // Clean up the content
+    content = content.replace(/[^\x20-\x7E\n]/g, ' ').trim();
+    
+    // Remove duplicate newlines
+    content = content.replace(/\n\s*\n\s*\n/g, '\n\n');
+    
+    return content;
+  } else {
+    // For other file types, try basic extraction
+    return file.buffer.toString('utf-8', 0, Math.min(file.buffer.length, 20000))
+      .replace(/[^\x20-\x7E\n]/g, ' ')
+      .trim();
+  }
+}
+
+// Determine document type based on filename and extension
+function determineDocumentTypeFromFilename(filename: string): string {
+  const lowerName = filename.toLowerCase();
+  const ext = lowerName.split('.').pop() || '';
+  
+  // Tax documents
+  if (lowerName.includes('tax') || lowerName.includes('1040') || lowerName.includes('schedule c') || 
+      lowerName.includes('irs') || lowerName.includes('return')) {
+    return 'Tax Return';
+  }
+  
+  // Financial statements
+  if (lowerName.includes('balance sheet') || lowerName.includes('balancesheet') || lowerName.includes('assets')) {
+    return 'Balance Sheet';
+  }
+  
+  if (lowerName.includes('income') || lowerName.includes('profit') || lowerName.includes('p&l') || 
+      lowerName.includes('statement') || lowerName.includes('earnings')) {
+    return 'Income Statement';
+  }
+  
+  if (lowerName.includes('cash flow') || lowerName.includes('cashflow') || lowerName.includes('projection')) {
+    return 'Cash Flow Projection';
+  }
+  
+  // Bank documents
+  if (lowerName.includes('bank') || lowerName.includes('statement') || lowerName.includes('account')) {
+    return 'Bank Statement';
+  }
+  
+  // Business plans
+  if (lowerName.includes('business plan') || lowerName.includes('businessplan') || 
+      lowerName.includes('plan') || lowerName.includes('proposal')) {
+    return 'Business Plan';
+  }
+  
+  // Credit reports
+  if (lowerName.includes('credit') || lowerName.includes('duns') || lowerName.includes('score') || 
+      lowerName.includes('report')) {
+    return 'Credit Report';
+  }
+  
+  // Try to determine by extension
+  if (['xls', 'xlsx', 'csv'].includes(ext)) {
+    return 'Financial Statement';
+  }
+  
+  if (['doc', 'docx', 'pdf'].includes(ext)) {
+    return 'Business Document';
+  }
+  
+  // Default
+  return 'Financial Document';
+}
+
+// Generate context-based content for document analysis
+function generateContextBasedContent(filename: string, documentType: string, application: any): string {
+  return `Document Analysis Request for: ${filename}
+Document Type: ${documentType}
+
+BUSINESS CONTEXT:
+Business Name: ${application.businessName}
+Industry: ${application.industry}
+Years in Business: ${application.yearsInBusiness || 'Not specified'}
+Annual Revenue: $${application.annualRevenue || 'Not specified'}
+Loan Amount Requested: $${application.loanAmount || 'Not specified'}
+Business Description: ${application.businessDescription || `A business operating in the ${application.industry} industry`}
+
+OWNER INFORMATION:
+${application.businessOwners && application.businessOwners.length > 0 ? 
+  `Primary Owner: ${application.businessOwners[0].name}
+  Ownership Percentage: ${application.businessOwners[0].ownership || 'Not specified'}%` : 
+  'Owner information not provided'}
+
+DOCUMENT ANALYSIS REQUIREMENTS:
+This ${documentType} was uploaded as part of a business loan application. As an expert underwriter, please:
+
+1. Analyze what financial metrics would typically appear in this type of document for a business in the ${application.industry} industry
+2. Provide expected values or ranges for each metric based on the business size ($${application.annualRevenue || 'unknown'} annual revenue)
+3. Evaluate how these metrics would impact loan underwriting decisions
+4. Identify potential red flags or positive indicators that would appear in this document type
+5. Assess industry-specific considerations for the ${application.industry} sector
+6. Explain how this document contributes to the overall loan evaluation
+
+Your analysis should strictly follow standard business lending underwriting criteria, be detailed and specific to this business profile, and provide actionable insights for loan decision-making.`;
+}
 
 // Get the encryption service instance
 const encryptionService = EncryptionService.getInstance();
@@ -250,39 +394,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const encryptedBuffer = encryptionService.encryptBuffer(file.buffer);
             console.log(`Encrypted file ${file.originalname} (${file.buffer.length} bytes -> ${encryptedBuffer.length} bytes)`);
             
-            // For analysis, we still need the text content (unencrypted)
-            // Simplified text extraction from PDF - in production use a proper PDF extractor
-            // This just treats the binary as text to make something available for the demo
-            fileContent = file.buffer.toString('utf-8', 0, Math.min(file.buffer.length, 10000));
-            
-            // Remove non-printable characters for readability
-            fileContent = fileContent.replace(/[^\x20-\x7E]/g, ' ').trim();
-            
-            // If content is too small or appears to be binary garbage, use filename and application context
-            if (fileContent.length < 100 || fileContent.split(' ').length < 20) {
-              console.log(`File ${file.originalname} content appears to be binary or too short - using filename and application context for analysis`);
+            // Attempt to extract more meaningful content from the file
+            try {
+              // Try to get text content for analysis
+              fileContent = extractTextContentFromFile(file);
               
-              // Create context information based on the filename and application details
-              const documentType = file.originalname.toLowerCase().includes("tax") ? "Tax Return" :
-                                 file.originalname.toLowerCase().includes("balance") ? "Balance Sheet" :
-                                 file.originalname.toLowerCase().includes("income") ? "Income Statement" :
-                                 file.originalname.toLowerCase().includes("bank") ? "Bank Statement" :
-                                 file.originalname.toLowerCase().includes("business") ? "Business Plan" :
-                                 "Financial Document";
+              // If we couldn't extract enough meaningful content, create context-based assessment
+              if (fileContent.length < 200 || fileContent.split(' ').length < 30) {
+                console.log(`File ${file.originalname} content appears to be binary or too short - using enhanced context analysis`);
+                
+                // Determine document type from filename and extension
+                const documentType = determineDocumentTypeFromFilename(file.originalname);
+                
+                // Create thorough context information based on filename, document type and application details
+                fileContent = generateContextBasedContent(file.originalname, documentType, application);
+                
+                console.log(`Generated detailed context-based analysis prompt (${fileContent.length} chars)`);
+              } else {
+                console.log(`Extracted content for analysis from ${file.originalname} (${fileContent.length} chars)`);
+              }
+            } catch (extractError) {
+              console.error(`Error processing file content for ${file.originalname}:`, extractError);
               
+              // Fallback to basic context information
               fileContent = `Document Analysis Request for: ${file.originalname}
-Document Type: ${documentType}
-
-BUSINESS CONTEXT:
 Business Name: ${application.businessName}
 Industry: ${application.industry}
 Years in Business: ${application.yearsInBusiness}
 Annual Revenue: $${application.annualRevenue}
-Loan Amount Requested: $${application.loanAmount}
-Business Description: A business operating in the ${application.industry} industry
-
-ANALYSIS REQUEST:
-This document was uploaded as part of a loan application. Please provide an expert analysis of what financial metrics would typically be available in this type of document, how they would impact the loan decision, and any industry-specific considerations for the ${application.industry} sector.`;
+Loan Amount Requested: $${application.loanAmount}`;
             }
           }
           

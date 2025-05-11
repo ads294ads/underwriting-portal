@@ -223,6 +223,17 @@ For bank statements specifically, focus on:
 
 // Call Perplexity API
 async function callPerplexityAPI(prompt: string): Promise<string> {
+  // Try OpenAI first if available (better document handling capability)
+  if (process.env.OPENAI_API_KEY) {
+    try {
+      console.log("Using OpenAI for document analysis...");
+      return await callOpenAIAPI(prompt);
+    } catch (openaiError) {
+      console.error("OpenAI API call failed, falling back to Perplexity:", openaiError);
+    }
+  }
+  
+  // Fall back to Perplexity if OpenAI fails or isn't available
   try {
     console.log("Starting Perplexity API call for document analysis...");
     
@@ -282,6 +293,61 @@ async function callPerplexityAPI(prompt: string): Promise<string> {
     return data.choices[0].message.content || "";
   } catch (error) {
     console.error("Error calling Perplexity API for document analysis:", error);
+    throw error;
+  }
+}
+
+// Use OpenAI for more reliable document analysis
+async function callOpenAIAPI(prompt: string): Promise<string> {
+  try {
+    console.log("Starting OpenAI API call for document analysis...");
+    
+    // Validate API key
+    if (!process.env.OPENAI_API_KEY) {
+      throw new Error("Missing OpenAI API key required for document analysis");
+    }
+    
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`
+      },
+      body: JSON.stringify({
+        model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+        messages: [
+          {
+            role: "system",
+            content: "You are an expert financial analyst and loan underwriter with decades of experience evaluating business loan applications. Analyze financial documents to assess loan risk and creditworthiness. Provide detailed, structured analysis following business loan underwriting standards."
+          },
+          {
+            role: "user",
+            content: prompt
+          }
+        ],
+        temperature: 0.1,
+        max_tokens: 4000,
+        response_format: { type: "json_object" }
+      })
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`OpenAI API request failed with status ${response.status}: ${errorText}`);
+      throw new Error(`OpenAI API request failed: ${errorText}`);
+    }
+    
+    console.log("OpenAI API request succeeded, parsing response");
+    const data = await response.json();
+    
+    if (!data.choices || !data.choices[0] || !data.choices[0].message || !data.choices[0].message.content) {
+      console.error("Unexpected OpenAI API response structure:", JSON.stringify(data).substring(0, 200) + "...");
+      throw new Error("Unexpected OpenAI API response structure");
+    }
+    
+    return data.choices[0].message.content;
+  } catch (error) {
+    console.error("Error calling OpenAI API for document analysis:", error);
     throw error;
   }
 }
