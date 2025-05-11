@@ -2,6 +2,7 @@ import { LoanApplication } from "../shared/schema";
 import crypto from "crypto";
 import { performMultiAgentResearch } from "./multi-agent-research";
 import { performClaudeResearch } from "./claude-agent";
+import { performEnhancedDeepResearch } from "./enhanced-research";
 
 // Score component dedicated to deep research findings
 export const DEEP_RESEARCH_COMPONENT_WEIGHT = 10; // 10% of total score
@@ -30,6 +31,9 @@ export interface DeepResearchResult {
       trend: string;
     }[];
     sources?: string[];
+    highRiskFactors?: string[]; // High risk factors for company
+    moderateRiskFactors?: string[]; // Moderate risk factors for company
+    mitigatingFactors?: string[]; // Mitigating factors for company
     score: number; // 0-100 score for the company research component
   };
   ownerAnalysis: {
@@ -47,6 +51,9 @@ export interface DeepResearchResult {
       outcome: string;
     }[];
     sources?: string[];
+    highRiskFactors?: string[]; // High risk factors for owners
+    moderateRiskFactors?: string[]; // Moderate risk factors for owners
+    mitigatingFactors?: string[]; // Mitigating factors for owners
     score: number; // 0-100 score for the owner research component
   };
   combinedScore: number; // Weighted combined score (0-100)
@@ -56,6 +63,7 @@ export interface DeepResearchResult {
     moderateRiskFactors: string[];
     mitigatingFactors: string[];
   };
+  verificationConfidence?: number; // New: Confidence level in entity verification (0-1)
 }
 
 // Function to perform deep research on company and owner
@@ -63,7 +71,20 @@ export async function performDeepResearch(application: LoanApplication): Promise
   try {
     console.log("Starting deep research analysis...");
     
-    // Try to use Anthropic Claude API first (higher quality results)
+    // Try enhanced research with entity verification first (most robust)
+    if (process.env.OPENAI_API_KEY) {
+      try {
+        console.log("Using Enhanced Research with Entity Verification...");
+        const enhancedResults = await performEnhancedDeepResearch(application);
+        console.log("Enhanced deep research complete with entity verification!");
+        console.log(`Entity verification confidence: ${enhancedResults.verificationConfidence ? (enhancedResults.verificationConfidence * 100).toFixed(1) + '%' : 'unknown'}`);
+        return enhancedResults;
+      } catch (enhancedError) {
+        console.error("Error with enhanced research, falling back to Claude:", enhancedError);
+      }
+    }
+    
+    // Try to use Anthropic Claude API second (good quality results)
     if (process.env.ANTHROPIC_API_KEY) {
       try {
         console.log("Using Anthropic Claude for deep research...");
@@ -75,7 +96,7 @@ export async function performDeepResearch(application: LoanApplication): Promise
       }
     }
     
-    // Fall back to Perplexity if Anthropic fails or isn't available
+    // Fall back to Perplexity if previous methods fail
     if (process.env.PERPLEXITY_API_KEY) {
       console.log("Using Perplexity multi-agent system for deep research...");
       const multiAgentResults = await performMultiAgentResearch(application);
@@ -95,6 +116,9 @@ export async function performDeepResearch(application: LoanApplication): Promise
           specificEvents: multiAgentResults.companyAnalysis.specificEvents || [],
           financialMetrics: multiAgentResults.companyAnalysis.financialMetrics || [],
           sources: multiAgentResults.companyAnalysis.sources,
+          highRiskFactors: multiAgentResults.companyAnalysis.highRiskFactors || [],
+          moderateRiskFactors: multiAgentResults.companyAnalysis.moderateRiskFactors || [],
+          mitigatingFactors: multiAgentResults.companyAnalysis.mitigatingFactors || [],
           score: multiAgentResults.companyAnalysis.score
         },
         ownerAnalysis: {
@@ -108,11 +132,15 @@ export async function performDeepResearch(application: LoanApplication): Promise
           // Include the new prior business history field
           priorBusinessHistory: multiAgentResults.ownerAnalysis.priorBusinessHistory || [],
           sources: multiAgentResults.ownerAnalysis.sources,
+          highRiskFactors: multiAgentResults.ownerAnalysis.highRiskFactors || [],
+          moderateRiskFactors: multiAgentResults.ownerAnalysis.moderateRiskFactors || [],
+          mitigatingFactors: multiAgentResults.ownerAnalysis.mitigatingFactors || [],
           score: multiAgentResults.ownerAnalysis.score
         },
         combinedScore: multiAgentResults.combinedScore,
         grade: multiAgentResults.grade,
-        riskAssessment: multiAgentResults.riskAssessment
+        riskAssessment: multiAgentResults.riskAssessment,
+        verificationConfidence: 0.5 // Medium confidence for multi-agent research without verification
       };
     }
     
