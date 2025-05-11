@@ -56,7 +56,7 @@ export type Owner = {
 };
 
 // Extended Loan Application type for use with enhanced research features
-export interface LoanApplication {
+export type LoanApplication = {
   id: number;
   businessName: string;
   industry: string;
@@ -135,5 +135,5 @@ export const insertLoanApplicationSchema = createInsertSchema(loanApplications)
   });
 
 export type InsertLoanApplication = z.infer<typeof insertLoanApplicationSchema>;
-export type LoanApplication = typeof loanApplications.$inferSelect;
+// We're using an extended LoanApplication type defined earlier that includes the enhanced research fields
 export type ScoringDetails = Record<string, number>;

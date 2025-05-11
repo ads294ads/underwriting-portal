@@ -1,139 +1,130 @@
 import React from 'react';
-import { 
+import {
   Alert,
   AlertTitle,
-  AlertDescription 
-} from '@/components/ui/alert';
-import { 
-  Shield, 
-  ShieldAlert, 
-  ShieldCheck, 
-  ShieldX,
-  AlertCircle,
-  Info,
-  Check
-} from 'lucide-react';
-import { Progress } from '@/components/ui/progress';
-import { Badge } from '@/components/ui/badge';
+  AlertDescription,
+} from "@/components/ui/alert";
+import { Progress } from "@/components/ui/progress";
+import { Badge } from "@/components/ui/badge";
+import { ShieldCheck, ShieldAlert, ShieldQuestion } from "lucide-react";
+
+// Define verification status levels
+export type VerificationLevel = 'high' | 'moderate' | 'low' | 'unknown';
 
 interface VerificationStatusProps {
-  verificationConfidence?: number;
-  entityType: 'company' | 'owner' | 'overall';
-  verifiedName?: string;
-  originalName?: string;
+  confidence: number;
+  entity: string;
+  showDetails?: boolean;
 }
 
-export function VerificationStatus({ 
-  verificationConfidence = 0, 
-  entityType,
-  verifiedName,
-  originalName
-}: VerificationStatusProps) {
-  // Calculate percentage for display
-  const confidencePercent = Math.round(verificationConfidence * 100);
+/**
+ * Component that displays verification status with visual indicators
+ * for entity verification confidence
+ */
+export const VerificationStatus: React.FC<VerificationStatusProps> = ({ 
+  confidence, 
+  entity,
+  showDetails = false
+}) => {
+  // Convert confidence from 0-1 to 0-100 percentage
+  const confidencePercent = Math.round(confidence * 100);
   
-  // Determine status level
-  const getStatusLevel = () => {
+  /**
+   * Get verification level based on confidence percentage
+   */
+  const getVerificationLevel = (): VerificationLevel => {
     if (confidencePercent >= 90) return 'high';
-    if (confidencePercent >= 75) return 'good';
-    if (confidencePercent >= 50) return 'moderate';
-    return 'low';
+    if (confidencePercent >= 60) return 'moderate';
+    if (confidencePercent > 0) return 'low';
+    return 'unknown';
   };
-  
-  const status = getStatusLevel();
-  
-  // Get appropriate icon
-  const getIcon = () => {
-    switch (status) {
+
+  /**
+   * Get color scheme based on verification level
+   */
+  const getColorScheme = () => {
+    switch (getVerificationLevel()) {
       case 'high':
-        return <ShieldCheck className="h-5 w-5 text-green-600" />;
-      case 'good':
-        return <Shield className="h-5 w-5 text-blue-600" />;
+        return {
+          badge: 'bg-green-100 text-green-800',
+          icon: <ShieldCheck className="h-6 w-6 text-green-600" />,
+          alertVariant: 'default' as const,
+          progressColor: 'bg-green-500'
+        };
       case 'moderate':
-        return <ShieldAlert className="h-5 w-5 text-amber-600" />;
+        return {
+          badge: 'bg-amber-100 text-amber-800',
+          icon: <ShieldCheck className="h-6 w-6 text-amber-600" />,
+          alertVariant: 'default' as const,
+          progressColor: 'bg-amber-500'
+        };
       case 'low':
-        return <ShieldX className="h-5 w-5 text-red-600" />;
+        return {
+          badge: 'bg-red-100 text-red-800',
+          icon: <ShieldAlert className="h-6 w-6 text-red-600" />,
+          alertVariant: 'destructive' as const,
+          progressColor: 'bg-red-500'
+        };
       default:
-        return <Info className="h-5 w-5 text-gray-600" />;
+        return {
+          badge: 'bg-gray-100 text-gray-800',
+          icon: <ShieldQuestion className="h-6 w-6 text-gray-600" />,
+          alertVariant: 'default' as const,
+          progressColor: 'bg-gray-500'
+        };
     }
   };
-  
-  // Get appropriate color for progress bar
+
+  /**
+   * Get CSS class for progress bar color
+   */
   const getProgressColor = () => {
-    switch (status) {
-      case 'high':
-        return 'bg-green-600';
-      case 'good':
-        return 'bg-blue-600';
-      case 'moderate':
-        return 'bg-amber-600';
-      case 'low':
-        return 'bg-red-600';
-      default:
-        return 'bg-gray-600';
-    }
+    return getColorScheme().progressColor;
   };
-  
-  // Get appropriate color for badge
-  const getBadgeColor = () => {
-    switch (status) {
-      case 'high':
-        return 'bg-green-100 text-green-800 border-green-300';
-      case 'good':
-        return 'bg-blue-100 text-blue-800 border-blue-300';
-      case 'moderate':
-        return 'bg-amber-100 text-amber-800 border-amber-300';
-      case 'low':
-        return 'bg-red-100 text-red-800 border-red-300';
-      default:
-        return 'bg-gray-100 text-gray-800 border-gray-300';
-    }
-  };
-  
-  // Get entity type label
-  const getEntityLabel = () => {
-    switch (entityType) {
-      case 'company':
-        return 'Company Verification';
-      case 'owner':
-        return 'Owner Verification';
-      case 'overall':
-        return 'Overall Verification';
-      default:
-        return 'Entity Verification';
-    }
-  };
-  
-  // Get status message
+
+  /**
+   * Get status message based on verification level
+   */
   const getStatusMessage = () => {
-    const entityLabel = entityType === 'company' ? 'company' : 
-                       entityType === 'owner' ? 'owner' : 'entity';
-    
-    switch (status) {
+    switch (getVerificationLevel()) {
       case 'high':
-        return `High confidence in ${entityLabel} identity. Research findings highly reliable.`;
-      case 'good':
-        return `Good confidence in ${entityLabel} identity. Research findings generally reliable.`;
+        return `Research findings for ${entity} have high confidence. The entity has been verified through multiple reliable sources.`;
       case 'moderate':
-        return `Moderate confidence in ${entityLabel} identity. Research findings should be verified.`;
+        return `Research findings for ${entity} have moderate confidence. Additional verification may be helpful.`;
       case 'low':
-        return `Low confidence in ${entityLabel} identity. Research findings may not be accurate.`;
+        return `Research findings for ${entity} have low confidence. Verification was limited, and findings may not relate to the correct entity.`;
       default:
-        return `Unable to verify ${entityLabel} identity. Research findings unreliable.`;
+        return `Unable to verify ${entity}. Research findings should be treated with significant caution.`;
     }
   };
-  
-  // Show entity name match if provided
-  const showNameMatch = verifiedName && originalName && verifiedName !== originalName;
-  
+
+  const { icon, badge, alertVariant } = getColorScheme();
+
+  /**
+   * Minimal display when details not needed
+   */
+  if (!showDetails) {
+    return (
+      <div className="flex items-center space-x-2 text-sm">
+        {icon}
+        <span>
+          Verification: <span className={badge}>{confidencePercent}%</span>
+        </span>
+      </div>
+    );
+  }
+
+  /**
+   * Detailed display with full alert and progress bar
+   */
   return (
-    <Alert className="my-4 border-2" variant={status === 'low' ? 'destructive' : 'default'}>
-      <div className="flex items-start gap-3">
-        {getIcon()}
+    <Alert variant={alertVariant} className="mb-4">
+      <div className="flex items-start space-x-2">
+        <div className="mt-0.5">{icon}</div>
         <div className="flex-1">
           <AlertTitle className="flex items-center justify-between">
-            <span>{getEntityLabel()}</span>
-            <Badge className={`ml-2 ${getBadgeColor()}`}>
+            {entity} Verification
+            <Badge variant="outline" className={`ml-2 ${badge}`}>
               {confidencePercent}% Confidence
             </Badge>
           </AlertTitle>
@@ -146,14 +137,9 @@ export function VerificationStatus({
           <AlertDescription className="mt-2">
             {getStatusMessage()}
             
-            {showNameMatch && (
-              <div className="mt-2 text-sm flex items-start gap-1">
-                <AlertCircle className="h-4 w-4 mt-0.5 text-amber-600 flex-shrink-0" />
-                <span>
-                  Entity name discrepancy found: 
-                  <span className="font-semibold ml-1">{originalName}</span> (application) vs 
-                  <span className="font-semibold ml-1">{verifiedName}</span> (verified)
-                </span>
+            {getVerificationLevel() === 'low' && (
+              <div className="mt-2 text-red-600 font-medium">
+                Warning: Research findings should be manually verified before making lending decisions.
               </div>
             )}
           </AlertDescription>
@@ -161,49 +147,39 @@ export function VerificationStatus({
       </div>
     </Alert>
   );
-}
+};
 
-// Component to show combined verification status with detailed breakdown
-export function VerificationDetailPanel({
-  verificationResults,
-  applicationData
-}: {
-  verificationResults: {
-    overallConfidence: number;
-    companyConfidence?: number;
-    ownerConfidence?: number;
-    verifiedCompanyName?: string;
-    verifiedOwnerName?: string;
-  };
-  applicationData: {
-    companyName: string;
-    ownerName?: string;
-  };
-}) {
+/**
+ * Component for displaying verification status for the entire application
+ */
+export const ApplicationVerificationStatus: React.FC<{
+  companyConfidence: number;
+  ownerConfidence: number;
+  overallConfidence: number;
+}> = ({ companyConfidence, ownerConfidence, overallConfidence }) => {
   return (
-    <div className="space-y-3 mt-4">
+    <div className="space-y-4">
+      <h3 className="text-lg font-medium">Verification Status</h3>
       <VerificationStatus 
-        verificationConfidence={verificationResults.overallConfidence}
-        entityType="overall"
+        confidence={companyConfidence} 
+        entity="Company" 
+        showDetails={true} 
       />
-      
-      {verificationResults.companyConfidence !== undefined && (
+      <VerificationStatus 
+        confidence={ownerConfidence} 
+        entity="Owner" 
+        showDetails={true}
+      />
+      <div className="border-t pt-4 mt-4">
+        <h4 className="text-md font-medium mb-2">Overall Verification</h4>
         <VerificationStatus 
-          verificationConfidence={verificationResults.companyConfidence}
-          entityType="company"
-          verifiedName={verificationResults.verifiedCompanyName}
-          originalName={applicationData.companyName}
+          confidence={overallConfidence} 
+          entity="Overall Research" 
+          showDetails={true}
         />
-      )}
-      
-      {verificationResults.ownerConfidence !== undefined && applicationData.ownerName && (
-        <VerificationStatus 
-          verificationConfidence={verificationResults.ownerConfidence}
-          entityType="owner"
-          verifiedName={verificationResults.verifiedOwnerName}
-          originalName={applicationData.ownerName}
-        />
-      )}
+      </div>
     </div>
   );
-}
+};
+
+export default VerificationStatus;
