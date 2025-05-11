@@ -65,6 +65,20 @@ export async function performEnhancedDeepResearch(application: LoanApplication):
           console.log(`Owner verification complete for ${owner.name}: ${Math.round(ownerVerification.confidence * 100)}% confidence`);
         }
       }
+    } else if (application.businessOwners && application.businessOwners.length > 0) {
+      // Use businessOwners if owners isn't available
+      for (const owner of application.businessOwners) {
+        if (owner.ownershipPercentage >= 20) { // Only verify owners with 20% or more ownership
+          const ownerVerification = await verifyPersonIdentity(owner.name, application.businessName, companyVerification.verifiedName);
+          ownerVerifications.push({
+            name: owner.name,
+            verifiedName: ownerVerification.verifiedName,
+            confidence: ownerVerification.confidence,
+            verifiedTitle: ownerVerification.verifiedTitle
+          });
+          console.log(`Owner verification complete for ${owner.name}: ${Math.round(ownerVerification.confidence * 100)}% confidence`);
+        }
+      }
     }
     
     // Calculate overall verification confidence
@@ -103,6 +117,28 @@ export async function performEnhancedDeepResearch(application: LoanApplication):
           }
         }
       }
+    } else if (application.businessOwners && application.businessOwners.length > 0) {
+      // Use businessOwners if owners isn't available
+      for (let i = 0; i < application.businessOwners.length; i++) {
+        const owner = application.businessOwners[i];
+        
+        if (owner.ownershipPercentage >= 20) {
+          const ownerVerification = ownerVerifications.find(v => v.name === owner.name);
+          
+          if (ownerVerification) {
+            const ownerResearch = await researchVerifiedPerson(
+              owner.name,
+              ownerVerification.verifiedName,
+              application.businessName,
+              companyVerification.verifiedName,
+              ownerVerification.confidence
+            );
+            
+            ownerResearches.push(ownerResearch);
+            console.log(`Owner research complete for ${ownerVerification.verifiedName}`);
+          }
+        }
+      }
     }
     
     // Step 5: Combine owner analyses into one result
@@ -116,18 +152,18 @@ export async function performEnhancedDeepResearch(application: LoanApplication):
     
     // Step 7: Collect high-level risk factors for combined assessment
     const highRiskFactors = [
-      ...companyResearch.highRiskFactors || [],
-      ...combinedOwnerAnalysis.highRiskFactors || []
+      ...(companyResearch.highRiskFactors || []),
+      ...(combinedOwnerAnalysis.highRiskFactors || [])
     ];
     
     const moderateRiskFactors = [
-      ...companyResearch.moderateRiskFactors || [],
-      ...combinedOwnerAnalysis.moderateRiskFactors || []
+      ...(companyResearch.moderateRiskFactors || []),
+      ...(combinedOwnerAnalysis.moderateRiskFactors || [])
     ];
     
     const mitigatingFactors = [
-      ...companyResearch.mitigatingFactors || [],
-      ...combinedOwnerAnalysis.mitigatingFactors || []
+      ...(companyResearch.mitigatingFactors || []),
+      ...(combinedOwnerAnalysis.mitigatingFactors || [])
     ];
     
     // Return the complete research result
@@ -202,7 +238,7 @@ Name: ${application.businessName}
 Industry: ${application.industry}
 Location: ${application.city || ""}, ${application.state || ""}
 Years in Business: ${application.yearsInBusiness || "Unknown"}
-Annual Revenue: $${application.annualRevenue?.toLocaleString() || "Unknown"}
+Annual Revenue: $${typeof application.annualRevenue === 'number' ? application.annualRevenue.toLocaleString() : application.annualRevenue || "Unknown"}
 
 VERIFICATION TASKS:
 1. Confirm this is a real business entity that exists as described
@@ -237,8 +273,9 @@ Response format:
           ]
         });
         
-        if (response.content?.[0]?.text) {
-          const result = JSON.parse(response.content[0].text);
+        const content = response.content?.[0];
+        if (content && 'text' in content) {
+          const result = JSON.parse(content.text);
           
           return {
             verifiedName: result.verifiedName || application.businessName,
@@ -350,8 +387,9 @@ Response format:
           ]
         });
         
-        if (response.content?.[0]?.text) {
-          const result = JSON.parse(response.content[0].text);
+        const content = response.content?.[0];
+        if (content && 'text' in content) {
+          const result = JSON.parse(content.text);
           
           return {
             verifiedName: result.verifiedName || ownerName,
@@ -434,7 +472,7 @@ COMPANY: ${verifiedName} (verification confidence: ${Math.round(verificationConf
 Industry: ${application.industry}
 Location: ${application.city || ""}, ${application.state || ""}
 Years in Business: ${application.yearsInBusiness || "Unknown"}
-Annual Revenue: $${application.annualRevenue?.toLocaleString() || "Unknown"}
+Annual Revenue: $${typeof application.annualRevenue === 'number' ? application.annualRevenue.toLocaleString() : application.annualRevenue || "Unknown"}
 
 ${reviewAnalysis ? `
 REVIEW ANALYSIS SUMMARY:
@@ -536,8 +574,9 @@ Response format:
           ]
         });
         
-        if (response.content?.[0]?.text) {
-          return JSON.parse(response.content[0].text);
+        const content = response.content?.[0];
+        if (content && 'text' in content) {
+          return JSON.parse(content.text);
         }
       } catch (claudeError) {
         console.error("Claude company research failed:", claudeError);
@@ -587,7 +626,7 @@ Response format:
         "Limited public business history"
       ],
       mitigatingFactors: [
-        `Reported annual revenue of $${application.annualRevenue?.toLocaleString()}`
+        `Reported annual revenue of $${typeof application.annualRevenue === 'number' ? application.annualRevenue.toLocaleString() : application.annualRevenue}`
       ],
       executiveSummary: `Limited public information was found for ${verifiedName}. Standard verification procedures are recommended.`,
       score: 60
@@ -729,8 +768,9 @@ Response format:
           ]
         });
         
-        if (response.content?.[0]?.text) {
-          return JSON.parse(response.content[0].text);
+        const content = response.content?.[0];
+        if (content && 'text' in content) {
+          return JSON.parse(content.text);
         }
       } catch (claudeError) {
         console.error("Claude owner research failed:", claudeError);

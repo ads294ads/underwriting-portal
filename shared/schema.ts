@@ -100,7 +100,11 @@ export const ownerSchema = z.object({
   name: z.string().min(1, "Owner name is required"),
   ownership: z.union([z.string(), z.number()]).transform(val => 
     typeof val === 'string' ? parseFloat(val) : val
-  )
+  ),
+  ownershipPercentage: z.union([z.number(), z.undefined()]) // Add for compatibility with enhanced research
+    .optional()
+    .transform(val => val === undefined ? undefined : val),
+  title: z.string().optional()
 });
 
 export const insertLoanApplicationSchema = createInsertSchema(loanApplications)

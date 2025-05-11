@@ -178,7 +178,7 @@ async function verifyCompanyIdentity(
   verifiedLocation?: string;
 }> {
   try {
-    const locationContext = application.state ? `in ${application.state}` : "";
+    const locationContext = state ? `in ${state}` : "";
     const verificationPrompt = `
 I need to verify the identity of a business before conducting detailed review and reputation research.
 
@@ -222,8 +222,9 @@ Response format:
         system: "You are an expert investigator specializing in business verification. You only report factual, verifiable information from reputable sources. You never fabricate details or assume connections without evidence."
       });
 
-      const claudeContent = claudeResponse.content[0].text;
-      if (claudeContent) {
+      const content = claudeResponse.content[0];
+      if (content && 'text' in content) {
+        const claudeContent = content.text;
         const result = JSON.parse(claudeContent);
         return {
           verified: result.verified || false,
@@ -285,7 +286,7 @@ async function researchReviewPlatforms(
   state?: string
 ): Promise<void> {
   try {
-    const locationContext = application.state ? `in ${application.state}` : "";
+    const locationContext = state ? `in ${state}` : "";
     const reviewPrompt = `
 Research reviews for this business across major review platforms:
 
@@ -348,8 +349,9 @@ Response format:
         system: "You are an expert researcher specializing in business reviews and reputation analysis. You only report factual, verifiable information from public sources. You never fabricate details or make assumptions without evidence."
       });
 
-      const claudeContent = claudeResponse.content[0].text;
-      if (claudeContent) {
+      const content = claudeResponse.content[0];
+      if (content && 'text' in content) {
+        const claudeContent = content.text;
         const result = JSON.parse(claudeContent);
         reviewAnalysis.reviewPlatforms = result.reviewPlatforms || [];
         console.log(`Found ${reviewAnalysis.reviewPlatforms.length} review platforms using Claude.`);
@@ -536,8 +538,9 @@ Response format:
         system: "You are an expert researcher specializing in business complaints and consumer protection. You only report factual, verifiable information from public sources. You never fabricate details or make assumptions without evidence."
       });
 
-      const claudeContent = claudeResponse.content[0].text;
-      if (claudeContent) {
+      const content = claudeResponse.content[0];
+      if (content && 'text' in content) {
+        const claudeContent = content.text;
         const result = JSON.parse(claudeContent);
         reviewAnalysis.complaints = result.complaints || [];
         console.log(`Found ${reviewAnalysis.complaints.length} complaints using Claude.`);
@@ -700,8 +703,9 @@ Response format:
         system: "You are an expert reputation analyst specializing in evaluating businesses for loan underwriting. You excel at identifying patterns in complex data and producing clear, actionable assessments. You focus on facts rather than conjecture, and you clearly document the evidence for your conclusions."
       });
 
-      const claudeContent = claudeResponse.content[0].text;
-      if (claudeContent) {
+      const content = claudeResponse.content[0];
+      if (content && 'text' in content) {
+        const claudeContent = content.text;
         const result = JSON.parse(claudeContent);
         
         // Update analysis with assessment results
