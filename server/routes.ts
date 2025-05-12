@@ -849,12 +849,23 @@ Loan Amount Requested: $${application.loanAmount}`;
         }
       });
       
-      // Set response headers
-      res.setHeader('Content-Type', 'application/pdf');
-      res.setHeader('Content-Disposition', `attachment; filename="${application.businessName.replace(/\s+/g, '_')}_Comprehensive_Assessment.pdf"`);
-      
-      // Pipe the PDF directly to the response
-      doc.pipe(res);
+      // Create a buffer to hold the PDF data instead of piping directly
+      const chunks: Buffer[] = [];
+      doc.on('data', (chunk) => chunks.push(chunk));
+      doc.on('end', () => {
+        // Combine chunks into a single buffer
+        const pdfBuffer = Buffer.concat(chunks);
+        
+        // Set response headers for PDF download
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename="${application.businessName.replace(/\s+/g, '_')}_Comprehensive_Assessment.pdf"`);
+        res.setHeader('Content-Length', pdfBuffer.length);
+        
+        // Send the PDF buffer
+        res.send(pdfBuffer);
+        
+        console.log("PDF report successfully generated and sent");
+      });
       
       // Define colors
       const colors = {

@@ -16,8 +16,9 @@ export async function getVerificationStatus(application: LoanApplication): Promi
   try {
     console.log("Verifying entities for application:", application.id);
     
-    // Extract business address if available
-    const businessAddress = application.address || "";
+    // For now we don't have a structured address field, so we'll leave it blank
+    // In a production system, you would extract this from the application
+    const businessAddress = "";
     const companyVerification = await verifyCompany(application.businessName, application.industry, businessAddress);
     
     // Find primary owner
@@ -130,7 +131,15 @@ Only return the JSON object without any other text.`;
       system: "You are an expert business verification system. Always approach verification requests thoroughly and skeptically. When verification can't be performed reliably, maintain low confidence scores. Output only valid JSON."
     });
 
-    const responseText = response.content[0].text;
+    // Get the response content text safely
+    const responseText = response.content[0].type === 'text' 
+      ? response.content[0].text 
+      : JSON.stringify({
+          isVerified: false,
+          confidence: 0.3,
+          source: "AI verification system",
+          details: ["Unable to process verification response format"]
+        });
     
     try {
       // Parse the response as JSON
@@ -208,7 +217,15 @@ Only return the JSON object without any other text.`;
       system: "You are an expert identity verification system. Always approach verification requests thoroughly and skeptically. When verification can't be performed reliably, maintain low confidence scores. Output only valid JSON."
     });
 
-    const responseText = response.content[0].text;
+    // Get the response content text safely
+    const responseText = response.content[0].type === 'text' 
+      ? response.content[0].text 
+      : JSON.stringify({
+          isVerified: false,
+          confidence: 0.3,
+          source: "AI verification system",
+          details: ["Unable to process verification response format"]
+        });
     
     try {
       // Parse the response as JSON
