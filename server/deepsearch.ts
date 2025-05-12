@@ -31,9 +31,10 @@ export interface DeepResearchResult {
       trend: string;
     }[];
     sources?: string[];
-    highRiskFactors?: string[]; // High risk factors for company
-    moderateRiskFactors?: string[]; // Moderate risk factors for company
-    mitigatingFactors?: string[]; // Mitigating factors for company
+    // Add required risk factor properties
+    highRiskFactors: string[]; // High risk factors for company
+    moderateRiskFactors: string[]; // Moderate risk factors for company
+    mitigatingFactors: string[]; // Mitigating factors for company
     score: number; // 0-100 score for the company research component
   };
   ownerAnalysis: {
@@ -51,9 +52,10 @@ export interface DeepResearchResult {
       outcome: string;
     }[];
     sources?: string[];
-    highRiskFactors?: string[]; // High risk factors for owners
-    moderateRiskFactors?: string[]; // Moderate risk factors for owners
-    mitigatingFactors?: string[]; // Mitigating factors for owners
+    // Add required risk factor properties
+    highRiskFactors: string[]; // High risk factors for owners
+    moderateRiskFactors: string[]; // Moderate risk factors for owners
+    mitigatingFactors: string[]; // Mitigating factors for owners
     score: number; // 0-100 score for the owner research component
   };
   combinedScore: number; // Weighted combined score (0-100)
@@ -200,7 +202,7 @@ export async function performDeepResearch(application: LoanApplication): Promise
       const companyAnalysis = await researchCompany(companyName, industry);
       
       // Perform owner research
-      const ownerAnalysis = await researchPerson(ownerName, companyName);
+      const ownerAnalysis = await researchPerson(ownerName, companyName, industry);
       
       // Calculate combined score
       const combinedScore = Math.round((companyAnalysis.score + ownerAnalysis.score) / 2);
@@ -311,7 +313,7 @@ This is extremely important for a loan decision. The company DOES exist and has 
 }
 
 // Function to research person using Perplexity API
-async function researchPerson(ownerName: string, companyName: string): Promise<{
+async function researchPerson(ownerName: string, companyName: string, industryName: string = "relevant"): Promise<{
   overview: string;
   legalIssues: string[];
   financialRedFlags: string[];
@@ -330,7 +332,7 @@ I need you to search for and provide SPECIFIC, DETAILED information about "${own
 REQUIRED: Include these specific details about the person:
 - Current age and location
 - Current role at ${companyName} with exact title
-- Years of experience in the ${industry} industry
+- Years of experience in the ${industryName} industry
 - Educational background with specific institutions and degrees
 - Previous companies they've owned or worked for with dates
 
