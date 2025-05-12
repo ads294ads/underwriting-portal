@@ -210,11 +210,29 @@ export async function performDeepResearch(application: LoanApplication): Promise
       // Determine grade
       const grade = determineDeepResearchGrade(combinedScore);
       
+      // Generate a risk assessment based on the findings
+      const riskAssessment = {
+        highRiskFactors: [
+          ...companyAnalysis.highRiskFactors.slice(0, 2),
+          ...ownerAnalysis.highRiskFactors.slice(0, 1)
+        ],
+        moderateRiskFactors: [
+          ...companyAnalysis.moderateRiskFactors.slice(0, 2),
+          ...ownerAnalysis.moderateRiskFactors.slice(0, 1)
+        ],
+        mitigatingFactors: [
+          ...companyAnalysis.mitigatingFactors.slice(0, 2),
+          ...ownerAnalysis.mitigatingFactors.slice(0, 1)
+        ]
+      };
+      
       return {
         companyAnalysis,
         ownerAnalysis,
         combinedScore,
-        grade
+        grade,
+        riskAssessment,
+        verificationConfidence: 0.5
       };
     } catch (fallbackError) {
       console.error("Error in fallback research:", fallbackError);

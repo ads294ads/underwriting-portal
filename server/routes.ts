@@ -697,21 +697,35 @@ Please provide a general assessment based on the document name and business deta
           application, 
           deepResearchResults || {
             companyAnalysis: {
-              overview: "Company analysis could not be completed at this time.",
+              overview: `A comprehensive background check on ${application.businessName} was attempted but could not be completed at this time. This does not indicate any negative findings.`,
               legalIssues: [],
               financialRedFlags: [],
-              reputationInsights: [],
+              reputationInsights: ["No reputation data available at this time."],
+              highRiskFactors: ["Limited company verification - identity confidence low."],
+              moderateRiskFactors: ["Industry trends unavailable with current search depth."],
+              mitigatingFactors: ["Standard industry risk assessment can be applied."],
+              industryPosition: [],
+              marketTrends: [],
               score: 70
             },
             ownerAnalysis: {
-              overview: "Owner analysis could not be completed at this time.",
+              overview: "Owner background check was attempted but could not be completed at this time. This does not indicate any negative findings.",
               legalIssues: [],
               financialRedFlags: [],
-              reputationInsights: [],
+              reputationInsights: ["No reputation data available at this time."],
+              highRiskFactors: ["Owner identity verification limited - confidence low."],
+              moderateRiskFactors: ["Management history unavailable with current search depth."],
+              mitigatingFactors: ["Standard background checks can be applied."],
+              managementCapabilities: [],
               score: 70
             },
             combinedScore: 70,
-            grade: application.grade || "B"
+            grade: application.grade || "B",
+            riskAssessment: {
+              highRiskFactors: ["Deep research capabilities limited - uncertain risk level."],
+              moderateRiskFactors: ["Standard industry risks apply."],
+              mitigatingFactors: ["Additional documentation can offset limited online research."]
+            }
           },
           documentAnalysisResults.length > 0 ? documentAnalysisResults : undefined
         );
