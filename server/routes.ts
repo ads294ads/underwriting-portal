@@ -1135,6 +1135,16 @@ Please provide a general assessment based on the document name and business deta
         detail: 'Analyzing uploaded documents for financial insights'
       });
       
+      // Broadcast progress update before starting PDF generation
+      broadcastProgress(id, {
+        stage: 'pdf_generation',
+        message: 'Generating enhanced PDF report',
+        progress: 90, 
+        detail: 'Creating comprehensive multi-agent assessment report'
+      });
+      
+      console.log(`Starting enhanced PDF generation for application ID: ${id}`);
+      
       // Generate the enhanced PDF using our multi-agent system with live progress updates
       try {
         // Broadcast progress update for PDF generation

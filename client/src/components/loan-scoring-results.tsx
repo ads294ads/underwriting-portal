@@ -397,7 +397,12 @@ export default function LoanScoringResults({ application }: LoanScoringResultsPr
             
             // Trigger download with a slight delay to let the PDF finalize
             setTimeout(() => {
-              startActualDownload();
+              // Access the globally exposed function
+              if (typeof (window as any).startActualDownload === 'function') {
+                (window as any).startActualDownload();
+              } else {
+                console.error("startActualDownload function not available");
+              }
             }, 2000);
           }
           
@@ -432,56 +437,82 @@ export default function LoanScoringResults({ application }: LoanScoringResultsPr
         description: "This may take 1-2 minutes. Progress will be shown below.",
       });
       
-      // Set a longer timeout for the initial download attempt (60 seconds)
+      // Set up the download promise with backup timeout
+      let backupTimeout: NodeJS.Timeout;
       const downloadPromise = new Promise<void>((resolve, reject) => {
-        // Set a backup timeout in case the WebSocket completion doesn't trigger
-        const backupTimeout = setTimeout(() => {
-          console.log("Backup timeout triggered - attempting direct download");
+        // Function to start the actual PDF download
+        const startActualDownload = () => {
+          console.log("Starting actual PDF download from:", downloadUrl);
           
-          // Start a direct download as backup
-          handlePdfDownload(
-            downloadUrl,
-            filename,
-            () => resolve(),
-            (error) => reject(error)
-          ).catch(reject);
+          // Start the download process
+          fetch(downloadUrl)
+            .then(async (response) => {
+              // If the response is successful, this means the PDF was generated
+              if (response.ok) {
+                console.log("PDF downloaded successfully, creating blob URL");
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                
+                // Create an anchor element to trigger the download
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                
+                console.log("Triggering download click");
+                a.click();
+                
+                // Clean up
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+                
+                // Mark as complete
+                clearTimeout(backupTimeout);
+                downloadState.downloadCompleted = true;
+                setEnhancedPdfDownloadComplete(true);
+                resolve();
+              } else {
+                // If there was an error response, parse and show it
+                const text = await response.text();
+                console.error("Server error downloading PDF:", text);
+                
+                // Only reject if this wasn't already marked as completed by WebSocket
+                if (!downloadState.downloadCompleted) {
+                  downloadState.hasError = true;
+                  reject(new Error(`Server error: ${text}`));
+                }
+              }
+            })
+            .catch(error => {
+              console.error("Error downloading PDF:", error);
+              
+              // Only reject if this wasn't already marked as completed or has error
+              if (!downloadState.downloadCompleted && !downloadState.hasError) {
+                downloadState.hasError = true;
+                clearTimeout(backupTimeout);
+                reject(error);
+              }
+            });
+        };
+        
+        // Make startActualDownload function available in the WebSocket callback
+        (window as any).startActualDownload = startActualDownload;
+        
+        // Set a backup timeout in case the WebSocket completion doesn't trigger
+        backupTimeout = setTimeout(() => {
+          console.log("Backup timeout triggered - attempting direct download");
+          startActualDownload();
         }, 60000); // 60 second backup timeout
         
-        // Start the download process right away - this will trigger the backend to start processing
-        fetch(downloadUrl)
-          .then(async (response) => {
-            // If the response is successful, this means the PDF was generated
-            if (response.ok) {
-              const blob = await response.blob();
-              const url = window.URL.createObjectURL(blob);
-              
-              // Create an anchor element to trigger the download
-              const a = document.createElement('a');
-              a.style.display = 'none';
-              a.href = url;
-              a.download = filename;
-              document.body.appendChild(a);
-              a.click();
-              
-              // Clean up
-              window.URL.revokeObjectURL(url);
-              document.body.removeChild(a);
-              
-              // Mark as complete
-              clearTimeout(backupTimeout);
-              setEnhancedPdfDownloadComplete(true);
-              resolve();
-            } else {
-              // If there was an error response, parse and show it
-              const text = await response.text();
-              reject(new Error(`Server error: ${text}`));
-            }
+        // Start the server processing but don't download yet - let WebSocket tell us when it's ready
+        fetch(downloadUrl, { method: 'HEAD' })
+          .then(() => {
+            console.log("PDF generation started on the server");
           })
           .catch(error => {
-            if (!enhancedPdfDownloadComplete) {
-              clearTimeout(backupTimeout);
-              reject(error);
-            }
+            console.error("Error starting PDF generation:", error);
+            // Continue anyway - we'll still try to download via the backup timeout
           });
       });
       
