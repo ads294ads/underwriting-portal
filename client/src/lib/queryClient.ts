@@ -79,9 +79,21 @@ export class WebSocketManager {
           resolve(socket);
         };
         
-        socket.onclose = () => {
-          console.log("WebSocket connection closed");
+        socket.onclose = (event) => {
+          console.log(`WebSocket connection closed: ${event.code} ${event.reason}`);
           this.socket = null;
+          
+          // If this was an unexpected closure, try to reconnect after a delay
+          if (event.code !== 1000 && event.code !== 1001) {
+            console.log("Unexpected WebSocket closure, scheduling reconnect in 3 seconds");
+            setTimeout(() => {
+              console.log("Attempting to reconnect WebSocket");
+              this.connectionPromise = null;
+              this.getConnection().catch(err => {
+                console.error("Failed to reconnect WebSocket:", err);
+              });
+            }, 3000);
+          }
         };
         
         socket.onerror = (error) => {
@@ -94,7 +106,29 @@ export class WebSocketManager {
         socket.onmessage = (event) => {
           try {
             console.log("WebSocket message received:", event.data);
-            const data = JSON.parse(event.data) as ProgressUpdate;
+            const rawData = JSON.parse(event.data);
+            
+            // Handle special message types like welcome or ping
+            if (rawData.type === 'welcome') {
+              console.log("WebSocket welcome message received:", rawData.message);
+              return;
+            }
+            
+            if (rawData.type === 'ping') {
+              // Respond with pong to keep connection alive
+              if (socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({ type: 'pong', timestamp: Date.now() }));
+              }
+              return;
+            }
+            
+            if (rawData.type === 'registration_confirmed') {
+              console.log(`Application registration confirmed: ${rawData.applicationId}`);
+              return;
+            }
+            
+            // Process as a progress update
+            const data = rawData as ProgressUpdate;
             
             // Route to appropriate callback if applicationId is present
             if (data.applicationId && this.callbacks.has(data.applicationId)) {

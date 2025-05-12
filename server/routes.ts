@@ -1075,8 +1075,10 @@ Please provide a general assessment based on the document name and business deta
                           analysisText.includes("Credit Report") ? "Credit Report" :
                           "Financial Document";
             
-            // Create a simple document analysis result
-            documentAnalysisResults.push({
+            console.log(`Creating document analysis result for document type: ${docType}`);
+          
+          // Create a simple document analysis result
+          documentAnalysisResults.push({
               documentType: docType as any,
               fileName: `${docType}_${index + 1}.pdf`,
               keyFindings: [analysisText.substring(0, 200) + "..."],
@@ -1127,13 +1129,24 @@ Please provide a general assessment based on the document name and business deta
         });
       }
       
-      // Broadcast progress update for document analysis
-      broadcastProgress(id, {
-        stage: 'document_analysis',
-        message: 'Processing document analysis',
-        progress: 80,
-        detail: 'Analyzing uploaded documents for financial insights'
-      });
+      // Ensure we have sent a document analysis completion update
+      if (documentAnalysisResults && documentAnalysisResults.length > 0) {
+        // Document analysis is complete - update progress
+        broadcastProgress(id, {
+          stage: 'document_analysis_complete',
+          message: 'Document analysis completed successfully',
+          progress: 85,
+          detail: `Analyzed ${documentAnalysisResults.length} financial documents`
+        });
+      } else {
+        // No documents or analysis failed - update progress
+        broadcastProgress(id, {
+          stage: 'document_analysis_skipped',
+          message: 'Proceeding without document analysis',
+          progress: 85,
+          detail: 'No financial documents available for review'
+        });
+      }
       
       // Broadcast progress update before starting PDF generation
       broadcastProgress(id, {
@@ -1250,6 +1263,14 @@ Please provide a general assessment based on the document name and business deta
       } catch (pdfError) {
         clearTimeout(requestTimeout);
         console.error("Error generating enhanced PDF:", pdfError);
+        
+        // Send error notification through WebSocket
+        broadcastProgress(id, {
+          stage: 'error',
+          message: 'Error generating PDF report',
+          progress: 0,
+          detail: pdfError instanceof Error ? pdfError.message : 'Unknown error occurred'
+        });
         
         // Provide more specific error message if available
         const errorMessage = pdfError instanceof Error 
