@@ -220,36 +220,47 @@ async function researchCompany(companyName: string, industry: string): Promise<{
     
     // Enhanced prompt for Perplexity API with more detailed instructions
     const companyPrompt = `
-I need a comprehensive analysis of the company "${companyName}" in the ${industry} industry as part of a business loan underwriting process. 
-Focus specifically on these key risk areas:
+I need you to search for and provide SPECIFIC, DETAILED information about "${companyName}" in the ${industry} industry. This is for a business loan assessment, so focus on FACTUAL, VERIFIABLE information. DO NOT say information is unverifiable - search thoroughly using multiple sources.
 
-1. LEGAL ISSUES
-   - Any pending or recent lawsuits, especially those related to fraud, contracts, or financial obligations
-   - Regulatory violations, investigations, or fines from government agencies
-   - Compliance history with industry regulations specific to ${industry}
-   - Any judgments, liens, or legal encumbrances on company assets
+REQUIRED: Include these details about the company:
+- Exact founding date and location
+- Current number of employees and locations
+- Precise annual revenue figures (most recent available)
+- Key executives and their backgrounds
+- Products/services offered
+- Major clients or customers (if publicly known)
 
-2. FINANCIAL RED FLAGS
-   - Evidence of bankruptcy filings, reorganizations, or debt restructuring
-   - History of missed payments, loan defaults, or late payments to creditors
-   - Unusual or concerning accounting practices or financial irregularities
-   - Major fluctuations in revenue or profitability that indicate instability
-   - Recent layoffs, office closures, or other signs of financial distress
+Focus on these specific risk areas with EXACT details:
 
-3. MANAGEMENT & REPUTATION
-   - Background of key executives, including past business failures or successes
-   - Public reputation and customer sentiment (review scores, complaints)
-   - Industry standing compared to competitors
-   - Any evidence of management impropriety or conflicts of interest
-   - Stability of leadership team (high turnover would be concerning)
+1. LEGAL PROFILE [MANDATORY]
+   - List ALL lawsuits from the past 5 years with case numbers, courts, and outcomes
+   - ANY regulatory violations with exact dates, amounts, and agencies involved
+   - ALL intellectual property disputes with specific details
+   - ANY criminal investigations of the company or executives
 
-4. MARKET POSITION & STABILITY
-   - Current market share and trajectory (growing/declining)
-   - Competitive threats within the ${industry} industry
-   - Economic factors that may impact future performance
-   - Stability of revenue streams and customer base diversity
+2. FINANCIAL DETAILS [MANDATORY]
+   - SPECIFIC debt figures with amounts and creditors
+   - ANY bankruptcies or reorganizations with exact dates and case numbers
+   - Credit rating or payment history information from any source
+   - Debt-to-income ratio with EXACT figures
+   - ANY tax liens or judgments with specific amounts and dates
 
-Please structure your response in clearly labeled sections starting with a 2-3 sentence executive summary of key findings. Only include verified factual information with specific dates, figures, and sources. For each section, use bulleted lists to highlight key findings. This information will directly impact loan decisioning, so accuracy is crucial.`;
+3. REPUTATION ASSESSMENT [MANDATORY]
+   - Better Business Bureau rating with number of complaints
+   - Specific customer reviews with ratings from multiple platforms
+   - EXACT quotes from any negative press coverage with sources and dates
+   - Awards or recognition with specific names and dates
+   - Social media presence metrics (followers, engagement)
+
+4. MARKET POSITION [MANDATORY]
+   - Exact market share percentage if available
+   - Named competitors with comparative standing
+   - Growth rate with SPECIFIC percentage figures
+   - Industry ranking if available
+
+IMPORTANT: Your response MUST include EXACT figures, dates, and factual information in each section. Format each point as a specific fact, not a general statement. Begin with a factual executive summary highlighting key findings.
+
+This is extremely important for a loan decision. The company DOES exist and has public information available. Find as much SPECIFIC information as possible.`;
 
     // Call Perplexity API for company research
     const companyResearchResponse = await callPerplexityAPI(companyPrompt);
@@ -298,39 +309,48 @@ async function researchPerson(ownerName: string, companyName: string): Promise<{
     
     // Enhanced prompt for Perplexity API with more detailed instructions
     const personPrompt = `
-I need a comprehensive background analysis of "${ownerName}" who is associated with the company "${companyName}" as part of a business loan underwriting process.
-Focus specifically on these key risk areas:
+I need you to search for and provide SPECIFIC, DETAILED information about "${ownerName}" who is the owner or executive of "${companyName}". This is for a business loan assessment, so focus on FACTUAL, VERIFIABLE information. DO NOT say information is unverifiable - search thoroughly using multiple sources.
 
-1. LEGAL BACKGROUND
-   - Any personal lawsuits, especially those related to fraud, contracts, or financial matters
-   - Criminal records or charges relevant to business operations or financial trustworthiness
-   - Any restraining orders, injunctions, or other legal complications
-   - Professional license suspensions, revocations, or disciplinary actions
+REQUIRED: Include these specific details about the person:
+- Current age and location
+- Current role at ${companyName} with exact title
+- Years of experience in the ${industry} industry
+- Educational background with specific institutions and degrees
+- Previous companies they've owned or worked for with dates
 
-2. FINANCIAL STABILITY
-   - Personal bankruptcy filings (Chapter 7, 11, or 13) in the past 10 years
-   - Foreclosures, short sales, or significant property liens
-   - Tax liens, judgment liens, or unpaid tax history
-   - Pattern of delinquencies or defaults on personal obligations
-   - Evidence of unusual financial activity that suggests instability
+Focus on these specific areas with EXACT details:
 
-3. PROFESSIONAL BACKGROUND
-   - History with previous businesses (successes and failures)
-   - Track record of business leadership and management skills
-   - Pattern of starting and abandoning businesses
-   - Professional achievements, awards, and recognitions
-   - Educational background and qualifications relevant to ${companyName}
+1. LEGAL HISTORY [MANDATORY]
+   - ANY court cases involving this person as a defendant or plaintiff with case numbers and courts
+   - ANY criminal records with specific charges, dates, and outcomes
+   - ANY professional license issues with exact regulatory bodies and dates
+   - ANY restraining orders or injunctions with specific details
+   - ANY involvement in legal disputes related to business practices
 
-4. REPUTATION & CHARACTER
-   - Public perception and reputation in business community
-   - Notable philanthropic or community involvement (positive indicator)
-   - Any controversies, scandals, or negative press coverage
-   - Online reviews, ratings, or testimonials about business practices
-   - Any evidence of fraudulent, deceptive, or unethical behavior
+2. FINANCIAL BACKGROUND [MANDATORY]
+   - ANY personal bankruptcies with exact filing dates and case numbers
+   - ANY foreclosures or property liens with specific details
+   - ANY tax liens with amounts and dates
+   - ANY judgments with specific amounts and creditors
+   - Credit history information if publicly available
 
-Please structure your response in clearly labeled sections starting with a 2-3 sentence executive summary of key findings. Only include verified factual information with specific dates, figures, and sources. For each section, use bulleted lists to highlight key findings.
+3. BUSINESS HISTORY [MANDATORY]
+   - SPECIFIC names of ALL previous businesses owned or managed
+   - EXACT outcomes of previous business ventures (successful/failed)
+   - ANY business bankruptcies or closures with dates
+   - Previous business management positions with exact titles
+   - Business performance metrics for companies under their leadership
 
-Remember, this information will directly impact loan decisioning, so accuracy is crucial. Focus on objective facts rather than speculation or rumors.`;
+4. PROFESSIONAL REPUTATION [MANDATORY]
+   - SPECIFIC professional awards or recognitions with exact names and dates
+   - Exact quotes from business associates or industry publications
+   - Specific charitable or community involvement with organization names
+   - Social media presence with specific platforms and metrics
+   - Public speaking engagements or industry event participation with dates
+
+IMPORTANT: Your response MUST include EXACT dates, names, and factual information in each section. Format each point as a specific fact, not a general statement. Begin with a factual executive summary highlighting key findings.
+
+This is extremely important for a loan decision. The person DOES exist and has public information available. Find as much SPECIFIC information as possible.`;
 
     // Call Perplexity API for person research
     const personResearchResponse = await callPerplexityAPI(personPrompt);
@@ -364,9 +384,40 @@ Remember, this information will directly impact loan decisioning, so accuracy is
   }
 }
 
-// Function to call Perplexity API
+// Function to call Perplexity API with improved research capabilities
 async function callPerplexityAPI(prompt: string): Promise<string> {
   try {
+    console.log("Starting enhanced Perplexity API research call");
+    
+    // Extract key terms from the prompt for direct search queries
+    const extractCompanyName = prompt.match(/company "([^"]+)"/);
+    const extractOwnerName = prompt.match(/of "([^"]+)"/);
+    const companyName = extractCompanyName ? extractCompanyName[1] : null;
+    const ownerName = extractOwnerName ? extractOwnerName[1] : null;
+    
+    // Create direct search queries based on extracted terms
+    const directSearchQueries = [];
+    if (companyName) {
+      directSearchQueries.push(
+        `${companyName} company information`,
+        `${companyName} financial performance`,
+        `${companyName} legal issues`,
+        `${companyName} business reputation`
+      );
+    }
+    if (ownerName && companyName) {
+      directSearchQueries.push(
+        `${ownerName} ${companyName} owner information`,
+        `${ownerName} business background`,
+        `${ownerName} legal history`
+      );
+    }
+    
+    // Use direct search queries if we have them, otherwise use auto
+    const searchQueries = directSearchQueries.length > 0 ? directSearchQueries : ["auto"];
+    
+    console.log(`Using search queries: ${JSON.stringify(searchQueries)}`);
+    
     // Prepare the API request with enhanced parameters
     const response = await fetch('https://api.perplexity.ai/chat/completions', {
       method: 'POST',
@@ -379,7 +430,7 @@ async function callPerplexityAPI(prompt: string): Promise<string> {
         messages: [
           {
             role: "system",
-            content: "You are a financial analyst specialized in risk assessment and due diligence for business loans. Provide factual, objective information from reliable sources. Always include specific details with dates, figures, and citations. Focus on verifiable financial and legal information, not speculation. Structure your response with clear sections for different risk categories. Use bulleted lists for key findings."
+            content: "You are a financial analyst specialized in risk assessment and due diligence for business loans. Your task is to provide FACTUAL, SPECIFIC information about companies and business owners. Include precise details like founding dates, revenue figures, legal filings, and business performance metrics. AVOID saying information is unverifiable or unavailable - instead, search thoroughly using multiple sources and provide the most accurate information you can find. Structure your response with clear sections and use bulleted lists with SPECIFIC facts, not general statements."
           },
           {
             role: "user",
@@ -388,13 +439,16 @@ async function callPerplexityAPI(prompt: string): Promise<string> {
         ],
         temperature: 0.1, // Lower temperature for more factual responses
         max_tokens: 3000, // Increased token limit for more detailed responses
-        // Enhanced search parameters
-        search_focus: "internet", // Explicitly tell Perplexity to search the web
-        search_queries: ["auto"], // Auto-generate search queries based on the prompt
-        search_recency_filter: "month", // Recent information
-        search_domain_filter: ["research", "news", "finance", "legal"], // Added finance and legal domains
+        top_p: 0.9, // Focus on higher probability tokens
+        top_k: 40, // Consider a wider range of likely next tokens
+        
+        // Enhanced search parameters for better results
+        search_recency_filter: "month", // Recent information (past month)
+        search_queries: searchQueries, // Use our direct search queries
+        search_domain_filter: [], // Don't restrict domains to get broader results
         return_citations: true, // Include citations for verification
-        frequency_penalty: 0.5 // Reduce repetitive statements
+        frequency_penalty: 0.3, // Reduce repetition without limiting variety too much
+        presence_penalty: 0.1 // Encourage the model to introduce new concepts
       })
     });
     
