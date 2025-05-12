@@ -351,43 +351,104 @@ export default function LoanScoringResults({ application }: LoanScoringResultsPr
     }
   };
   
-  // Download enhanced multi-agent PDF report
+  // Download enhanced multi-agent PDF report with real-time progress
   const downloadEnhancedPdfReport = async () => {
     if (!application) return;
     
+    // Reset states
     setIsEnhancedPdfDownloading(true);
+    setShowProgressIndicator(true);
+    setEnhancedPdfDownloadComplete(false);
+    setEnhancedPdfError(null);
     
     try {
       // Create a direct download link to the enhanced PDF endpoint
       const downloadUrl = `/api/loan-applications/${application.id}/enhanced-pdf`;
       const filename = `${application.businessName.replace(/\s+/g, '_')}_Enhanced_Assessment.pdf`;
       
-      await handlePdfDownload(
-        downloadUrl,
-        filename,
-        (message) => {
-          toast({
-            title: "Enhanced Report Downloaded",
-            description: "Multi-agent detailed analysis report has been saved to your downloads folder.",
+      // Set a longer timeout for the initial download attempt
+      const downloadPromise = new Promise<void>((resolve, reject) => {
+        // When the progress indicator shows 100% complete (through WebSocket),
+        // the download should trigger automatically
+        
+        // Set a backup timeout in case the WebSocket completion doesn't trigger
+        const backupTimeout = setTimeout(() => {
+          console.log("Backup timeout triggered - attempting direct download");
+          
+          // Start a direct download as backup
+          handlePdfDownload(
+            downloadUrl,
+            filename,
+            () => resolve(),
+            (error) => reject(error)
+          ).catch(reject);
+        }, 45000); // 45 second backup timeout
+        
+        // The completion callback will be triggered by the ReportProgressIndicator
+        // component when it receives the 'complete' status
+        setTimeout(() => {
+          // Attempt download after a brief delay to allow progress tracking to initialize
+          handlePdfDownload(
+            downloadUrl,
+            filename,
+            (message) => {
+              clearTimeout(backupTimeout);
+              setEnhancedPdfDownloadComplete(true);
+              resolve();
+            },
+            (error) => {
+              // Only reject if we haven't completed yet
+              if (!enhancedPdfDownloadComplete) {
+                clearTimeout(backupTimeout);
+                reject(error);
+              }
+            }
+          ).catch((err) => {
+            // Only reject if we haven't completed yet
+            if (!enhancedPdfDownloadComplete) {
+              clearTimeout(backupTimeout);
+              reject(err);
+            }
           });
-        },
-        (error) => {
-          toast({
-            title: "Failed to Download Enhanced PDF",
-            description: error.message,
-            variant: "destructive",
-          });
-        }
-      );
+        }, 500);
+      });
+      
+      // Wait for download to complete
+      await downloadPromise;
+      
+      // Success toast only if no error occurred
+      if (!enhancedPdfError) {
+        toast({
+          title: "Enhanced Report Downloaded",
+          description: "Multi-agent detailed analysis report has been saved to your downloads folder.",
+        });
+      }
     } catch (error) {
       console.error("Unhandled error in enhanced PDF download process:", error);
-      toast({
-        title: "Failed to Download Enhanced PDF",
-        description: error instanceof Error ? error.message : "An unexpected error occurred",
-        variant: "destructive",
-      });
+      
+      // Only show the toast if there was a real error (not just a user cancellation)
+      if (error instanceof Error && !error.message.includes('cancelled')) {
+        setEnhancedPdfError(error.message);
+        toast({
+          title: "Failed to Download Enhanced PDF",
+          description: error.message,
+          variant: "destructive",
+        });
+      }
     } finally {
-      setIsEnhancedPdfDownloading(false);
+      // Keep the progress indicator visible even after download completes
+      // The user will see the success state through the progress indicator
+      setTimeout(() => {
+        setIsEnhancedPdfDownloading(false);
+        
+        // Keep the progress indicator visible for 5 seconds after completion
+        // so the user can see the success state
+        if (enhancedPdfDownloadComplete && !enhancedPdfError) {
+          setTimeout(() => {
+            setShowProgressIndicator(false);
+          }, 5000);
+        }
+      }, 1000);
     }
   };
 
@@ -575,6 +636,23 @@ export default function LoanScoringResults({ application }: LoanScoringResultsPr
           </div>
         </div>
       </CardHeader>
+      
+      {/* Real-time progress indicator for enhanced report generation */}
+      {showProgressIndicator && (
+        <div className="px-6 pt-2 pb-0">
+          <ReportProgressIndicator 
+            applicationId={application.id}
+            onComplete={() => {
+              setEnhancedPdfDownloadComplete(true);
+              console.log("Report generation complete - download should begin automatically");
+            }}
+            onError={(error) => {
+              setEnhancedPdfError(error);
+              console.error("Error during report generation:", error);
+            }}
+          />
+        </div>
+      )}
       
       <CardContent className="p-6">
         {/* Score Summary */}
