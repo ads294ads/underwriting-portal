@@ -8,6 +8,7 @@ import { scoringComponents, gradeScales } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import { DownloadIcon, UploadIcon, SearchIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { ReportProgressIndicator } from "@/components/report-progress-indicator";
 
 interface LoanScoringResultsProps {
   application: LoanApplication;
@@ -25,6 +26,9 @@ export default function LoanScoringResults({ application }: LoanScoringResultsPr
   const [selectedFiles, setSelectedFiles] = useState<FileList | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isPerformingDeepResearch, setIsPerformingDeepResearch] = useState(false);
+  const [showProgressIndicator, setShowProgressIndicator] = useState(false);
+  const [enhancedPdfDownloadComplete, setEnhancedPdfDownloadComplete] = useState(false);
+  const [enhancedPdfError, setEnhancedPdfError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
