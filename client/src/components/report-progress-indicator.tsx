@@ -125,16 +125,26 @@ export function ReportProgressIndicator({
           <span className="text-sm font-medium text-gray-700">{progress}%</span>
         </div>
         
-        <Progress value={progress} className={cn("w-full h-2", 
-          status.includes('research') ? "bg-purple-100" : 
-          status.includes('document') ? "bg-amber-100" : 
-          status.includes('pdf') ? "bg-green-100" : 
-          "bg-blue-100")} 
-          indicatorClassName={cn(
-            status.includes('research') ? "bg-purple-600" : 
-            status.includes('document') ? "bg-amber-600" : 
-            status.includes('pdf') ? "bg-green-600" : 
-            "bg-blue-600")} />
+        <Progress value={progress} 
+          className={cn(
+            "relative h-2 w-full overflow-hidden rounded-full",
+            status.includes('research') ? "bg-purple-100" : 
+            status.includes('document') ? "bg-amber-100" : 
+            status.includes('pdf') ? "bg-green-100" : 
+            "bg-blue-100"
+          )} 
+        >
+          <div
+            className={cn(
+              "h-full w-full flex-1 transition-all",
+              status.includes('research') ? "bg-purple-600" : 
+              status.includes('document') ? "bg-amber-600" : 
+              status.includes('pdf') ? "bg-green-600" : 
+              "bg-blue-600"
+            )}
+            style={{ transform: `translateX(-${100 - progress}%)` }}
+          />
+        </Progress>
         
         <p className="text-sm text-gray-600">{detail}</p>
       </div>

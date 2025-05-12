@@ -875,42 +875,51 @@ Please provide a general assessment based on the document name and business deta
             console.log("Multi-agent deep research completed successfully");
             
             // Update application data asynchronously - don't wait for this to complete
+            // Copy reference to the results to ensure it doesn't become null in the async timeout
+            const results = deepResearchResults;  
+            
             setTimeout(async () => {
               try {
+                // Double-check the results are available
+                if (!results) {
+                  console.error("Deep research results became null in async callback");
+                  return; // Skip the update if results are null
+                }
+                
                 // Update the application with deep research results
                 const currentScore = application.score ? parseFloat(application.score) : 0;
                 const deepResearchWeight = DEEP_RESEARCH_COMPONENT_WEIGHT / 100;
                 const newScore = (currentScore * (1 - deepResearchWeight)) + 
-                                (deepResearchResults.combinedScore * deepResearchWeight);
+                                (results.combinedScore * deepResearchWeight);
                 
                 // Update scoring details
                 const scoringDetails = application.scoringDetails || {};
-                scoringDetails.deepResearch = deepResearchResults.combinedScore;
+                scoringDetails.deepResearch = results.combinedScore;
                 
                 // Save the deep research results for future use
                 const companyAnalysis = {
-                  overview: deepResearchResults.companyAnalysis.overview,
-                  legalIssues: deepResearchResults.companyAnalysis.legalIssues,
-                  financialRedFlags: deepResearchResults.companyAnalysis.financialRedFlags,
-                  reputationInsights: deepResearchResults.companyAnalysis.reputationInsights,
-                  industryPosition: deepResearchResults.companyAnalysis.industryPosition || [],
-                  marketTrends: deepResearchResults.companyAnalysis.marketTrends || [],
-                  highRiskFactors: deepResearchResults.companyAnalysis.highRiskFactors || [],
-                  moderateRiskFactors: deepResearchResults.companyAnalysis.moderateRiskFactors || [],
-                  mitigatingFactors: deepResearchResults.companyAnalysis.mitigatingFactors || [],
-                  executiveSummary: deepResearchResults.companyAnalysis.executiveSummary || ""
+                  overview: results.companyAnalysis.overview,
+                  legalIssues: results.companyAnalysis.legalIssues,
+                  financialRedFlags: results.companyAnalysis.financialRedFlags,
+                  reputationInsights: results.companyAnalysis.reputationInsights,
+                  industryPosition: results.companyAnalysis.industryPosition || [],
+                  marketTrends: results.companyAnalysis.marketTrends || [],
+                  highRiskFactors: results.companyAnalysis.highRiskFactors || [],
+                  moderateRiskFactors: results.companyAnalysis.moderateRiskFactors || [],
+                  mitigatingFactors: results.companyAnalysis.mitigatingFactors || [],
+                  executiveSummary: results.companyAnalysis.executiveSummary || ""
                 };
                 
                 const ownerAnalysis = {
-                  overview: deepResearchResults.ownerAnalysis.overview,
-                  legalIssues: deepResearchResults.ownerAnalysis.legalIssues,
-                  financialRedFlags: deepResearchResults.ownerAnalysis.financialRedFlags,
-                  reputationInsights: deepResearchResults.ownerAnalysis.reputationInsights,
-                  managementCapabilities: deepResearchResults.ownerAnalysis.managementCapabilities || [],
-                  highRiskFactors: deepResearchResults.ownerAnalysis.highRiskFactors || [],
-                  moderateRiskFactors: deepResearchResults.ownerAnalysis.moderateRiskFactors || [],
-                  mitigatingFactors: deepResearchResults.ownerAnalysis.mitigatingFactors || [],
-                  executiveSummary: deepResearchResults.ownerAnalysis.executiveSummary || ""
+                  overview: results.ownerAnalysis.overview,
+                  legalIssues: results.ownerAnalysis.legalIssues,
+                  financialRedFlags: results.ownerAnalysis.financialRedFlags,
+                  reputationInsights: results.ownerAnalysis.reputationInsights,
+                  managementCapabilities: results.ownerAnalysis.managementCapabilities || [],
+                  highRiskFactors: results.ownerAnalysis.highRiskFactors || [],
+                  moderateRiskFactors: results.ownerAnalysis.moderateRiskFactors || [],
+                  mitigatingFactors: results.ownerAnalysis.mitigatingFactors || [],
+                  executiveSummary: results.ownerAnalysis.executiveSummary || ""
                 };
                 
                 // Update application with new details
