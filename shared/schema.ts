@@ -56,6 +56,40 @@ export type Owner = {
   title?: string;
 };
 
+// Risk assessment details for deep research
+export type RiskFactors = {
+  highRiskFactors: string[];
+  moderateRiskFactors: string[];
+  mitigatingFactors: string[];
+};
+
+// Company analysis from deep research
+export type CompanyAnalysis = {
+  overview: string;
+  legalIssues: string[];
+  financialRedFlags: string[];
+  reputationInsights: string[];
+  industryPosition?: string[];
+  marketTrends?: string[];
+  highRiskFactors: string[];
+  moderateRiskFactors: string[];
+  mitigatingFactors: string[];
+  executiveSummary?: string;
+};
+
+// Owner analysis from deep research
+export type OwnerAnalysis = {
+  overview: string;
+  legalIssues: string[];
+  financialRedFlags: string[];
+  reputationInsights: string[];
+  managementCapabilities?: string[];
+  highRiskFactors: string[];
+  moderateRiskFactors: string[];
+  mitigatingFactors: string[];
+  executiveSummary?: string;
+};
+
 // Extended Loan Application type for use with enhanced research features
 export type LoanApplication = {
   id: number;
@@ -76,6 +110,9 @@ export type LoanApplication = {
   documentAnalysis?: string[];
   deepResearchCompleted?: boolean;
   createdAt?: Date | null;
+  lastUpdated?: string; // Last updated timestamp
+  companyAnalysis?: CompanyAnalysis; // Company analysis from deep research
+  ownerAnalysis?: OwnerAnalysis; // Owner analysis from deep research
 }
 
 export const loanApplications = pgTable("loan_applications", {
@@ -95,6 +132,9 @@ export const loanApplications = pgTable("loan_applications", {
   documentAnalysis: json("document_analysis").$type<string[]>(),
   deepResearchCompleted: boolean("deep_research_completed").default(false),
   createdAt: timestamp("created_at").defaultNow(),
+  lastUpdated: text("last_updated"), // Store last updated timestamp as ISO string
+  companyAnalysis: json("company_analysis").$type<CompanyAnalysis>(), // Store company analysis results
+  ownerAnalysis: json("owner_analysis").$type<OwnerAnalysis>(), // Store owner analysis results
 });
 
 export const ownerSchema = z.object({

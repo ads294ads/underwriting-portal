@@ -603,13 +603,22 @@ Please provide a general assessment based on the document name and business deta
     res.json(gradeScales);
   });
   
-  // Generate enhanced multi-agent PDF report
+  // Generate enhanced multi-agent PDF report with improved reliability and caching
   app.get("/api/loan-applications/:id/enhanced-pdf", async (req, res) => {
+    // Set a timeout to prevent hanging requests
+    const requestTimeout = setTimeout(() => {
+      console.error("PDF generation timeout after 90 seconds");
+      if (!res.headersSent) {
+        res.status(504).json({ message: "PDF generation timed out (90 seconds). Please try again later." });
+      }
+    }, 90000); // 90 second timeout
+    
     try {
       const id = parseInt(req.params.id);
       const application = await storage.getLoanApplication(id);
       
       if (!application) {
+        clearTimeout(requestTimeout);
         return res.status(404).json({ message: "Loan application not found" });
       }
       
@@ -664,6 +673,7 @@ Please provide a general assessment based on the document name and business deta
             }
           };
           useExistingResults = true;
+          console.log("Successfully loaded cached research results");
         } catch (error) {
           console.warn("Error using cached research results:", error);
           // Continue with fresh research if cached results are invalid
@@ -674,58 +684,79 @@ Please provide a general assessment based on the document name and business deta
       if (!useExistingResults) {
         try {
           console.log("Starting multi-agent deep research for enhanced PDF...");
-          deepResearchResults = await performDeepResearch(application);
-          console.log("Multi-agent deep research completed successfully");
+          // Set a shorter timeout for deep research to prevent entire request from timing out
+          const researchPromise = performDeepResearch(application);
+          const timeoutPromise = new Promise<null>((_, reject) => {
+            setTimeout(() => reject(new Error("Deep research timed out")), 60000); // 60 second limit for research
+          });
           
-          // Update the application with deep research results
-          const currentScore = application.score ? parseFloat(application.score) : 0;
-          const deepResearchWeight = DEEP_RESEARCH_COMPONENT_WEIGHT / 100;
-          const newScore = (currentScore * (1 - deepResearchWeight)) + 
-                           (deepResearchResults.combinedScore * deepResearchWeight);
+          // Race the research against the timeout
+          deepResearchResults = await Promise.race([researchPromise, timeoutPromise])
+            .catch(error => {
+              console.warn("Deep research timeout or error:", error.message);
+              return null;
+            });
           
-          // Update scoring details
-          const scoringDetails = application.scoringDetails || {};
-          scoringDetails.deepResearch = deepResearchResults.combinedScore;
-          
-          // Save the deep research results for future use
-          const companyAnalysis = {
-            overview: deepResearchResults.companyAnalysis.overview,
-            legalIssues: deepResearchResults.companyAnalysis.legalIssues,
-            financialRedFlags: deepResearchResults.companyAnalysis.financialRedFlags,
-            reputationInsights: deepResearchResults.companyAnalysis.reputationInsights,
-            industryPosition: deepResearchResults.companyAnalysis.industryPosition,
-            marketTrends: deepResearchResults.companyAnalysis.marketTrends,
-            highRiskFactors: deepResearchResults.companyAnalysis.highRiskFactors,
-            moderateRiskFactors: deepResearchResults.companyAnalysis.moderateRiskFactors,
-            mitigatingFactors: deepResearchResults.companyAnalysis.mitigatingFactors,
-            executiveSummary: deepResearchResults.companyAnalysis.executiveSummary
-          };
-          
-          const ownerAnalysis = {
-            overview: deepResearchResults.ownerAnalysis.overview,
-            legalIssues: deepResearchResults.ownerAnalysis.legalIssues,
-            financialRedFlags: deepResearchResults.ownerAnalysis.financialRedFlags,
-            reputationInsights: deepResearchResults.ownerAnalysis.reputationInsights,
-            managementCapabilities: deepResearchResults.ownerAnalysis.managementCapabilities,
-            highRiskFactors: deepResearchResults.ownerAnalysis.highRiskFactors,
-            moderateRiskFactors: deepResearchResults.ownerAnalysis.moderateRiskFactors,
-            mitigatingFactors: deepResearchResults.ownerAnalysis.mitigatingFactors,
-            executiveSummary: deepResearchResults.ownerAnalysis.executiveSummary
-          };
-          
-          // Update application with new details
-          const updatedData: Partial<LoanApplication> = {
-            score: newScore.toString(),
-            grade: determineGrade(newScore),
-            scoringDetails: scoringDetails,
-            deepResearchCompleted: true,
-            companyAnalysis,
-            ownerAnalysis,
-            lastUpdated: new Date().toISOString()
-          };
-          
-          await storage.updateLoanApplication(id, updatedData);
-          console.log("Application updated with latest multi-agent deep research results");
+          if (deepResearchResults) {
+            console.log("Multi-agent deep research completed successfully");
+            
+            // Update the application with deep research results
+            const currentScore = application.score ? parseFloat(application.score) : 0;
+            const deepResearchWeight = DEEP_RESEARCH_COMPONENT_WEIGHT / 100;
+            const newScore = (currentScore * (1 - deepResearchWeight)) + 
+                            (deepResearchResults.combinedScore * deepResearchWeight);
+            
+            // Update scoring details
+            const scoringDetails = application.scoringDetails || {};
+            scoringDetails.deepResearch = deepResearchResults.combinedScore;
+            
+            // Save the deep research results for future use
+            const companyAnalysis = {
+              overview: deepResearchResults.companyAnalysis.overview,
+              legalIssues: deepResearchResults.companyAnalysis.legalIssues,
+              financialRedFlags: deepResearchResults.companyAnalysis.financialRedFlags,
+              reputationInsights: deepResearchResults.companyAnalysis.reputationInsights,
+              industryPosition: deepResearchResults.companyAnalysis.industryPosition || [],
+              marketTrends: deepResearchResults.companyAnalysis.marketTrends || [],
+              highRiskFactors: deepResearchResults.companyAnalysis.highRiskFactors || [],
+              moderateRiskFactors: deepResearchResults.companyAnalysis.moderateRiskFactors || [],
+              mitigatingFactors: deepResearchResults.companyAnalysis.mitigatingFactors || [],
+              executiveSummary: deepResearchResults.companyAnalysis.executiveSummary || ""
+            };
+            
+            const ownerAnalysis = {
+              overview: deepResearchResults.ownerAnalysis.overview,
+              legalIssues: deepResearchResults.ownerAnalysis.legalIssues,
+              financialRedFlags: deepResearchResults.ownerAnalysis.financialRedFlags,
+              reputationInsights: deepResearchResults.ownerAnalysis.reputationInsights,
+              managementCapabilities: deepResearchResults.ownerAnalysis.managementCapabilities || [],
+              highRiskFactors: deepResearchResults.ownerAnalysis.highRiskFactors || [],
+              moderateRiskFactors: deepResearchResults.ownerAnalysis.moderateRiskFactors || [],
+              mitigatingFactors: deepResearchResults.ownerAnalysis.mitigatingFactors || [],
+              executiveSummary: deepResearchResults.ownerAnalysis.executiveSummary || ""
+            };
+            
+            // Update application with new details
+            const updatedData: Partial<LoanApplication> = {
+              score: newScore.toString(),
+              grade: determineGrade(newScore),
+              scoringDetails: scoringDetails,
+              deepResearchCompleted: true,
+              companyAnalysis,
+              ownerAnalysis,
+              lastUpdated: new Date().toISOString()
+            };
+            
+            try {
+              await storage.updateLoanApplication(id, updatedData);
+              console.log("Application updated with latest multi-agent deep research results");
+            } catch (updateError) {
+              console.error("Failed to update application with deep research results:", updateError);
+              // Continue with PDF generation even if update fails
+            }
+          } else {
+            console.warn("Deep research failed - using fallback results");
+          }
         } catch (drError) {
           console.error("Error performing multi-agent deep research for PDF:", drError);
           // Continue with PDF generation even if deep research fails
@@ -823,17 +854,38 @@ Please provide a general assessment based on the document name and business deta
         res.setHeader('Pragma', 'no-cache');
         res.setHeader('Expires', '0');
         
+        // Clear the request timeout as we're about to send the response
+        clearTimeout(requestTimeout);
+        
         // Send the PDF buffer
         res.send(pdfBuffer);
         
         console.log("Enhanced multi-agent PDF report successfully generated and sent");
       } catch (pdfError) {
+        clearTimeout(requestTimeout);
         console.error("Error generating enhanced PDF:", pdfError);
-        res.status(500).json({ message: "Failed to generate enhanced PDF report" });
+        
+        // Provide more specific error message if available
+        const errorMessage = pdfError instanceof Error 
+          ? `Failed to generate PDF: ${pdfError.message}`
+          : "Failed to generate enhanced PDF report";
+          
+        if (!res.headersSent) {
+          res.status(500).json({ message: errorMessage });
+        }
       }
     } catch (error) {
+      clearTimeout(requestTimeout);
       console.error("Error in enhanced PDF generation process:", error);
-      res.status(500).json({ message: "Failed to generate enhanced PDF report" });
+      
+      // Provide more specific error message if available
+      const errorMessage = error instanceof Error 
+        ? `PDF generation error: ${error.message}`
+        : "Failed to generate enhanced PDF report";
+        
+      if (!res.headersSent) {
+        res.status(500).json({ message: errorMessage });
+      }
     }
   });
 

@@ -145,7 +145,7 @@ export default function LoanScoringResults({ application }: LoanScoringResultsPr
     }
   };
 
-  // Helper function to handle PDF downloads with retries
+  // Enhanced helper function to handle PDF downloads with retries and improved error handling
   const handlePdfDownload = async (
     downloadUrl: string, 
     filename: string, 
@@ -156,11 +156,13 @@ export default function LoanScoringResults({ application }: LoanScoringResultsPr
     let retries = 0;
     let lastError: Error | null = null;
     
+    const downloadStartTime = new Date().getTime();
+    
     while (retries < maxRetries) {
       try {
         console.log(`Attempting PDF download (attempt ${retries + 1}/${maxRetries}) from: ${downloadUrl}`);
         
-        // Set a much longer timeout for PDF generation (2 min)
+        // Set a longer timeout for PDF generation (2 min)
         const controller = new AbortController();
         const timeoutId = setTimeout(() => {
           console.log("PDF download timed out after 120 seconds");
@@ -170,8 +172,13 @@ export default function LoanScoringResults({ application }: LoanScoringResultsPr
         // Use fetch with timeout capability and handle any fetch errors
         let response: Response;
         try {
-          console.log("Sending fetch request for PDF...");
-          response = await fetch(downloadUrl, { 
+          console.log(`Sending fetch request for PDF (${new Date().toISOString()})...`);
+          
+          // Add a cache-busting query parameter to avoid cached responses
+          const cacheBuster = `?cacheBuster=${new Date().getTime()}`;
+          const urlWithCacheBuster = `${downloadUrl}${cacheBuster}`;
+          
+          response = await fetch(urlWithCacheBuster, { 
             signal: controller.signal,
             headers: {
               'Cache-Control': 'no-cache, no-store, must-revalidate',
@@ -179,8 +186,8 @@ export default function LoanScoringResults({ application }: LoanScoringResultsPr
               'Expires': '0',
             }
           });
-          console.log("Fetch response received:", response.status, response.statusText);
           
+          console.log("Fetch response received:", response.status, response.statusText);
           clearTimeout(timeoutId);
         } catch (error: unknown) {
           clearTimeout(timeoutId);
@@ -202,11 +209,31 @@ export default function LoanScoringResults({ application }: LoanScoringResultsPr
           // Check if we got a JSON error response
           const contentType = response.headers.get('content-type');
           if (contentType && contentType.includes('application/json')) {
-            const errorData = await response.json();
-            throw new Error(errorData.message || `Server error: ${response.status} ${response.statusText}`);
+            try {
+              const errorData = await response.json();
+              throw new Error(errorData.message || `Server error: ${response.status} ${response.statusText}`);
+            } catch (jsonError) {
+              throw new Error(`Server error (${response.status} ${response.statusText}): Could not parse error details`);
+            }
           } else {
-            throw new Error(`Failed to download PDF: ${response.status} ${response.statusText}`);
+            // Try to read the error text if possible
+            try {
+              const errorText = await response.text();
+              if (errorText && errorText.length < 100) { // Only use short error messages
+                throw new Error(`Failed to download PDF (${response.status}): ${errorText}`);
+              } else {
+                throw new Error(`Failed to download PDF: ${response.status} ${response.statusText}`);
+              }
+            } catch (textError) {
+              throw new Error(`Failed to download PDF: ${response.status} ${response.statusText}`);
+            }
           }
+        }
+        
+        // Check for empty response
+        const contentLength = response.headers.get('content-length');
+        if (contentLength && parseInt(contentLength) === 0) {
+          throw new Error('Server returned an empty response');
         }
         
         // Verify content type is PDF
@@ -217,32 +244,47 @@ export default function LoanScoringResults({ application }: LoanScoringResultsPr
         }
         
         console.log("Getting blob from response...");
-        // Get the blob from the response
-        const blob = await response.blob();
         
-        // Verify we have a non-empty blob
-        if (blob.size === 0) {
-          throw new Error('Downloaded PDF is empty');
+        try {
+          // Get the blob from the response
+          const blob = await response.blob();
+          
+          // Verify we have a non-empty blob
+          if (blob.size === 0) {
+            throw new Error('Downloaded PDF is empty');
+          }
+          
+          // Check if blob is too small to be a valid PDF (PDF header is usually at least 100 bytes)
+          if (blob.size < 100) {
+            throw new Error(`Downloaded file is too small to be a valid PDF (${blob.size} bytes)`);
+          }
+          
+          // Create a URL for the blob
+          const blobUrl = URL.createObjectURL(blob);
+          
+          // Create a link to download the file
+          const a = document.createElement('a');
+          a.href = blobUrl;
+          a.download = filename;
+          document.body.appendChild(a);
+          
+          // Trigger the download
+          a.click();
+          
+          // Clean up
+          document.body.removeChild(a);
+          URL.revokeObjectURL(blobUrl);
+          
+          // Calculate the total download time
+          const downloadEndTime = new Date().getTime();
+          const totalDownloadTimeSeconds = ((downloadEndTime - downloadStartTime) / 1000).toFixed(1);
+          
+          onSuccess(`PDF report has been saved to your downloads folder. (Completed in ${totalDownloadTimeSeconds}s)`);
+          return; // Success, exit the function
+        } catch (blobError) {
+          console.error("Error processing the response blob:", blobError);
+          throw new Error(`Failed to process PDF: ${blobError instanceof Error ? blobError.message : String(blobError)}`);
         }
-        
-        // Create a URL for the blob
-        const blobUrl = URL.createObjectURL(blob);
-        
-        // Create a link to download the file
-        const a = document.createElement('a');
-        a.href = blobUrl;
-        a.download = filename;
-        document.body.appendChild(a);
-        
-        // Trigger the download
-        a.click();
-        
-        // Clean up
-        document.body.removeChild(a);
-        URL.revokeObjectURL(blobUrl);
-        
-        onSuccess("PDF report has been saved to your downloads folder.");
-        return; // Success, exit the function
       } catch (error) {
         lastError = error instanceof Error ? error : new Error(String(error));
         console.error(`PDF download attempt ${retries + 1} failed:`, lastError);
@@ -251,6 +293,7 @@ export default function LoanScoringResults({ application }: LoanScoringResultsPr
         // Wait a bit longer between retries (exponential backoff)
         if (retries < maxRetries) {
           const waitTime = 1000 * Math.pow(2, retries); // 2s, 4s, 8s
+          console.log(`Waiting ${waitTime/1000}s before retry...`);
           await new Promise(resolve => setTimeout(resolve, waitTime));
         }
       }
