@@ -48,10 +48,11 @@ export const industries = [
   "Other"
 ];
 
-// Define Owner type
+// Define Owner type with flexible property names for ownership
 export type Owner = {
   name: string;
-  ownershipPercentage: number; // Ownership percentage
+  ownershipPercentage?: number; // Primary ownership percentage property
+  ownership?: number;           // Alternative ownership property name
   title?: string;
 };
 

@@ -164,16 +164,32 @@ export async function performDeepResearch(application: LoanApplication): Promise
       
       // Check if we have business owners with 20% or more ownership
       if (application.businessOwners && application.businessOwners.length > 0) {
-        // Find owners with 20% or more ownership
-        const significantOwners = application.businessOwners.filter(owner => 
-          owner.ownership >= 20
-        );
+        // Find owners with 20% or more ownership, handling both ownership property names
+        const significantOwners = application.businessOwners.filter(owner => {
+          // Check either property, with ownership taking precedence if both exist
+          const ownershipValue = typeof owner.ownership !== 'undefined' ? 
+                                owner.ownership : 
+                                (typeof owner.ownershipPercentage !== 'undefined' ? 
+                                 owner.ownershipPercentage : 0);
+          return ownershipValue >= 20;
+        });
         
         if (significantOwners.length > 0) {
           // Use the owner with the highest ownership percentage
-          const primaryOwner = significantOwners.reduce((prev, current) => 
-            (prev.ownership > current.ownership) ? prev : current
-          );
+          const primaryOwner = significantOwners.reduce((prev, current) => {
+            const prevOwnership = typeof prev.ownership !== 'undefined' ? 
+                                prev.ownership : 
+                                (typeof prev.ownershipPercentage !== 'undefined' ? 
+                                 prev.ownershipPercentage : 0);
+            
+            const currentOwnership = typeof current.ownership !== 'undefined' ? 
+                                  current.ownership : 
+                                  (typeof current.ownershipPercentage !== 'undefined' ? 
+                                   current.ownershipPercentage : 0);
+            
+            return (prevOwnership > currentOwnership) ? prev : current;
+          });
+          
           ownerName = primaryOwner.name;
         }
       }

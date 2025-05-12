@@ -384,20 +384,86 @@ Annual Revenue: $${application.annualRevenue}
 Loan Amount Requested: $${application.loanAmount}
   `;
   
-  let prompt = `
-I need you to analyze the following ${documentType} for a business loan application. The document belongs to ${application.businessName}, which is in the ${application.industry} industry, has been operating for ${application.yearsInBusiness} years, with annual revenue of $${application.annualRevenue}, and is requesting a loan of $${application.loanAmount}.
+  // Create a more focused and specific prompt based on document type
+  let specializedInstructions = '';
+  
+  // Add document-type specific instructions
+  switch(documentType) {
+    case DocumentType.FINANCIAL_STATEMENT:
+      specializedInstructions = `
+Focus on:
+- Revenue, profit margins, and growth rates with EXACT figures
+- Liquidity ratios and working capital with EXACT values
+- Debt-to-equity and leverage ratios with EXACT values
+- Profitability metrics (ROA, ROE, etc.) with EXACT values
+- Cash position and operational efficiency metrics`;
+      break;
+      
+    case DocumentType.TAX_RETURN:
+      specializedInstructions = `
+Focus on:
+- Reported business income with EXACT figures
+- Revenue consistency across years with EXACT values
+- Tax efficiency and effective tax rate with EXACT percentage
+- Deductions and their legitimacy with EXACT amounts
+- Any tax liabilities or penalties with EXACT values`;
+      break;
+      
+    case DocumentType.BANK_STATEMENT:
+      specializedInstructions = `
+Focus on:
+- Average daily/monthly balance with EXACT figures
+- Cash flow patterns (seasonal, cyclical) with EXACT values
+- Evidence of sufficient funds for debt service with EXACT values
+- Overdrafts or returned items with EXACT counts
+- Deposit frequency and consistency with EXACT patterns`;
+      break;
+      
+    case DocumentType.BUSINESS_PLAN:
+      specializedInstructions = `
+Focus on:
+- Growth projections and their realism with EXACT percentages
+- Market analysis depth and specificity with EXACT market size
+- Competitive advantage and differentiation with EXACT strengths
+- Financial projections with EXACT revenue and profit forecasts
+- Risk assessment and mitigation strategies with SPECIFIC plans`;
+      break;
+      
+    default:
+      specializedInstructions = `
+Focus on:
+- Key financial metrics with EXACT values
+- Business performance indicators with EXACT figures
+- Risk factors with SPECIFIC examples
+- Positive indicators with SPECIFIC examples
+- Overall financial health assessment with EXACT metrics`;
+  }
 
-DOCUMENT CONTENT:
+  let prompt = `
+I need you to quickly analyze the following ${documentType} for a business loan application. This is an URGENT task that requires IMMEDIATE, SPECIFIC analysis.
+
+BUSINESS CONTEXT:
+- Business Name: ${application.businessName}
+- Industry: ${application.industry}
+- Years in Business: ${application.yearsInBusiness}
+- Annual Revenue: $${application.annualRevenue}
+- Loan Amount Requested: $${application.loanAmount}
+
+DOCUMENT CONTENT TO ANALYZE:
 ${content}
 
-Please analyze this document as an expert underwriter for business loans and provide a comprehensive evaluation including:
+${specializedInstructions}
 
-1. Key financial findings from the document
-2. Critical financial metrics with values, trends, and comparison to industry standards
-3. Strengths and weaknesses from an underwriting perspective
-4. Risks identified in the document
-5. Mitigating factors that could offset the risks
-6. Overall assessment of how this document impacts the loan application
+REQUIRED OUTPUT FORMAT:
+1. Exactly 5 key findings with SPECIFIC numbers, dates, and metrics pulled from the document
+2. Exactly 4 financial metrics with precise values from the document
+3. Exactly 3 strengths from an underwriting perspective
+4. Exactly 3 weaknesses from an underwriting perspective  
+5. Exactly 3 risk factors
+6. Exactly 3 mitigating factors
+7. A 2-sentence overall assessment
+
+Your analysis should be FAST, PRECISE, and FOCUSED ON SPECIFIC FINANCIAL DATA from the document. Extract ACTUAL FIGURES where possible instead of making general statements. Be CONCISE.
 
 Format your response as a structured JSON object with the following keys:
 - keyFindings: array of strings identifying critical insights
