@@ -29,17 +29,37 @@ export function broadcastProgress(applicationId: number, progressData: {
   progress: number; // 0-100
   detail?: string;
 }) {
+  // Add application ID to the progress data
+  const fullProgressData = {
+    ...progressData,
+    applicationId
+  };
+  
+  // Get connections for this application
   const connections = activeProgressConnections.get(applicationId);
+  
+  // Serialize the message once
+  const messageJSON = JSON.stringify(fullProgressData);
+  
   if (connections && connections.size > 0) {
-    const message = JSON.stringify(progressData);
+    let sentCount = 0;
     
+    // Send to all connected clients
     connections.forEach(socket => {
       if (socket.readyState === WebSocket.OPEN) {
-        socket.send(message);
+        try {
+          socket.send(messageJSON);
+          sentCount++;
+        } catch (err) {
+          console.error(`Error sending progress update to client for app #${applicationId}:`, err);
+        }
       }
     });
     
-    console.log(`Progress update broadcast to ${connections.size} clients for app #${applicationId}: ${progressData.stage} (${progressData.progress}%)`);
+    console.log(`Progress update broadcast to ${sentCount}/${connections.size} clients for app #${applicationId}: ${progressData.stage} (${progressData.progress}%)`);
+  } else {
+    // Log that no clients are connected for this application
+    console.log(`No clients connected for progress updates on application #${applicationId}`);
   }
 }
 
@@ -368,14 +388,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   wss.on('connection', (ws: WebSocket) => {
     console.log('WebSocket client connected');
+    // Keep track of which applications this socket is subscribed to
+    const subscribedApplications = new Set<number>();
+    
+    // Send immediate welcome message
+    try {
+      ws.send(JSON.stringify({
+        type: 'welcome',
+        message: 'Connected to real-time progress service'
+      }));
+    } catch (e) {
+      console.error('Error sending welcome message:', e);
+    }
+    
+    // Ping clients every 15 seconds to keep connection alive
+    const pingInterval = setInterval(() => {
+      if (ws.readyState === WebSocket.OPEN) {
+        try {
+          ws.send(JSON.stringify({ type: 'ping', timestamp: Date.now() }));
+        } catch (e) {
+          console.error('Error sending ping:', e);
+        }
+      }
+    }, 15000);
     
     ws.on('message', (message: string) => {
       try {
+        console.log('WebSocket message received:', message.toString());
         const data = JSON.parse(message.toString());
         
         // Handle subscription to application progress updates
         if (data.type === 'subscribe' && data.applicationId) {
           const applicationId = Number(data.applicationId);
+          
+          // Track this application for this connection
+          subscribedApplications.add(applicationId);
           
           if (!activeProgressConnections.has(applicationId)) {
             activeProgressConnections.set(applicationId, new Set());
@@ -384,12 +431,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
           activeProgressConnections.get(applicationId)?.add(ws);
           console.log(`Client subscribed to updates for application #${applicationId}`);
           
-          // Send initial connection confirmation
+          // Send initial connection confirmation with immediate progress update
           ws.send(JSON.stringify({
             type: 'connected',
+            stage: 'connected',
             applicationId,
-            message: 'Connected to real-time progress updates'
+            message: 'Connected to real-time progress updates',
+            progress: 10,
+            detail: 'Connection established, waiting for analysis to begin'
           }));
+          
+          // Immediately send another progress update to kickstart the UI
+          setTimeout(() => {
+            if (ws.readyState === WebSocket.OPEN) {
+              try {
+                ws.send(JSON.stringify({
+                  stage: 'preparing',
+                  applicationId,
+                  message: 'Preparing document analysis',
+                  progress: 15,
+                  detail: 'Setting up analysis environment'
+                }));
+              } catch (e) {
+                console.error('Error sending initial progress update:', e);
+              }
+            }
+          }, 500);
+        }
+        
+        // Handle pong responses to keep connection alive
+        if (data.type === 'pong') {
+          console.log('Received pong from client');
         }
       } catch (error) {
         console.error('Error processing WebSocket message:', error);
@@ -398,11 +470,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     
     ws.on('close', () => {
       console.log('WebSocket client disconnected');
+      
+      // Clean up ping interval
+      clearInterval(pingInterval);
+      
       // Remove this socket from all application subscriptions
-      activeProgressConnections.forEach((sockets, appId) => {
-        sockets.delete(ws);
-        if (sockets.size === 0) {
-          activeProgressConnections.delete(appId);
+      subscribedApplications.forEach(appId => {
+        const connections = activeProgressConnections.get(appId);
+        if (connections) {
+          connections.delete(ws);
+          console.log(`Removed client from application #${appId} subscriptions`);
+          
+          if (connections.size === 0) {
+            activeProgressConnections.delete(appId);
+            console.log(`No more clients subscribed to application #${appId}`);
+          }
         }
       });
     });
@@ -974,13 +1056,14 @@ Please provide a general assessment based on the document name and business deta
         try {
           console.log("Processing document analysis for enhanced PDF report...");
           
-          // Process each document analysis
-          application.documentAnalysis.forEach((analysisText, index) => {
+          // Process each document analysis, safely handling undefined
+          const documentAnalyses = application.documentAnalysis || [];
+          documentAnalyses.forEach((analysisText, index) => {
             // Update progress for document analysis
             broadcastProgress(id, {
               stage: 'document_processing',
-              message: `Processing document ${index + 1} of ${application.documentAnalysis.length}`,
-              progress: 80 + Math.min(10, Math.floor((index / application.documentAnalysis.length) * 10)),
+              message: `Processing document ${index + 1} of ${documentAnalyses.length}`,
+              progress: 80 + Math.min(10, Math.floor((index / documentAnalyses.length) * 10)),
               detail: 'Extracting financial insights'
             });
             
@@ -994,7 +1077,7 @@ Please provide a general assessment based on the document name and business deta
             
             // Create a simple document analysis result
             documentAnalysisResults.push({
-              documentType: docType as DocumentType,
+              documentType: docType as any,
               fileName: `${docType}_${index + 1}.pdf`,
               keyFindings: [analysisText.substring(0, 200) + "..."],
               financialMetrics: {

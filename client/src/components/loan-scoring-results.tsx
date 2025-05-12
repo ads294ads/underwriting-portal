@@ -362,34 +362,61 @@ export default function LoanScoringResults({ application }: LoanScoringResultsPr
     setEnhancedPdfDownloadComplete(false);
     setEnhancedPdfError(null);
     
+    // Create a tracking variable we can access in callbacks
+    const downloadState = {
+      downloadStarted: false,
+      downloadCompleted: false,
+      hasError: false
+    };
+    
     try {
       console.log("Starting enhanced PDF download process for application ID:", application.id);
       
       // Initialize WebSocket connection immediately to ensure it's ready
       const wsManager = WebSocketManager.getInstance();
+      let unsubscribe = () => {}; // Default empty function
+      
       try {
         // Connect to WebSocket first to ensure we have a connection
         await wsManager.getConnection();
         console.log("WebSocket connected, ready to receive progress updates");
         
         // Register callback for this application's progress updates
-        const unsubscribe = wsManager.registerCallback(application.id, (update: ProgressUpdate) => {
-          console.log(`Progress update received: ${update.stage} - ${update.progress}%`);
+        unsubscribe = wsManager.registerCallback(application.id, (update: ProgressUpdate) => {
+          console.log(`Progress update received: ${update.stage} - ${update.progress}%`, update);
           
-          // When complete (100%), trigger the actual download
+          // When document analysis starts, this means the backend is processing
+          if (update.stage === 'document_analysis' || update.stage === 'document_processing') {
+            console.log("Document analysis in progress");
+          }
+          
+          // When complete (95% or more), trigger the download if it hasn't started yet
+          if (update.progress >= 95 && !downloadState.downloadStarted) {
+            console.log("Report generation nearly complete (95%+), initiating download");
+            downloadState.downloadStarted = true;
+            
+            // Trigger download with a slight delay to let the PDF finalize
+            setTimeout(() => {
+              startActualDownload();
+            }, 2000);
+          }
+          
+          // When fully complete (100%), mark as complete
           if (update.stage === 'complete' && update.progress === 100) {
-            console.log("Report generation complete signal received, initiating download");
+            console.log("Report generation complete signal received");
+            downloadState.downloadCompleted = true;
             setEnhancedPdfDownloadComplete(true);
           }
           
           if (update.stage === 'error') {
             console.error("Error in report generation:", update.detail);
+            downloadState.hasError = true;
             setEnhancedPdfError(update.detail || "Unknown error occurred");
           }
         });
         
         // Clean up subscription after completion or error
-        setTimeout(() => unsubscribe(), 120000); // Max 2 minutes
+        setTimeout(() => unsubscribe(), 180000); // Max 3 minutes
       } catch (wsError) {
         console.error("Failed to connect to WebSocket:", wsError);
         // Continue anyway - the PDF will still be generated
