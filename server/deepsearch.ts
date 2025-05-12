@@ -229,6 +229,9 @@ async function researchCompany(companyName: string, industry: string): Promise<{
   legalIssues: string[];
   financialRedFlags: string[];
   reputationInsights: string[];
+  highRiskFactors: string[];
+  moderateRiskFactors: string[];
+  mitigatingFactors: string[];
   score: number;
 }> {
   try {
@@ -293,11 +296,34 @@ This is extremely important for a loan decision. The company DOES exist and has 
     // Higher score = fewer issues found
     const score = calculateResearchScore(companyResearchResponse, legalIssues, financialRedFlags);
     
+    // Categorize findings into different risk levels
+    const highRiskFactors = legalIssues.filter(issue => 
+      issue.toLowerCase().includes("lawsuit") || 
+      issue.toLowerCase().includes("bankruptcy") ||
+      issue.toLowerCase().includes("fraud") ||
+      issue.toLowerCase().includes("criminal")
+    );
+    
+    const moderateRiskFactors = financialRedFlags.filter(flag => 
+      !highRiskFactors.includes(flag)
+    );
+    
+    // Extract any positive aspects as mitigating factors
+    const mitigatingFactors = reputationInsights.filter(insight => 
+      insight.toLowerCase().includes("positive") ||
+      insight.toLowerCase().includes("award") ||
+      insight.toLowerCase().includes("recognized") ||
+      insight.toLowerCase().includes("growth")
+    );
+    
     return {
       overview,
       legalIssues,
       financialRedFlags,
       reputationInsights,
+      highRiskFactors,
+      moderateRiskFactors,
+      mitigatingFactors,
       score
     };
   } catch (error) {
@@ -318,6 +344,9 @@ async function researchPerson(ownerName: string, companyName: string, industryNa
   legalIssues: string[];
   financialRedFlags: string[];
   reputationInsights: string[];
+  highRiskFactors: string[];
+  moderateRiskFactors: string[];
+  mitigatingFactors: string[];
   score: number;
 }> {
   try {

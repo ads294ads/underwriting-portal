@@ -504,7 +504,7 @@ Years in Business: ${application.yearsInBusiness}
 Annual Revenue: $${application.annualRevenue}
 Loan Amount Requested: $${application.loanAmount}
 Credit Information: ${(application as any).creditScore || 'Not provided'}
-Business Details: ${(application as any).businessType || application.businessStructure || 'Not specified'}
+Business Details: ${(application as any).businessType || 'Not specified'}
 
 This document appears to be in a format that could not be automatically analyzed. 
 Please provide a general assessment based on the document name and business details above.`;
