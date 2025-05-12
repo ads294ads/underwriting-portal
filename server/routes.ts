@@ -627,9 +627,13 @@ Loan Amount Requested: $${application.loanAmount}`;
           documentAnalysisResults.length > 0 ? documentAnalysisResults : undefined
         );
         
-        // Set response headers for PDF download
+        // Set response headers for PDF download with improved reliability
         res.setHeader('Content-Type', 'application/pdf');
         res.setHeader('Content-Disposition', `attachment; filename="${application.businessName.replace(/\s+/g, '_')}_Enhanced_Assessment.pdf"`);
+        res.setHeader('Content-Length', pdfBuffer.length);
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        res.setHeader('Pragma', 'no-cache');
+        res.setHeader('Expires', '0');
         
         // Send the PDF buffer
         res.send(pdfBuffer);
@@ -856,10 +860,13 @@ Loan Amount Requested: $${application.loanAmount}`;
         // Combine chunks into a single buffer
         const pdfBuffer = Buffer.concat(chunks);
         
-        // Set response headers for PDF download
+        // Set response headers for PDF download with improved reliability
         res.setHeader('Content-Type', 'application/pdf');
         res.setHeader('Content-Disposition', `attachment; filename="${application.businessName.replace(/\s+/g, '_')}_Comprehensive_Assessment.pdf"`);
         res.setHeader('Content-Length', pdfBuffer.length);
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        res.setHeader('Pragma', 'no-cache');
+        res.setHeader('Expires', '0');
         
         // Send the PDF buffer
         res.send(pdfBuffer);

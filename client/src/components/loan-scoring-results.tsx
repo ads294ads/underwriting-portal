@@ -145,6 +145,102 @@ export default function LoanScoringResults({ application }: LoanScoringResultsPr
     }
   };
 
+  // Helper function to handle PDF downloads with retries
+  const handlePdfDownload = async (
+    downloadUrl: string, 
+    filename: string, 
+    onSuccess: (msg: string) => void, 
+    onError: (err: Error) => void,
+    maxRetries = 3
+  ) => {
+    let retries = 0;
+    let lastError: Error | null = null;
+    
+    while (retries < maxRetries) {
+      try {
+        console.log(`Attempting PDF download (attempt ${retries + 1}/${maxRetries}) from: ${downloadUrl}`);
+        
+        // Set a longer timeout for PDF generation
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+        
+        // Use fetch with timeout capability
+        const response = await fetch(downloadUrl, { 
+          signal: controller.signal,
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0',
+          }
+        });
+        
+        clearTimeout(timeoutId);
+        
+        if (!response.ok) {
+          // Check if we got a JSON error response
+          const contentType = response.headers.get('content-type');
+          if (contentType && contentType.includes('application/json')) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || `Server error: ${response.status} ${response.statusText}`);
+          } else {
+            throw new Error(`Failed to download PDF: ${response.status} ${response.statusText}`);
+          }
+        }
+        
+        // Verify content type is PDF
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/pdf')) {
+          console.warn(`Unexpected content type: ${contentType}`);
+          // Continue anyway as the server might set the wrong content type
+        }
+        
+        // Get the blob from the response
+        const blob = await response.blob();
+        
+        // Verify we have a non-empty blob
+        if (blob.size === 0) {
+          throw new Error('Downloaded PDF is empty');
+        }
+        
+        // Create a URL for the blob
+        const blobUrl = URL.createObjectURL(blob);
+        
+        // Create a link to download the file
+        const a = document.createElement('a');
+        a.href = blobUrl;
+        a.download = filename;
+        document.body.appendChild(a);
+        
+        // Trigger the download
+        a.click();
+        
+        // Clean up
+        document.body.removeChild(a);
+        URL.revokeObjectURL(blobUrl);
+        
+        onSuccess("PDF report has been saved to your downloads folder.");
+        return; // Success, exit the function
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error(String(error));
+        console.error(`PDF download attempt ${retries + 1} failed:`, lastError);
+        retries++;
+        
+        // Wait a bit longer between retries (exponential backoff)
+        if (retries < maxRetries) {
+          const waitTime = 1000 * Math.pow(2, retries); // 2s, 4s, 8s
+          await new Promise(resolve => setTimeout(resolve, waitTime));
+        }
+      }
+    }
+    
+    // If we got here, all retries failed
+    if (lastError) {
+      onError(lastError);
+    } else {
+      onError(new Error("Failed to download PDF after multiple attempts"));
+    }
+  };
+  
   // Download professionally formatted PDF report
   const downloadPdfReport = async () => {
     if (!application) return;
@@ -154,41 +250,27 @@ export default function LoanScoringResults({ application }: LoanScoringResultsPr
     try {
       // Create a direct download link to the PDF endpoint
       const downloadUrl = `/api/loan-applications/${application.id}/rationale-pdf`;
+      const filename = `${application.businessName.replace(/\s+/g, '_')}_loan_assessment.pdf`;
       
-      console.log("Starting PDF download from:", downloadUrl);
-      
-      // Better approach: use fetch to stream the PDF data
-      const response = await fetch(downloadUrl);
-      
-      if (!response.ok) {
-        throw new Error(`Failed to download PDF: ${response.status} ${response.statusText}`);
-      }
-      
-      // Get the blob from the response
-      const blob = await response.blob();
-      
-      // Create a URL for the blob
-      const url = URL.createObjectURL(blob);
-      
-      // Create a link to download the file
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${application.businessName.replace(/\s+/g, '_')}_loan_assessment.pdf`;
-      document.body.appendChild(a);
-      
-      // Trigger the download
-      a.click();
-      
-      // Clean up
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      
-      toast({
-        title: "PDF Report Downloaded",
-        description: "Comprehensive PDF assessment report has been saved to your downloads folder.",
-      });
+      await handlePdfDownload(
+        downloadUrl,
+        filename,
+        (message) => {
+          toast({
+            title: "PDF Report Downloaded",
+            description: message,
+          });
+        },
+        (error) => {
+          toast({
+            title: "Failed to Download PDF Report",
+            description: error.message,
+            variant: "destructive",
+          });
+        }
+      );
     } catch (error) {
-      console.error("Error downloading PDF report:", error);
+      console.error("Unhandled error in PDF download process:", error);
       toast({
         title: "Failed to Download PDF Report",
         description: error instanceof Error ? error.message : "An unexpected error occurred",
@@ -208,41 +290,27 @@ export default function LoanScoringResults({ application }: LoanScoringResultsPr
     try {
       // Create a direct download link to the enhanced PDF endpoint
       const downloadUrl = `/api/loan-applications/${application.id}/enhanced-pdf`;
+      const filename = `${application.businessName.replace(/\s+/g, '_')}_Enhanced_Assessment.pdf`;
       
-      console.log("Starting Enhanced Multi-Agent PDF download from:", downloadUrl);
-      
-      // Use fetch to stream the PDF data
-      const response = await fetch(downloadUrl);
-      
-      if (!response.ok) {
-        throw new Error(`Failed to download Enhanced PDF: ${response.status} ${response.statusText}`);
-      }
-      
-      // Get the blob from the response
-      const blob = await response.blob();
-      
-      // Create a URL for the blob
-      const url = URL.createObjectURL(blob);
-      
-      // Create a link to download the file
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${application.businessName.replace(/\s+/g, '_')}_Enhanced_Assessment.pdf`;
-      document.body.appendChild(a);
-      
-      // Trigger the download
-      a.click();
-      
-      // Clean up
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      
-      toast({
-        title: "Enhanced Report Downloaded",
-        description: "Multi-agent detailed analysis report has been saved to your downloads folder.",
-      });
+      await handlePdfDownload(
+        downloadUrl,
+        filename,
+        (message) => {
+          toast({
+            title: "Enhanced Report Downloaded",
+            description: "Multi-agent detailed analysis report has been saved to your downloads folder.",
+          });
+        },
+        (error) => {
+          toast({
+            title: "Failed to Download Enhanced PDF",
+            description: error.message,
+            variant: "destructive",
+          });
+        }
+      );
     } catch (error) {
-      console.error("Error downloading enhanced PDF report:", error);
+      console.error("Unhandled error in enhanced PDF download process:", error);
       toast({
         title: "Failed to Download Enhanced PDF",
         description: error instanceof Error ? error.message : "An unexpected error occurred",
