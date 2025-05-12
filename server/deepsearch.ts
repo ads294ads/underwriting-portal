@@ -333,6 +333,9 @@ This is extremely important for a loan decision. The company DOES exist and has 
       legalIssues: [],
       financialRedFlags: [],
       reputationInsights: [],
+      highRiskFactors: ["Unable to verify company identity completely"],
+      moderateRiskFactors: ["Limited information available for analysis"],
+      mitigatingFactors: ["Standard industry risk assessment can be applied"],
       score: 70 // Default neutral score
     };
   }
@@ -412,11 +415,35 @@ This is extremely important for a loan decision. The person DOES exist and has p
     // Higher score = fewer issues found
     const score = calculateResearchScore(personResearchResponse, legalIssues, financialRedFlags);
     
+    // Categorize findings into different risk levels
+    const highRiskFactors = legalIssues.filter(issue => 
+      issue.toLowerCase().includes("lawsuit") || 
+      issue.toLowerCase().includes("bankruptcy") ||
+      issue.toLowerCase().includes("fraud") ||
+      issue.toLowerCase().includes("criminal")
+    );
+    
+    const moderateRiskFactors = financialRedFlags.filter(flag => 
+      !highRiskFactors.includes(flag)
+    );
+    
+    // Extract any positive aspects as mitigating factors
+    const mitigatingFactors = reputationInsights.filter(insight => 
+      insight.toLowerCase().includes("positive") ||
+      insight.toLowerCase().includes("award") ||
+      insight.toLowerCase().includes("recognized") ||
+      insight.toLowerCase().includes("growth") ||
+      insight.toLowerCase().includes("successful")
+    );
+    
     return {
       overview,
       legalIssues,
       financialRedFlags,
       reputationInsights,
+      highRiskFactors,
+      moderateRiskFactors,
+      mitigatingFactors,
       score
     };
   } catch (error) {
@@ -426,6 +453,9 @@ This is extremely important for a loan decision. The person DOES exist and has p
       legalIssues: [],
       financialRedFlags: [],
       reputationInsights: [],
+      highRiskFactors: ["Unable to verify owner identity completely"],
+      moderateRiskFactors: ["Limited information available for owner analysis"],
+      mitigatingFactors: ["Standard owner risk assessment can be applied"],
       score: 70 // Default neutral score
     };
   }

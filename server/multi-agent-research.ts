@@ -124,6 +124,9 @@ interface CoordinatedResearchResult {
       trend: string;
     }[];
     sources: string[];
+    highRiskFactors: string[];  // Required by DeepResearchResult interface
+    moderateRiskFactors: string[]; // Required by DeepResearchResult interface
+    mitigatingFactors: string[]; // Required by DeepResearchResult interface
     score: number;
   };
   ownerAnalysis: {
@@ -141,6 +144,9 @@ interface CoordinatedResearchResult {
       outcome: string;
     }[];
     sources: string[];
+    highRiskFactors: string[];  // Required by DeepResearchResult interface
+    moderateRiskFactors: string[]; // Required by DeepResearchResult interface
+    mitigatingFactors: string[]; // Required by DeepResearchResult interface
     score: number;
   };
   combinedScore: number;
