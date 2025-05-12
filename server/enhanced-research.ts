@@ -54,7 +54,13 @@ export async function performEnhancedDeepResearch(application: LoanApplication):
     
     if (application.owners && application.owners.length > 0) {
       for (const owner of application.owners) {
-        if (owner.ownershipPercentage >= 20) { // Only verify owners with 20% or more ownership
+        // Check either property, with ownership taking precedence if both exist
+        const ownershipValue = typeof owner.ownership !== 'undefined' ? 
+                              owner.ownership : 
+                              (typeof owner.ownershipPercentage !== 'undefined' ? 
+                               owner.ownershipPercentage : 0);
+        
+        if (ownershipValue >= 20) { // Only verify owners with 20% or more ownership
           const ownerVerification = await verifyPersonIdentity(owner.name, application.businessName, companyVerification.verifiedName);
           ownerVerifications.push({
             name: owner.name,
@@ -68,7 +74,13 @@ export async function performEnhancedDeepResearch(application: LoanApplication):
     } else if (application.businessOwners && application.businessOwners.length > 0) {
       // Use businessOwners if owners isn't available
       for (const owner of application.businessOwners) {
-        if (owner.ownershipPercentage >= 20) { // Only verify owners with 20% or more ownership
+        // Check either property, with ownership taking precedence if both exist
+        const ownershipValue = typeof owner.ownership !== 'undefined' ? 
+                             owner.ownership : 
+                             (typeof owner.ownershipPercentage !== 'undefined' ? 
+                              owner.ownershipPercentage : 0);
+                              
+        if (ownershipValue >= 20) { // Only verify owners with 20% or more ownership
           const ownerVerification = await verifyPersonIdentity(owner.name, application.businessName, companyVerification.verifiedName);
           ownerVerifications.push({
             name: owner.name,
@@ -100,7 +112,13 @@ export async function performEnhancedDeepResearch(application: LoanApplication):
       for (let i = 0; i < application.owners.length; i++) {
         const owner = application.owners[i];
         
-        if (owner.ownershipPercentage >= 20) {
+        // Check either property, with ownership taking precedence if both exist
+        const ownershipValue = typeof owner.ownership !== 'undefined' ? 
+                             owner.ownership : 
+                             (typeof owner.ownershipPercentage !== 'undefined' ? 
+                              owner.ownershipPercentage : 0);
+        
+        if (ownershipValue >= 20) {
           const ownerVerification = ownerVerifications.find(v => v.name === owner.name);
           
           if (ownerVerification) {
@@ -190,6 +208,11 @@ export async function performEnhancedDeepResearch(application: LoanApplication):
         financialRedFlags: [],
         reputationInsights: [],
         executiveSummary: "Research was limited due to technical issues.",
+        industryPosition: [],
+        marketTrends: [],
+        highRiskFactors: ["Limited company verification - identity confidence low."],
+        moderateRiskFactors: ["Industry trends unavailable with current search depth."],
+        mitigatingFactors: ["Standard industry risk assessment can be applied."],
         score: 60
       },
       ownerAnalysis: {
@@ -197,7 +220,11 @@ export async function performEnhancedDeepResearch(application: LoanApplication):
         legalIssues: [],
         financialRedFlags: [],
         reputationInsights: [],
+        managementCapabilities: [],
         executiveSummary: "Research was limited due to technical issues.",
+        highRiskFactors: ["Owner identity verification limited - confidence low."],
+        moderateRiskFactors: ["Management history unavailable with current search depth."],
+        mitigatingFactors: ["Standard background checks can be applied."],
         score: 60
       },
       combinedScore: 60,
@@ -205,8 +232,8 @@ export async function performEnhancedDeepResearch(application: LoanApplication):
       verificationConfidence: 0.2,
       riskAssessment: {
         highRiskFactors: ["Unable to complete thorough research due to technical issues"],
-        moderateRiskFactors: [],
-        mitigatingFactors: []
+        moderateRiskFactors: ["Standard industry risks apply."],
+        mitigatingFactors: ["Manual verification could offset technical limitations."]
       }
     };
   }
