@@ -64,6 +64,7 @@ export class WebSocketManager {
     // Create a new connection
     this.connectionPromise = new Promise<WebSocket>((resolve, reject) => {
       try {
+        console.log("WebSocket connecting...");
         // Determine correct protocol
         const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
         const wsUrl = `${protocol}//${window.location.host}/ws`;
@@ -72,7 +73,7 @@ export class WebSocketManager {
         const socket = new WebSocket(wsUrl);
         
         socket.onopen = () => {
-          console.log("WebSocket connected");
+          console.log("WebSocket connected successfully");
           this.socket = socket;
           this.connectionPromise = null;
           resolve(socket);
@@ -92,20 +93,26 @@ export class WebSocketManager {
         
         socket.onmessage = (event) => {
           try {
+            console.log("WebSocket message received:", event.data);
             const data = JSON.parse(event.data) as ProgressUpdate;
             
             // Route to appropriate callback if applicationId is present
             if (data.applicationId && this.callbacks.has(data.applicationId)) {
+              console.log(`Progress update for app #${data.applicationId}: ${data.stage} (${data.progress}%)`);
               const callback = this.callbacks.get(data.applicationId);
               if (callback) {
                 callback(data);
               }
+            } else {
+              // Log when we get a message that doesn't match any registered callback
+              console.log("No callback found for message:", data);
             }
           } catch (error) {
             console.error("Error parsing WebSocket message:", error);
           }
         };
       } catch (error) {
+        console.error("Error creating WebSocket connection:", error);
         this.connectionPromise = null;
         reject(error);
       }

@@ -960,47 +960,88 @@ Please provide a general assessment based on the document name and business deta
         }
       }
       
+      // Broadcast progress update for document analysis
+      broadcastProgress(id, {
+        stage: 'document_analysis',
+        message: 'Processing financial documents',
+        progress: 80,
+        detail: 'Analyzing financial statements and business records'
+      });
+      
       // Collect document analysis results if available
       let documentAnalysisResults: DocumentAnalysisResult[] = [];
       if (application.fileUploaded && application.documentAnalysis && application.documentAnalysis.length > 0) {
         try {
           console.log("Processing document analysis for enhanced PDF report...");
           
-          // Generate structured document analysis from analysis text
+          // Process each document analysis
           application.documentAnalysis.forEach((analysisText, index) => {
-            const docType = analysisText.includes("Tax Return") ? "Tax Return" :
-                           analysisText.includes("Balance Sheet") ? "Financial Statement" :
-                           analysisText.includes("Business Plan") ? "Business Plan" :
-                           analysisText.includes("Cash Flow") ? "Cash Flow Projection" :
-                           analysisText.includes("Credit") ? "Credit Report" :
-                           "Financial Document";
-                           
-            const fileName = `${docType}_${index + 1}.pdf`;
+            // Update progress for document analysis
+            broadcastProgress(id, {
+              stage: 'document_processing',
+              message: `Processing document ${index + 1} of ${application.documentAnalysis.length}`,
+              progress: 80 + Math.min(10, Math.floor((index / application.documentAnalysis.length) * 10)),
+              detail: 'Extracting financial insights'
+            });
             
-            // Create a document analysis result using the actual analysis text
-            const analysisResult: DocumentAnalysisResult = {
-              documentType: docType as any,
-              fileName,
-              keyFindings: [
-                analysisText
-              ],
-              financialMetrics: {},
+            // Determine document type based on content
+            const docType = analysisText.includes("Tax Return") ? "Tax Return" :
+                          analysisText.includes("Balance Sheet") ? "Financial Statement" :
+                          analysisText.includes("Business Plan") ? "Business Plan" :
+                          analysisText.includes("Cash Flow") ? "Cash Flow Projection" :
+                          analysisText.includes("Credit Report") ? "Credit Report" :
+                          "Financial Document";
+            
+            // Create a simple document analysis result
+            documentAnalysisResults.push({
+              documentType: docType as DocumentType,
+              fileName: `${docType}_${index + 1}.pdf`,
+              keyFindings: [analysisText.substring(0, 200) + "..."],
+              financialMetrics: {
+                "Document Assessment": {
+                  value: "Complete",
+                  impact: "Incorporated into evaluation"
+                }
+              },
               underwritingEvaluation: {
-                strengths: [],
+                strengths: ["Document successfully analyzed"],
                 weaknesses: [],
                 risks: [],
                 mitigatingFactors: []
               },
-              overallAssessment: `The document analysis has been incorporated into the loan evaluation process`,
-              impactOnScore: 5 // Neutral impact
-            };
-            
-            documentAnalysisResults.push(analysisResult);
+              overallAssessment: "Document analysis complete and incorporated into loan assessment",
+              impactOnScore: 5
+            });
           });
+          
+          // Update progress after document analysis is complete
+          broadcastProgress(id, {
+            stage: 'analysis_complete',
+            message: 'Document analysis complete',
+            progress: 90,
+            detail: 'Compiling final report with analysis results'
+          });
+          
           console.log(`Processed ${documentAnalysisResults.length} document analyses for enhanced PDF`);
         } catch (docError) {
           console.error("Error preparing document analysis for enhanced PDF:", docError);
+          
+          // Send error progress update but continue
+          broadcastProgress(id, {
+            stage: 'document_error',
+            message: 'Error in document analysis',
+            progress: 85,
+            detail: 'Continuing with available information'
+          });
         }
+      } else {
+        // No documents to analyze
+        broadcastProgress(id, {
+          stage: 'no_documents',
+          message: 'No documents available',
+          progress: 85,
+          detail: 'Continuing with business intelligence data only'
+        });
       }
       
       // Broadcast progress update for document analysis

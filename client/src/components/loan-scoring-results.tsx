@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { DownloadIcon, UploadIcon, SearchIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { ReportProgressIndicator } from "@/components/report-progress-indicator";
+import { WebSocketManager, ProgressUpdate } from "@/lib/queryClient";
 
 interface LoanScoringResultsProps {
   application: LoanApplication;
@@ -355,22 +356,57 @@ export default function LoanScoringResults({ application }: LoanScoringResultsPr
   const downloadEnhancedPdfReport = async () => {
     if (!application) return;
     
-    // Reset states
+    // Reset states and show progress immediately
     setIsEnhancedPdfDownloading(true);
     setShowProgressIndicator(true);
     setEnhancedPdfDownloadComplete(false);
     setEnhancedPdfError(null);
     
     try {
+      console.log("Starting enhanced PDF download process for application ID:", application.id);
+      
+      // Initialize WebSocket connection immediately to ensure it's ready
+      const wsManager = WebSocketManager.getInstance();
+      try {
+        // Connect to WebSocket first to ensure we have a connection
+        await wsManager.getConnection();
+        console.log("WebSocket connected, ready to receive progress updates");
+        
+        // Register callback for this application's progress updates
+        const unsubscribe = wsManager.registerCallback(application.id, (update: ProgressUpdate) => {
+          console.log(`Progress update received: ${update.stage} - ${update.progress}%`);
+          
+          // When complete (100%), trigger the actual download
+          if (update.stage === 'complete' && update.progress === 100) {
+            console.log("Report generation complete signal received, initiating download");
+            setEnhancedPdfDownloadComplete(true);
+          }
+          
+          if (update.stage === 'error') {
+            console.error("Error in report generation:", update.detail);
+            setEnhancedPdfError(update.detail || "Unknown error occurred");
+          }
+        });
+        
+        // Clean up subscription after completion or error
+        setTimeout(() => unsubscribe(), 120000); // Max 2 minutes
+      } catch (wsError) {
+        console.error("Failed to connect to WebSocket:", wsError);
+        // Continue anyway - the PDF will still be generated
+      }
+      
       // Create a direct download link to the enhanced PDF endpoint
       const downloadUrl = `/api/loan-applications/${application.id}/enhanced-pdf`;
       const filename = `${application.businessName.replace(/\s+/g, '_')}_Enhanced_Assessment.pdf`;
       
-      // Set a longer timeout for the initial download attempt
+      // Send a message to the user to let them know the process has started
+      toast({
+        title: "Generating Enhanced Report",
+        description: "This may take 1-2 minutes. Progress will be shown below.",
+      });
+      
+      // Set a longer timeout for the initial download attempt (60 seconds)
       const downloadPromise = new Promise<void>((resolve, reject) => {
-        // When the progress indicator shows 100% complete (through WebSocket),
-        // the download should trigger automatically
-        
         // Set a backup timeout in case the WebSocket completion doesn't trigger
         const backupTimeout = setTimeout(() => {
           console.log("Backup timeout triggered - attempting direct download");
@@ -382,35 +418,44 @@ export default function LoanScoringResults({ application }: LoanScoringResultsPr
             () => resolve(),
             (error) => reject(error)
           ).catch(reject);
-        }, 45000); // 45 second backup timeout
+        }, 60000); // 60 second backup timeout
         
-        // The completion callback will be triggered by the ReportProgressIndicator
-        // component when it receives the 'complete' status
-        setTimeout(() => {
-          // Attempt download after a brief delay to allow progress tracking to initialize
-          handlePdfDownload(
-            downloadUrl,
-            filename,
-            (message) => {
+        // Start the download process right away - this will trigger the backend to start processing
+        fetch(downloadUrl)
+          .then(async (response) => {
+            // If the response is successful, this means the PDF was generated
+            if (response.ok) {
+              const blob = await response.blob();
+              const url = window.URL.createObjectURL(blob);
+              
+              // Create an anchor element to trigger the download
+              const a = document.createElement('a');
+              a.style.display = 'none';
+              a.href = url;
+              a.download = filename;
+              document.body.appendChild(a);
+              a.click();
+              
+              // Clean up
+              window.URL.revokeObjectURL(url);
+              document.body.removeChild(a);
+              
+              // Mark as complete
               clearTimeout(backupTimeout);
               setEnhancedPdfDownloadComplete(true);
               resolve();
-            },
-            (error) => {
-              // Only reject if we haven't completed yet
-              if (!enhancedPdfDownloadComplete) {
-                clearTimeout(backupTimeout);
-                reject(error);
-              }
+            } else {
+              // If there was an error response, parse and show it
+              const text = await response.text();
+              reject(new Error(`Server error: ${text}`));
             }
-          ).catch((err) => {
-            // Only reject if we haven't completed yet
+          })
+          .catch(error => {
             if (!enhancedPdfDownloadComplete) {
               clearTimeout(backupTimeout);
-              reject(err);
+              reject(error);
             }
           });
-        }, 500);
       });
       
       // Wait for download to complete

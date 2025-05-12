@@ -25,28 +25,54 @@ export function ReportProgressIndicator({
     // Connect to WebSocket for progress updates
     const connectToWebsocket = async () => {
       try {
+        console.log(`Setting up progress tracking for application ID: ${applicationId}`);
         const wsManager = WebSocketManager.getInstance();
-        await wsManager.getConnection();
+        const socket = await wsManager.getConnection();
+        
+        // Send subscribe message to server immediately
+        const subscribeMsg = {
+          type: 'subscribe',
+          applicationId: applicationId
+        };
+        
+        if (socket.readyState === WebSocket.OPEN) {
+          console.log("Sending subscription request to server:", subscribeMsg);
+          socket.send(JSON.stringify(subscribeMsg));
+        } else {
+          console.warn("WebSocket not open, couldn't send subscription. Current state:", socket.readyState);
+          
+          // Try again after a short delay
+          setTimeout(() => {
+            if (socket.readyState === WebSocket.OPEN) {
+              console.log("Retrying subscription request");
+              socket.send(JSON.stringify(subscribeMsg));
+            }
+          }, 1000);
+        }
         
         // Register callback for this application's progress updates
         const unsubscribe = wsManager.registerCallback(applicationId, (update: ProgressUpdate) => {
+          console.log(`Progress update received for app #${applicationId}:`, update);
+          
           setProgress(update.progress);
-          setMessage(update.message);
-          setDetail(update.detail);
+          setMessage(update.message || "Processing...");
+          setDetail(update.detail || "");
           setStatus(update.stage);
           
           if (update.stage === 'error') {
             setError(update.detail || 'An error occurred');
-            if (onError) onError(update.detail);
+            if (onError) onError(update.detail || 'An error occurred');
           }
           
           if (update.stage === 'complete' && update.progress === 100) {
+            console.log("Progress complete signal received");
             if (onComplete) onComplete();
           }
         });
         
         // Cleanup on unmount
         return () => {
+          console.log(`Unsubscribing from progress updates for app #${applicationId}`);
           unsubscribe();
         };
       } catch (err) {
@@ -56,13 +82,27 @@ export function ReportProgressIndicator({
       }
     };
     
-    connectToWebsocket();
-    
     // Set initial state to indicate connecting
     setStatus('connecting');
     setMessage('Initializing connection...');
+    setProgress(5); // Show some initial progress
     
-  }, [applicationId, onComplete, onError]);
+    // Connect to WebSocket
+    connectToWebsocket();
+    
+    // Set a timeout to show some progess even if server is not responding yet
+    const fallbackTimer = setTimeout(() => {
+      if (progress <= 5) {
+        setProgress(10);
+        setMessage('Preparing document analysis');
+        setDetail('Setting up research environment');
+      }
+    }, 3000);
+    
+    return () => {
+      clearTimeout(fallbackTimer);
+    };
+  }, [applicationId, onComplete, onError, progress]);
   
   // Show error state
   if (error) {
