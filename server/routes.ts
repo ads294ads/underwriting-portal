@@ -615,36 +615,121 @@ Please provide a general assessment based on the document name and business deta
       
       console.log(`Generating enhanced multi-agent PDF report for application ID: ${id}`);
       
-      // Always perform deep research to get the most up-to-date results
+      // Check if we already have deep research results to use
       let deepResearchResults: DeepResearchResult | null = null;
-      try {
-        console.log("Starting multi-agent deep research for enhanced PDF...");
-        deepResearchResults = await performDeepResearch(application);
-        console.log("Multi-agent deep research completed successfully");
-        
-        // Update the application with deep research results
-        const currentScore = application.score ? parseFloat(application.score) : 0;
-        const deepResearchWeight = DEEP_RESEARCH_COMPONENT_WEIGHT / 100;
-        const newScore = (currentScore * (1 - deepResearchWeight)) + 
-                         (deepResearchResults.combinedScore * deepResearchWeight);
-        
-        // Update scoring details
-        const scoringDetails = application.scoringDetails || {};
-        scoringDetails.deepResearch = deepResearchResults.combinedScore;
-        
-        // Update application with new details
-        const updatedData: Partial<LoanApplication> = {
-          score: newScore.toString(),
-          grade: determineGrade(newScore),
-          scoringDetails: scoringDetails,
-          deepResearchCompleted: true
-        };
-        
-        await storage.updateLoanApplication(id, updatedData);
-        console.log("Application updated with latest multi-agent deep research results");
-      } catch (drError) {
-        console.error("Error performing multi-agent deep research for PDF:", drError);
-        // Continue with PDF generation even if deep research fails
+      let useExistingResults = false;
+      
+      // If application has deep research already completed within the last 24 hours
+      // use those results to speed up PDF generation
+      if (application.deepResearchCompleted && 
+          application.lastUpdated && 
+          (new Date().getTime() - new Date(application.lastUpdated).getTime() < 24 * 60 * 60 * 1000)) {
+        try {
+          console.log("Using cached deep research results to expedite PDF generation");
+          
+          // Use existing deep research results if available
+          deepResearchResults = {
+            companyAnalysis: {
+              overview: application.companyAnalysis?.overview || `Analysis of ${application.businessName}`,
+              legalIssues: application.companyAnalysis?.legalIssues || [],
+              financialRedFlags: application.companyAnalysis?.financialRedFlags || [],
+              reputationInsights: application.companyAnalysis?.reputationInsights || [],
+              industryPosition: application.companyAnalysis?.industryPosition || [],
+              marketTrends: application.companyAnalysis?.marketTrends || [],
+              highRiskFactors: application.companyAnalysis?.highRiskFactors || [],
+              moderateRiskFactors: application.companyAnalysis?.moderateRiskFactors || [],
+              mitigatingFactors: application.companyAnalysis?.mitigatingFactors || [],
+              executiveSummary: application.companyAnalysis?.executiveSummary || "",
+              score: application.scoringDetails?.deepResearch || 60
+            },
+            ownerAnalysis: {
+              overview: application.ownerAnalysis?.overview || "Owner analysis",
+              legalIssues: application.ownerAnalysis?.legalIssues || [],
+              financialRedFlags: application.ownerAnalysis?.financialRedFlags || [],
+              reputationInsights: application.ownerAnalysis?.reputationInsights || [],
+              managementCapabilities: application.ownerAnalysis?.managementCapabilities || [],
+              highRiskFactors: application.ownerAnalysis?.highRiskFactors || [],
+              moderateRiskFactors: application.ownerAnalysis?.moderateRiskFactors || [],
+              mitigatingFactors: application.ownerAnalysis?.mitigatingFactors || [],
+              executiveSummary: application.ownerAnalysis?.executiveSummary || "",
+              score: application.scoringDetails?.deepResearch || 60
+            },
+            combinedScore: application.scoringDetails?.deepResearch || 60,
+            grade: application.grade || "C+",
+            verificationConfidence: 0.8,
+            riskAssessment: {
+              highRiskFactors: application.companyAnalysis?.highRiskFactors || [],
+              moderateRiskFactors: application.companyAnalysis?.moderateRiskFactors || [],
+              mitigatingFactors: application.companyAnalysis?.mitigatingFactors || []
+            }
+          };
+          useExistingResults = true;
+        } catch (error) {
+          console.warn("Error using cached research results:", error);
+          // Continue with fresh research if cached results are invalid
+        }
+      }
+      
+      // Perform fresh deep research if needed
+      if (!useExistingResults) {
+        try {
+          console.log("Starting multi-agent deep research for enhanced PDF...");
+          deepResearchResults = await performDeepResearch(application);
+          console.log("Multi-agent deep research completed successfully");
+          
+          // Update the application with deep research results
+          const currentScore = application.score ? parseFloat(application.score) : 0;
+          const deepResearchWeight = DEEP_RESEARCH_COMPONENT_WEIGHT / 100;
+          const newScore = (currentScore * (1 - deepResearchWeight)) + 
+                           (deepResearchResults.combinedScore * deepResearchWeight);
+          
+          // Update scoring details
+          const scoringDetails = application.scoringDetails || {};
+          scoringDetails.deepResearch = deepResearchResults.combinedScore;
+          
+          // Save the deep research results for future use
+          const companyAnalysis = {
+            overview: deepResearchResults.companyAnalysis.overview,
+            legalIssues: deepResearchResults.companyAnalysis.legalIssues,
+            financialRedFlags: deepResearchResults.companyAnalysis.financialRedFlags,
+            reputationInsights: deepResearchResults.companyAnalysis.reputationInsights,
+            industryPosition: deepResearchResults.companyAnalysis.industryPosition,
+            marketTrends: deepResearchResults.companyAnalysis.marketTrends,
+            highRiskFactors: deepResearchResults.companyAnalysis.highRiskFactors,
+            moderateRiskFactors: deepResearchResults.companyAnalysis.moderateRiskFactors,
+            mitigatingFactors: deepResearchResults.companyAnalysis.mitigatingFactors,
+            executiveSummary: deepResearchResults.companyAnalysis.executiveSummary
+          };
+          
+          const ownerAnalysis = {
+            overview: deepResearchResults.ownerAnalysis.overview,
+            legalIssues: deepResearchResults.ownerAnalysis.legalIssues,
+            financialRedFlags: deepResearchResults.ownerAnalysis.financialRedFlags,
+            reputationInsights: deepResearchResults.ownerAnalysis.reputationInsights,
+            managementCapabilities: deepResearchResults.ownerAnalysis.managementCapabilities,
+            highRiskFactors: deepResearchResults.ownerAnalysis.highRiskFactors,
+            moderateRiskFactors: deepResearchResults.ownerAnalysis.moderateRiskFactors,
+            mitigatingFactors: deepResearchResults.ownerAnalysis.mitigatingFactors,
+            executiveSummary: deepResearchResults.ownerAnalysis.executiveSummary
+          };
+          
+          // Update application with new details
+          const updatedData: Partial<LoanApplication> = {
+            score: newScore.toString(),
+            grade: determineGrade(newScore),
+            scoringDetails: scoringDetails,
+            deepResearchCompleted: true,
+            companyAnalysis,
+            ownerAnalysis,
+            lastUpdated: new Date().toISOString()
+          };
+          
+          await storage.updateLoanApplication(id, updatedData);
+          console.log("Application updated with latest multi-agent deep research results");
+        } catch (drError) {
+          console.error("Error performing multi-agent deep research for PDF:", drError);
+          // Continue with PDF generation even if deep research fails
+        }
       }
       
       // Collect document analysis results if available

@@ -140,7 +140,13 @@ export async function performEnhancedDeepResearch(application: LoanApplication):
       for (let i = 0; i < application.businessOwners.length; i++) {
         const owner = application.businessOwners[i];
         
-        if (owner.ownershipPercentage >= 20) {
+        // Check either property, with ownership taking precedence if both exist
+        const ownershipValue = typeof owner.ownership !== 'undefined' ? 
+                             owner.ownership : 
+                             (typeof owner.ownershipPercentage !== 'undefined' ? 
+                              owner.ownershipPercentage : 0);
+                              
+        if (ownershipValue >= 20) {
           const ownerVerification = ownerVerifications.find(v => v.name === owner.name);
           
           if (ownerVerification) {
