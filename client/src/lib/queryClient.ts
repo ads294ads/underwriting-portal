@@ -127,8 +127,9 @@ export class WebSocketManager {
               return;
             }
             
-            // Process as a progress update
-            const data = rawData as ProgressUpdate;
+            // Process as a progress update if it has type 'progress' or no type (backward compat)
+            if (rawData.type === 'progress' || !rawData.type) {
+              const data = rawData as ProgressUpdate;
             
             // Route to appropriate callback if applicationId is present
             if (data.applicationId && this.callbacks.has(data.applicationId)) {

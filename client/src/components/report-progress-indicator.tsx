@@ -35,19 +35,29 @@ export function ReportProgressIndicator({
           applicationId: applicationId
         };
         
-        if (socket.readyState === WebSocket.OPEN) {
-          console.log("Sending subscription request to server:", subscribeMsg);
-          socket.send(JSON.stringify(subscribeMsg));
-        } else {
+        const sendSubscription = () => {
+          if (socket.readyState === WebSocket.OPEN) {
+            console.log("Sending subscription request to server:", subscribeMsg);
+            socket.send(JSON.stringify(subscribeMsg));
+            return true;
+          }
+          return false;
+        };
+        
+        // Try to send immediately
+        if (!sendSubscription()) {
           console.warn("WebSocket not open, couldn't send subscription. Current state:", socket.readyState);
           
-          // Try again after a short delay
-          setTimeout(() => {
-            if (socket.readyState === WebSocket.OPEN) {
-              console.log("Retrying subscription request");
-              socket.send(JSON.stringify(subscribeMsg));
-            }
-          }, 1000);
+          // Retry multiple times with increasing delay
+          [500, 1000, 3000].forEach((delay, index) => {
+            setTimeout(() => {
+              if (!sendSubscription()) {
+                console.warn(`Subscription attempt ${index + 1} failed, socket state: ${socket.readyState}`);
+              } else {
+                console.log(`Subscription successful on attempt ${index + 1}`);
+              }
+            }, delay);
+          });
         }
         
         // Register callback for this application's progress updates
@@ -65,8 +75,14 @@ export function ReportProgressIndicator({
           }
           
           if (update.stage === 'complete' && update.progress === 100) {
-            console.log("Progress complete signal received");
-            if (onComplete) onComplete();
+            console.log("Progress complete signal received - report generation finished");
+            console.log("Calling onComplete handler to finalize download process");
+            if (onComplete) {
+              // Adding a small delay to ensure PDF is fully ready
+              setTimeout(() => {
+                onComplete();
+              }, 500);
+            }
           }
         });
         

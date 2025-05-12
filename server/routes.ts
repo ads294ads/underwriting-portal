@@ -29,8 +29,9 @@ export function broadcastProgress(applicationId: number, progressData: {
   progress: number; // 0-100
   detail?: string;
 }) {
-  // Add application ID to the progress data
+  // Add application ID and type to the progress data
   const fullProgressData = {
+    type: 'progress',
     ...progressData,
     applicationId
   };
@@ -432,20 +433,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.log(`Client subscribed to updates for application #${applicationId}`);
           
           // Send initial connection confirmation with immediate progress update
-          ws.send(JSON.stringify({
-            type: 'connected',
-            stage: 'connected',
-            applicationId,
-            message: 'Connected to real-time progress updates',
-            progress: 10,
-            detail: 'Connection established, waiting for analysis to begin'
-          }));
+          try {
+            // First, confirm the subscription registration
+            ws.send(JSON.stringify({
+              type: 'registration_confirmed',
+              applicationId: applicationId, 
+              message: `Successfully registered for updates on application ${applicationId}`,
+              timestamp: new Date().toISOString()
+            }));
+            
+            // Then send an initial progress update
+            ws.send(JSON.stringify({
+              type: 'progress',
+              stage: 'connected',
+              applicationId,
+              message: 'Connected to real-time progress updates',
+              progress: 10,
+              detail: 'Connection established, waiting for analysis to begin'
+            }));
+          } catch (error) {
+            console.error('Error sending confirmation messages:', error);
+          }
           
           // Immediately send another progress update to kickstart the UI
           setTimeout(() => {
             if (ws.readyState === WebSocket.OPEN) {
               try {
                 ws.send(JSON.stringify({
+                  type: 'progress',
                   stage: 'preparing',
                   applicationId,
                   message: 'Preparing document analysis',
