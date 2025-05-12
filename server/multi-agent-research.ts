@@ -172,7 +172,12 @@ export async function performMultiAgentResearch(application: LoanApplication): P
   
   // Step 2: Dispatch specialized agents to research the primary owner
   // For simplicity, we'll research the first owner with >= 20% ownership
-  const primaryOwner = application.businessOwners?.find(owner => owner.ownership >= 20);
+  // First check for ownershipPercentage, then fall back to ownership property
+  const primaryOwner = application.businessOwners?.find(owner => 
+    (owner.ownershipPercentage !== undefined && owner.ownershipPercentage >= 20) || 
+    (owner.ownership !== undefined && owner.ownership >= 20)
+  );
+  
   const ownerResearchPromises = primaryOwner ? 
     researchAgents.map(agent => agentResearchPerson(agent, application, primaryOwner.name)) :
     [];
@@ -196,6 +201,11 @@ export async function performMultiAgentResearch(application: LoanApplication): P
       executiveSummary: "Owner analysis skipped due to insufficient data.",
       detailedFindings: {},
       sources: [],
+      // Add required properties for the interface
+      highRiskFactors: ["Unable to verify owner identity"],
+      moderateRiskFactors: ["Limited information available for major owners"],
+      mitigatingFactors: ["Ownership structure may be diversified"],
+      priorBusinessHistory: [],
       score: 50 // Neutral score when no data available
     };
   
@@ -1039,6 +1049,9 @@ function synthesizeCompanyResearch(agentResults: AgentResearchResult[]): {
     trend: string;
   }[];
   sources: string[];
+  highRiskFactors: string[];  // Required by DeepResearchResult interface
+  moderateRiskFactors: string[]; // Required by DeepResearchResult interface
+  mitigatingFactors: string[]; // Required by DeepResearchResult interface
   score: number;
 } {
   // Extract and organize findings by agent role
@@ -1088,6 +1101,41 @@ function synthesizeCompanyResearch(agentResults: AgentResearchResult[]): {
     [businessAnalystFindings?.detailedAnalysis, industrySpecialistFindings?.detailedAnalysis].filter(Boolean).join("\n\n")
   );
   
+  // Extract risk factors with proper categorization
+  const allRiskFactors = agentResults.flatMap(r => r.findings.riskFactors || []);
+  
+  // High risk factors are those related to legal issues, fraud, bankruptcy
+  const highRiskFactors = allRiskFactors.filter(risk => 
+    risk.toLowerCase().includes("high risk") || 
+    risk.toLowerCase().includes("lawsuit") ||
+    risk.toLowerCase().includes("litigation") ||
+    risk.toLowerCase().includes("fraud") ||
+    risk.toLowerCase().includes("bankruptcy") ||
+    risk.toLowerCase().includes("criminal") ||
+    risk.toLowerCase().includes("default")
+  );
+  
+  // Moderate risk factors are those related to financial challenges, market position
+  const moderateRiskFactors = allRiskFactors.filter(risk => 
+    (risk.toLowerCase().includes("moderate risk") ||
+     risk.toLowerCase().includes("financial") ||
+     risk.toLowerCase().includes("debt") ||
+     risk.toLowerCase().includes("market") ||
+     risk.toLowerCase().includes("competition"))
+    && !highRiskFactors.includes(risk)  // Exclude any that are already categorized as high risk
+  );
+  
+  // Mitigating factors are positive aspects that reduce risk
+  const mitigatingFactors = agentResults.flatMap(r => 
+    (r.findings.keyPoints || []).filter(point => 
+      point.toLowerCase().includes("strength") ||
+      point.toLowerCase().includes("positive") ||
+      point.toLowerCase().includes("advantage") ||
+      point.toLowerCase().includes("growth") ||
+      point.toLowerCase().includes("success")
+    )
+  );
+
   // Organize findings by category
   return {
     overview,
@@ -1110,6 +1158,9 @@ function synthesizeCompanyResearch(agentResults: AgentResearchResult[]): {
     financialMetrics,
     specificEvents,
     sources: Array.from(allSources),
+    highRiskFactors,  // Add categorized risk factors
+    moderateRiskFactors,
+    mitigatingFactors,
     score: safetyScore
   };
 }
@@ -1132,6 +1183,9 @@ function synthesizeOwnerResearch(agentResults: AgentResearchResult[]): {
     outcome: string;
   }[];
   sources: string[];
+  highRiskFactors: string[];  // Required by DeepResearchResult interface
+  moderateRiskFactors: string[]; // Required by DeepResearchResult interface
+  mitigatingFactors: string[]; // Required by DeepResearchResult interface
   score: number;
 } {
   // Extract and organize findings by agent role
@@ -1175,6 +1229,41 @@ function synthesizeOwnerResearch(agentResults: AgentResearchResult[]): {
   // Extract prior business history from business analyst findings
   const priorBusinessHistory = businessAnalystFindings ? extractPriorBusinessHistory(businessAnalystFindings.detailedAnalysis) : [];
   
+  // Extract risk factors with proper categorization
+  const allRiskFactors = agentResults.flatMap(r => r.findings.riskFactors || []);
+  
+  // High risk factors are those related to legal issues, fraud, bankruptcy
+  const highRiskFactors = allRiskFactors.filter(risk => 
+    risk.toLowerCase().includes("high risk") || 
+    risk.toLowerCase().includes("lawsuit") ||
+    risk.toLowerCase().includes("litigation") ||
+    risk.toLowerCase().includes("fraud") ||
+    risk.toLowerCase().includes("bankruptcy") ||
+    risk.toLowerCase().includes("criminal") ||
+    risk.toLowerCase().includes("default")
+  );
+  
+  // Moderate risk factors are those related to financial challenges, experience
+  const moderateRiskFactors = allRiskFactors.filter(risk => 
+    (risk.toLowerCase().includes("moderate risk") ||
+     risk.toLowerCase().includes("financial") ||
+     risk.toLowerCase().includes("debt") ||
+     risk.toLowerCase().includes("inexperience") ||
+     risk.toLowerCase().includes("limited"))
+    && !highRiskFactors.includes(risk)  // Exclude any that are already categorized as high risk
+  );
+  
+  // Mitigating factors are positive aspects that reduce risk
+  const mitigatingFactors = agentResults.flatMap(r => 
+    (r.findings.keyPoints || []).filter(point => 
+      point.toLowerCase().includes("strength") ||
+      point.toLowerCase().includes("positive") ||
+      point.toLowerCase().includes("experienced") ||
+      point.toLowerCase().includes("successful") ||
+      point.toLowerCase().includes("expertise")
+    )
+  );
+
   // Organize findings by category
   return {
     overview,
@@ -1194,6 +1283,9 @@ function synthesizeOwnerResearch(agentResults: AgentResearchResult[]): {
     },
     priorBusinessHistory,
     sources: Array.from(allSources),
+    highRiskFactors,  // Add categorized risk factors
+    moderateRiskFactors,
+    mitigatingFactors,
     score: safetyScore
   };
 }

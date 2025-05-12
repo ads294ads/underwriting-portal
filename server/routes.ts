@@ -1575,6 +1575,9 @@ Please provide a general assessment based on the document name and business deta
             legalIssues: [],
             financialRedFlags: [],
             reputationInsights: ["No reputation data available at this time."],
+            highRiskFactors: ["Limited company verification - identity confidence low."],
+            moderateRiskFactors: ["Industry trends unavailable with current search depth."],
+            mitigatingFactors: ["Standard industry risk assessment can be applied."],
             score: 70 // Default neutral score
           },
           ownerAnalysis: {
@@ -1582,10 +1585,18 @@ Please provide a general assessment based on the document name and business deta
             legalIssues: [],
             financialRedFlags: [],
             reputationInsights: ["No reputation data available at this time."],
+            highRiskFactors: ["Owner identity verification limited - confidence low."],
+            moderateRiskFactors: ["Management history unavailable with current search depth."],
+            mitigatingFactors: ["Standard background checks can be applied."],
             score: 70 // Default neutral score
           },
           combinedScore: 70, // Default neutral score
-          grade: "B" // Default grade
+          grade: "B", // Default grade
+          riskAssessment: {
+            highRiskFactors: ["Deep research capabilities limited - uncertain risk level."],
+            moderateRiskFactors: ["Standard industry risks apply."],
+            mitigatingFactors: ["Additional documentation can offset limited online research."]
+          }
         };
       }
       
