@@ -160,21 +160,43 @@ export default function LoanScoringResults({ application }: LoanScoringResultsPr
       try {
         console.log(`Attempting PDF download (attempt ${retries + 1}/${maxRetries}) from: ${downloadUrl}`);
         
-        // Set a longer timeout for PDF generation
+        // Set a much longer timeout for PDF generation (2 min)
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+        const timeoutId = setTimeout(() => {
+          console.log("PDF download timed out after 120 seconds");
+          controller.abort();
+        }, 120000); // 2 minute timeout to handle slower PDF processing
         
-        // Use fetch with timeout capability
-        const response = await fetch(downloadUrl, { 
-          signal: controller.signal,
-          headers: {
-            'Cache-Control': 'no-cache, no-store, must-revalidate',
-            'Pragma': 'no-cache',
-            'Expires': '0',
+        // Use fetch with timeout capability and handle any fetch errors
+        let response: Response;
+        try {
+          console.log("Sending fetch request for PDF...");
+          response = await fetch(downloadUrl, { 
+            signal: controller.signal,
+            headers: {
+              'Cache-Control': 'no-cache, no-store, must-revalidate',
+              'Pragma': 'no-cache',
+              'Expires': '0',
+            }
+          });
+          console.log("Fetch response received:", response.status, response.statusText);
+          
+          clearTimeout(timeoutId);
+        } catch (error: unknown) {
+          clearTimeout(timeoutId);
+          console.error("Fetch error:", error);
+          
+          if (error instanceof Error && error.name === 'AbortError') {
+            throw new Error('PDF generation timed out. The server took too long to process the request.');
           }
-        });
-        
-        clearTimeout(timeoutId);
+          
+          // Re-throw the error with a more descriptive message
+          if (error instanceof Error) {
+            throw new Error(`PDF download failed: ${error.message}`);
+          } else {
+            throw new Error(`PDF download failed with unknown error: ${String(error)}`)
+          }
+        }
         
         if (!response.ok) {
           // Check if we got a JSON error response
@@ -194,6 +216,7 @@ export default function LoanScoringResults({ application }: LoanScoringResultsPr
           // Continue anyway as the server might set the wrong content type
         }
         
+        console.log("Getting blob from response...");
         // Get the blob from the response
         const blob = await response.blob();
         
