@@ -16,7 +16,7 @@ interface LoanScoringResultsProps {
   rationale: Record<string, string>;
 }
 
-export function LoanScoringResults({ application, rationale }: LoanScoringResultsProps) {
+export default function LoanScoringResults({ application, rationale }: LoanScoringResultsProps) {
   const { toast } = useToast();
   const [isDownloading, setIsDownloading] = useState(false);
   const [isPdfDownloading, setIsPdfDownloading] = useState(false);
