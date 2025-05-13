@@ -28,6 +28,9 @@ export default function LoanScoringResults({ application, rationale }: LoanScori
   const [enhancedPdfDownloadComplete, setEnhancedPdfDownloadComplete] = useState(false);
   const [enhancedPdfError, setEnhancedPdfError] = useState<string | null>(null);
   
+  // Reference to the startActualDownload function for WebSocket callback
+  const startActualDownloadRef = useRef<Function | null>(null);
+  
   // Function to get component score with fallback to 0
   const getComponentScore = (key: string): number => {
     if (!application.scoringDetails || !application.scoringDetails[key]) {
@@ -257,13 +260,14 @@ export default function LoanScoringResults({ application, rationale }: LoanScori
             console.log("Report generation at 90%+, initiating download");
             downloadState.downloadStarted = true;
             
-            // Create direct shortcut function for actual download
-            (window as any).startActualDownload = startActualDownload;
-            
             // Trigger download with a slight delay to let the PDF finalize
             setTimeout(() => {
               console.log("Executing PDF download now");
-              startActualDownload();
+              if (startActualDownloadRef.current) {
+                startActualDownloadRef.current();
+              } else {
+                console.error("Download function not available yet");
+              }
             }, 1500); // Reduced from 2000ms to 1500ms
           }
           
@@ -407,8 +411,8 @@ export default function LoanScoringResults({ application, rationale }: LoanScori
           }
         };
         
-        // Expose the download function globally so it can be called from WebSocket callback
-        (window as any).startActualDownload = startActualDownload;
+        // Store the download function in our ref so it can be called from WebSocket callback
+        startActualDownloadRef.current = startActualDownload;
         
         // Set backup timeout to attempt download even if WebSocket fails
         backupTimeout = setTimeout(() => {
