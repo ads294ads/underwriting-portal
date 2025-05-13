@@ -774,13 +774,13 @@ Please provide a general assessment based on the document name and business deta
   
   // Generate enhanced multi-agent PDF report with real-time progress updates and optimizations
   app.get("/api/loan-applications/:id/enhanced-pdf", async (req, res) => {
-    // Set a timeout to prevent hanging requests - reduced to 60 seconds
+    // Set a timeout to prevent hanging requests - reduced to 45 seconds
     const requestTimeout = setTimeout(() => {
-      console.error("PDF generation timeout after 60 seconds");
+      console.error("PDF generation timeout after 45 seconds");
       if (!res.headersSent) {
-        res.status(504).json({ message: "PDF generation timed out (60 seconds). Please try again later." });
+        res.status(504).json({ message: "PDF generation timed out (45 seconds). Please try again later." });
       }
-    }, 60000); // 60 second timeout (reduced from 90)
+    }, 45000); // 45 second timeout (reduced from 60)
     
     try {
       const id = parseInt(req.params.id);
@@ -793,12 +793,12 @@ Please provide a general assessment based on the document name and business deta
       
       console.log(`Generating enhanced multi-agent PDF report for application ID: ${id}`);
       
-      // Broadcast initial progress update
+      // Broadcast initial progress update with more specific information
       broadcastProgress(id, {
         stage: 'starting',
-        message: 'Initiating report generation process',
+        message: 'Starting AI-Powered Assessment Report',
         progress: 5,
-        detail: 'Setting up analysis environment'
+        detail: 'Initializing document analysis systems and research tools'
       });
       
       // Check if we already have deep research results to use
@@ -943,9 +943,9 @@ Please provide a general assessment based on the document name and business deta
             }
           });
           
-          // Time limit on the research - now reduced to 30 seconds
+          // Time limit on the research - now reduced to 20 seconds
           const timeoutPromise = new Promise<null>((_, reject) => {
-            setTimeout(() => reject(new Error("Deep research timed out")), 30000); // 30 second limit (reduced from 60)
+            setTimeout(() => reject(new Error("Deep research timed out")), 20000); // 20 second limit (reduced from 30)
           });
           
           // Race the research against the timeout
