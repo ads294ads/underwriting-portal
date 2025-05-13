@@ -1,22 +1,24 @@
 import { useEffect, useRef } from 'react';
 
-interface CreditScoreBarProps {
+export interface CreditScoreBarProps {
   score: number;
+  maxScore?: number;
+  barColor?: string;
 }
 
-export default function CreditScoreBar({ score }: CreditScoreBarProps) {
+export default function CreditScoreBar({ score, maxScore = 100, barColor = '#4F46E5' }: CreditScoreBarProps) {
   const pointerRef = useRef<HTMLDivElement>(null);
   const labelRef = useRef<HTMLSpanElement>(null);
 
   useEffect(() => {
     if (pointerRef.current && labelRef.current) {
-      // Calculate position based on score (0-100)
-      const position = Math.min(Math.max(score, 0), 100) / 100;
+      // Calculate position based on score as percentage of maxScore
+      const percentage = Math.min(Math.max(score, 0), maxScore) / maxScore;
       const containerWidth = pointerRef.current.parentElement?.offsetWidth || 0;
       const pointerWidth = pointerRef.current.offsetWidth || 0;
       
       // Position the pointer
-      const leftPosition = (containerWidth * position) - (pointerWidth / 2);
+      const leftPosition = (containerWidth * percentage) - (pointerWidth / 2);
       pointerRef.current.style.left = `${leftPosition}px`;
       
       // Update label

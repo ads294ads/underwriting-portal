@@ -60,13 +60,49 @@ export function ReportProgressIndicator({
           });
         }
         
-        // Register callback for this application's progress updates
+        // Register callback for this application's progress updates with enhanced status messages
         const unsubscribe = wsManager.registerCallback(applicationId, (update: ProgressUpdate) => {
           console.log(`Progress update received for app #${applicationId}:`, update);
           
+          // Set the progress percentage
           setProgress(update.progress);
-          setMessage(update.message || "Processing...");
-          setDetail(update.detail || "");
+          
+          // Enhanced stage-specific messages when server message is generic
+          let enhancedMessage = update.message;
+          let enhancedDetail = update.detail || "";
+          
+          // Provide more detailed messages based on the stage if server message is generic
+          if (enhancedMessage === "Processing..." || !enhancedMessage) {
+            if (update.stage === 'starting') {
+              enhancedMessage = "Initializing AI assessment systems";
+              enhancedDetail = "Preparing analysis environment for your application";
+            } else if (update.stage === 'document_analysis' || update.stage === 'document_processing') {
+              enhancedMessage = "Analyzing financial documents";
+              enhancedDetail = "Extracting insights from uploaded business documents";
+            } else if (update.stage === 'analyzing_company') {
+              enhancedMessage = "Researching company background";
+              enhancedDetail = "Evaluating business reputation and market position";
+            } else if (update.stage === 'analyzing_financials') {
+              enhancedMessage = "Evaluating financial metrics";
+              enhancedDetail = "Assessing revenue, profitability, and cash flow patterns";
+            } else if (update.stage === 'analyzing_owners') {
+              enhancedMessage = "Reviewing owner credentials";
+              enhancedDetail = "Checking management history and business track record";
+            } else if (update.stage === 'analyzing_risk') {
+              enhancedMessage = "Performing risk assessment";
+              enhancedDetail = "Identifying potential risk factors and mitigations";
+            } else if (update.stage === 'compiling') {
+              enhancedMessage = "Compiling assessment results";
+              enhancedDetail = "Combining multiple analysis components into final report";
+            } else if (update.stage === 'finalizing') {
+              enhancedMessage = "Generating professional report";
+              enhancedDetail = "Creating formatted PDF with detailed findings";
+            }
+          }
+          
+          // Update state with enhanced messages
+          setMessage(enhancedMessage || "Processing application");
+          setDetail(enhancedDetail);
           setStatus(update.stage);
           
           if (update.stage === 'error') {

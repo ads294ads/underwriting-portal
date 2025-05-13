@@ -13,90 +13,46 @@ import { WebSocketManager, ProgressUpdate } from "@/lib/queryClient";
 
 interface LoanScoringResultsProps {
   application: LoanApplication;
+  rationale: Record<string, string>;
 }
 
-export default function LoanScoringResults({ application }: LoanScoringResultsProps) {
+export function LoanScoringResults({ application, rationale }: LoanScoringResultsProps) {
   const { toast } = useToast();
-  const [gradeInfo, setGradeInfo] = useState<{ grade: string; description: string }>({ 
-    grade: application.grade || "C-", 
-    description: "Pending evaluation." 
-  });
   const [isDownloading, setIsDownloading] = useState(false);
   const [isPdfDownloading, setIsPdfDownloading] = useState(false);
-  const [isEnhancedPdfDownloading, setIsEnhancedPdfDownloading] = useState(false);
-  const [selectedFiles, setSelectedFiles] = useState<FileList | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
   const [isPerformingDeepResearch, setIsPerformingDeepResearch] = useState(false);
+  
+  // Enhanced PDF generation states
+  const [isEnhancedPdfDownloading, setIsEnhancedPdfDownloading] = useState(false);
   const [showProgressIndicator, setShowProgressIndicator] = useState(false);
   const [enhancedPdfDownloadComplete, setEnhancedPdfDownloadComplete] = useState(false);
   const [enhancedPdfError, setEnhancedPdfError] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    const grade = gradeScales.find(g => g.grade === application.grade);
-    if (grade) {
-      setGradeInfo({
-        grade: grade.grade,
-        description: grade.description
-      });
-    }
-  }, [application]);
   
+  // Function to get component score with fallback to 0
+  const getComponentScore = (key: string): number => {
+    if (!application.scoringDetails || !application.scoringDetails[key]) {
+      return 0;
+    }
+    return Number(application.scoringDetails[key]);
+  };
+  
+  // Download plain text rationale report
   const downloadRationaleReport = async () => {
+    if (!application) return;
+    
+    setIsDownloading(true);
+    
     try {
-      setIsDownloading(true);
+      // Generate a formatted text report
+      let reportContent = `# LOAN APPLICATION ASSESSMENT REPORT\n\n`;
+      reportContent += `Business Name: ${application.businessName}\n`;
+      reportContent += `Industry: ${application.industry}\n`;
+      reportContent += `Years in Business: ${application.yearsInBusiness}\n`;
+      reportContent += `Annual Revenue: ${formatCurrency(Number(application.annualRevenue))}\n`;
+      reportContent += `Loan Amount: ${formatCurrency(Number(application.loanAmount))}\n\n`;
       
-      let rationale: Record<string, string> = {};
-      
-      try {
-        // Try to fetch detailed rationale from API
-        const response = await fetch(`/api/loan-applications/${application.id}/rationale`);
-        
-        if (response.ok) {
-          const data = await response.json();
-          if (data.rationale) {
-            rationale = data.rationale;
-          } else {
-            console.warn('No rationale data received from API, using fallback');
-          }
-        } else {
-          console.warn('Failed to fetch rationale from API, using fallback');
-        }
-      } catch (apiError) {
-        console.error('Error fetching rationale:', apiError);
-      }
-      
-      // If API failed or returned empty data, generate a basic rationale
-      if (Object.keys(rationale).length === 0) {
-        console.log('Using fallback rationale generation');
-        rationale = {
-          overall: `Overall assessment for ${application.businessName}: This application received a grade of ${application.grade} based on the financial metrics and business fundamentals presented. The score of ${application.score}/100 reflects a comprehensive evaluation of key performance indicators.`
-        };
-        
-        // Generate basic rationales for each component
-        scoringComponents.forEach(component => {
-          const score = getComponentScore(component.key);
-          const weight = component.weight * 100;
-          const percentage = (score / weight) * 100;
-          
-          let evaluation = "is within acceptable range";
-          if (percentage >= 75) {
-            evaluation = "is strong and exceeds our requirements";
-          } else if (percentage >= 50) {
-            evaluation = "meets our minimum requirements";
-          } else {
-            evaluation = "is below our typical requirements";
-          }
-          
-          rationale[component.key] = `The ${component.name.toLowerCase()} of ${application.businessName} ${evaluation}. This component received a score of ${score}/${weight} based on the information provided in the application.`;
-        });
-      }
-      
-      // Format the rationale into a text document
-      let reportContent = `# LOAN EVALUATION RATIONALE REPORT\n\n`;
-      reportContent += `## Application ID: ${application.id}\n`;
-      reportContent += `## Business: ${application.businessName}\n`;
-      reportContent += `## Grade: ${application.grade} (Score: ${application.score}/100)\n\n`;
+      reportContent += `OVERALL SCORE: ${application.score}/100\n`;
+      reportContent += `GRADE: ${application.grade}\n\n`;
       
       // Add overall assessment
       if (rationale.overall) {
@@ -149,150 +105,45 @@ export default function LoanScoringResults({ application }: LoanScoringResultsPr
       setIsDownloading(false);
     }
   };
-
-  // Enhanced helper function to handle PDF downloads with retries and improved error handling
+  
+  // Generic PDF download handler with retry
   const handlePdfDownload = async (
-    downloadUrl: string, 
-    filename: string, 
-    onSuccess: (msg: string) => void, 
-    onError: (err: Error) => void,
-    maxRetries = 3
-  ) => {
+    url: string,
+    filename: string,
+    onSuccess: (message: string) => void,
+    onError: (error: Error) => void
+  ): Promise<void> => {
+    const maxRetries = 3;
     let retries = 0;
     let lastError: Error | null = null;
     
-    const downloadStartTime = new Date().getTime();
-    
     while (retries < maxRetries) {
       try {
-        console.log(`Attempting PDF download (attempt ${retries + 1}/${maxRetries}) from: ${downloadUrl}`);
-        
-        // Set a longer timeout for PDF generation (2 min)
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => {
-          console.log("PDF download timed out after 120 seconds");
-          controller.abort();
-        }, 120000); // 2 minute timeout to handle slower PDF processing
-        
-        // Use fetch with timeout capability and handle any fetch errors
-        let response: Response;
-        try {
-          console.log(`Sending fetch request for PDF (${new Date().toISOString()})...`);
-          
-          // Add a cache-busting query parameter to avoid cached responses
-          const cacheBuster = `?cacheBuster=${new Date().getTime()}`;
-          const urlWithCacheBuster = `${downloadUrl}${cacheBuster}`;
-          
-          response = await fetch(urlWithCacheBuster, { 
-            signal: controller.signal,
-            headers: {
-              'Cache-Control': 'no-cache, no-store, must-revalidate',
-              'Pragma': 'no-cache',
-              'Expires': '0',
-            }
-          });
-          
-          console.log("Fetch response received:", response.status, response.statusText);
-          clearTimeout(timeoutId);
-        } catch (error: unknown) {
-          clearTimeout(timeoutId);
-          console.error("Fetch error:", error);
-          
-          if (error instanceof Error && error.name === 'AbortError') {
-            throw new Error('PDF generation timed out. The server took too long to process the request.');
-          }
-          
-          // Re-throw the error with a more descriptive message
-          if (error instanceof Error) {
-            throw new Error(`PDF download failed: ${error.message}`);
-          } else {
-            throw new Error(`PDF download failed with unknown error: ${String(error)}`)
-          }
-        }
+        const response = await fetch(url);
         
         if (!response.ok) {
-          // Check if we got a JSON error response
-          const contentType = response.headers.get('content-type');
-          if (contentType && contentType.includes('application/json')) {
-            try {
-              const errorData = await response.json();
-              throw new Error(errorData.message || `Server error: ${response.status} ${response.statusText}`);
-            } catch (jsonError) {
-              throw new Error(`Server error (${response.status} ${response.statusText}): Could not parse error details`);
-            }
-          } else {
-            // Try to read the error text if possible
-            try {
-              const errorText = await response.text();
-              if (errorText && errorText.length < 100) { // Only use short error messages
-                throw new Error(`Failed to download PDF (${response.status}): ${errorText}`);
-              } else {
-                throw new Error(`Failed to download PDF: ${response.status} ${response.statusText}`);
-              }
-            } catch (textError) {
-              throw new Error(`Failed to download PDF: ${response.status} ${response.statusText}`);
-            }
-          }
+          throw new Error(`Failed to download PDF: ${response.status} ${response.statusText}`);
         }
         
-        // Check for empty response
-        const contentLength = response.headers.get('content-length');
-        if (contentLength && parseInt(contentLength) === 0) {
-          throw new Error('Server returned an empty response');
-        }
+        const blob = await response.blob();
+        const objectUrl = URL.createObjectURL(blob);
         
-        // Verify content type is PDF
-        const contentType = response.headers.get('content-type');
-        if (!contentType || !contentType.includes('application/pdf')) {
-          console.warn(`Unexpected content type: ${contentType}`);
-          // Continue anyway as the server might set the wrong content type
-        }
+        const a = document.createElement('a');
+        a.href = objectUrl;
+        a.download = filename;
+        a.style.display = 'none';
+        document.body.appendChild(a);
+        a.click();
         
-        console.log("Getting blob from response...");
+        // Clean up
+        document.body.removeChild(a);
+        URL.revokeObjectURL(objectUrl);
         
-        try {
-          // Get the blob from the response
-          const blob = await response.blob();
-          
-          // Verify we have a non-empty blob
-          if (blob.size === 0) {
-            throw new Error('Downloaded PDF is empty');
-          }
-          
-          // Check if blob is too small to be a valid PDF (PDF header is usually at least 100 bytes)
-          if (blob.size < 100) {
-            throw new Error(`Downloaded file is too small to be a valid PDF (${blob.size} bytes)`);
-          }
-          
-          // Create a URL for the blob
-          const blobUrl = URL.createObjectURL(blob);
-          
-          // Create a link to download the file
-          const a = document.createElement('a');
-          a.href = blobUrl;
-          a.download = filename;
-          document.body.appendChild(a);
-          
-          // Trigger the download
-          a.click();
-          
-          // Clean up
-          document.body.removeChild(a);
-          URL.revokeObjectURL(blobUrl);
-          
-          // Calculate the total download time
-          const downloadEndTime = new Date().getTime();
-          const totalDownloadTimeSeconds = ((downloadEndTime - downloadStartTime) / 1000).toFixed(1);
-          
-          onSuccess(`PDF report has been saved to your downloads folder. (Completed in ${totalDownloadTimeSeconds}s)`);
-          return; // Success, exit the function
-        } catch (blobError) {
-          console.error("Error processing the response blob:", blobError);
-          throw new Error(`Failed to process PDF: ${blobError instanceof Error ? blobError.message : String(blobError)}`);
-        }
+        onSuccess(`Report has been downloaded as ${filename}`);
+        return;
       } catch (error) {
+        console.error(`PDF download attempt ${retries + 1} failed:`, error);
         lastError = error instanceof Error ? error : new Error(String(error));
-        console.error(`PDF download attempt ${retries + 1} failed:`, lastError);
         retries++;
         
         // Wait a bit longer between retries (exponential backoff)
@@ -381,29 +232,39 @@ export default function LoanScoringResults({ application }: LoanScoringResultsPr
         await wsManager.getConnection();
         console.log("WebSocket connected, ready to receive progress updates");
         
-        // Register callback for this application's progress updates
+        // Register callback for this application's progress updates with improved visibility
         unsubscribe = wsManager.registerCallback(application.id, (update: ProgressUpdate) => {
           console.log(`Progress update received: ${update.stage} - ${update.progress}%`, update);
           
-          // When document analysis starts, this means the backend is processing
+          // Provide detailed console logging for each stage
           if (update.stage === 'document_analysis' || update.stage === 'document_processing') {
-            console.log("Document analysis in progress");
+            console.log(`Document analysis in progress: ${update.detail}`);
+          } else if (update.stage === 'analyzing_company') {
+            console.log(`Company analysis in progress: ${update.detail}`);
+          } else if (update.stage === 'analyzing_financials') {
+            console.log(`Financial analysis in progress: ${update.detail}`);
+          } else if (update.stage === 'analyzing_owners') {
+            console.log(`Owner analysis in progress: ${update.detail}`);
+          } else if (update.stage === 'analyzing_risk') {
+            console.log(`Risk assessment in progress: ${update.detail}`);
+          } else if (update.stage === 'finalizing') {
+            console.log(`Finalizing report: ${update.detail}`);
           }
           
-          // When complete (95% or more), trigger the download if it hasn't started yet
-          if (update.progress >= 95 && !downloadState.downloadStarted) {
-            console.log("Report generation nearly complete (95%+), initiating download");
+          // When complete (90% or more), trigger the download if it hasn't started yet
+          // Reduced from 95% to 90% to start download earlier
+          if (update.progress >= 90 && !downloadState.downloadStarted) {
+            console.log("Report generation at 90%+, initiating download");
             downloadState.downloadStarted = true;
+            
+            // Create direct shortcut function for actual download
+            (window as any).startActualDownload = startActualDownload;
             
             // Trigger download with a slight delay to let the PDF finalize
             setTimeout(() => {
-              // Access the globally exposed function
-              if (typeof (window as any).startActualDownload === 'function') {
-                (window as any).startActualDownload();
-              } else {
-                console.error("startActualDownload function not available");
-              }
-            }, 2000);
+              console.log("Executing PDF download now");
+              startActualDownload();
+            }, 1500); // Reduced from 2000ms to 1500ms
           }
           
           // When fully complete (100%), mark as complete
@@ -440,83 +301,125 @@ export default function LoanScoringResults({ application }: LoanScoringResultsPr
       // Set up the download promise with backup timeout
       let backupTimeout: NodeJS.Timeout;
       const downloadPromise = new Promise<void>((resolve, reject) => {
-        // Function to start the actual PDF download
-        const startActualDownload = () => {
-          console.log("Starting actual PDF download from:", downloadUrl);
+        // Enhanced function to reliably start the PDF download with retries
+        const startActualDownload = async () => {
+          console.log("Starting PDF download from:", downloadUrl);
           
-          // Start the download process
-          fetch(downloadUrl)
-            .then(async (response) => {
+          // Define max retries and counter
+          const maxRetries = 3;
+          let retryCount = 0;
+          let success = false;
+          
+          while (retryCount < maxRetries && !success && !downloadState.hasError) {
+            try {
+              // Show attempt number on retry
+              if (retryCount > 0) {
+                console.log(`PDF download attempt ${retryCount + 1}/${maxRetries}`);
+              }
+              
+              // Start the download process with timeout
+              const controller = new AbortController();
+              const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+              
+              const response = await fetch(downloadUrl, { 
+                signal: controller.signal,
+                headers: {
+                  'Cache-Control': 'no-cache',
+                  'Pragma': 'no-cache'
+                }
+              });
+              
+              clearTimeout(timeoutId);
+              
               // If the response is successful, this means the PDF was generated
               if (response.ok) {
                 console.log("PDF downloaded successfully, creating blob URL");
                 const blob = await response.blob();
                 const url = window.URL.createObjectURL(blob);
                 
-                // Create an anchor element to trigger the download
-                const a = document.createElement('a');
-                a.style.display = 'none';
-                a.href = url;
-                a.download = filename;
-                document.body.appendChild(a);
-                
-                console.log("Triggering download click");
-                a.click();
-                
-                // Clean up
-                window.URL.revokeObjectURL(url);
-                document.body.removeChild(a);
-                
-                // Mark as complete
-                clearTimeout(backupTimeout);
-                downloadState.downloadCompleted = true;
-                setEnhancedPdfDownloadComplete(true);
-                resolve();
+                // Validate that we got a PDF and not an error page
+                if (blob.type === 'application/pdf' || blob.size > 10000) {
+                  // Create an anchor element to trigger the download
+                  const a = document.createElement('a');
+                  a.style.display = 'none';
+                  a.href = url;
+                  a.download = filename;
+                  document.body.appendChild(a);
+                  
+                  console.log("Triggering download click");
+                  a.click();
+                  
+                  // Clean up
+                  window.URL.revokeObjectURL(url);
+                  document.body.removeChild(a);
+                  
+                  // Mark as complete
+                  clearTimeout(backupTimeout);
+                  downloadState.downloadCompleted = true;
+                  setEnhancedPdfDownloadComplete(true);
+                  success = true;
+                  resolve();
+                  break;
+                } else {
+                  console.warn("Response was successful but content doesn't appear to be a valid PDF");
+                  window.URL.revokeObjectURL(url);
+                  throw new Error("Invalid PDF content received");
+                }
               } else {
                 // If there was an error response, parse and show it
                 const text = await response.text();
                 console.error("Server error downloading PDF:", text);
-                
-                // Only reject if this wasn't already marked as completed by WebSocket
-                if (!downloadState.downloadCompleted) {
-                  downloadState.hasError = true;
-                  reject(new Error(`Server error: ${text}`));
-                }
+                throw new Error(`Server error: ${text}`);
               }
-            })
-            .catch(error => {
-              console.error("Error downloading PDF:", error);
+            } catch (error) {
+              console.error(`Download attempt ${retryCount + 1} failed:`, error);
               
-              // Only reject if this wasn't already marked as completed or has error
-              if (!downloadState.downloadCompleted && !downloadState.hasError) {
-                downloadState.hasError = true;
-                clearTimeout(backupTimeout);
-                reject(error);
+              // Only continue retrying if this wasn't already marked as completed/errored via WebSocket
+              if (downloadState.downloadCompleted) {
+                console.log("Download already completed via another method");
+                success = true;
+                resolve();
+                break;
               }
-            });
+              
+              if (downloadState.hasError) {
+                console.log("Error already reported via WebSocket");
+                reject(error);
+                break;
+              }
+              
+              // Increment retry counter
+              retryCount++;
+              
+              // Wait before retrying with exponential backoff
+              if (retryCount < maxRetries) {
+                const waitTime = 1000 * Math.pow(2, retryCount); // 2s, 4s, 8s
+                console.log(`Waiting ${waitTime/1000}s before retry...`);
+                await new Promise(resolve => setTimeout(resolve, waitTime));
+              }
+            }
+          }
+          
+          // If all retries failed and we haven't resolved/rejected yet
+          if (!success && !downloadState.downloadCompleted && !downloadState.hasError) {
+            downloadState.hasError = true;
+            reject(new Error("Failed to download PDF after multiple attempts"));
+          }
         };
         
-        // Make startActualDownload function available in the WebSocket callback
+        // Expose the download function globally so it can be called from WebSocket callback
         (window as any).startActualDownload = startActualDownload;
         
-        // Set a backup timeout in case the WebSocket completion doesn't trigger
+        // Set backup timeout to attempt download even if WebSocket fails
         backupTimeout = setTimeout(() => {
-          console.log("Backup timeout triggered - attempting direct download");
-          startActualDownload();
-        }, 60000); // 60 second backup timeout
-        
-        // Start the server processing but don't download yet - let WebSocket tell us when it's ready
-        fetch(downloadUrl, { method: 'HEAD' })
-          .then(() => {
-            console.log("PDF generation started on the server");
-          })
-          .catch(error => {
-            console.error("Error starting PDF generation:", error);
-            // Continue anyway - we'll still try to download via the backup timeout
-          });
+          console.log("Backup timeout triggered, attempting download");
+          if (!downloadState.downloadStarted) {
+            downloadState.downloadStarted = true;
+            startActualDownload();
+          }
+        }, 30000); // 30 second backup timeout
       });
       
-      // Wait for download to complete
       await downloadPromise;
       
       // Success toast only if no error occurred
@@ -554,104 +457,8 @@ export default function LoanScoringResults({ application }: LoanScoringResultsPr
       }, 1000);
     }
   };
-
-  const getGradeColor = (grade: string) => {
-    const firstChar = grade.charAt(0);
-    if (firstChar === 'A') return 'bg-success-50 text-success-700';
-    if (firstChar === 'B') return 'bg-warning-50 text-warning-700';
-    return 'bg-danger-50 text-danger-700';
-  };
-
-  const getComponentScore = (key: string) => {
-    return application.scoringDetails && application.scoringDetails[key] 
-      ? application.scoringDetails[key]
-      : 0;
-  };
-
-  const getComponentPercentage = (key: string, weight: number) => {
-    const score = getComponentScore(key);
-    // Calculate percentage based on component's max possible score (weight * 100)
-    const maxPossibleScore = weight * 100;
-    // Convert to a percentage between 0-100
-    const percentage = (score / maxPossibleScore) * 100;
-    console.log(`Component: ${key}, Score: ${score}/${maxPossibleScore}, Percentage: ${percentage.toFixed(1)}%`);
-    return percentage;
-  };
-
-  const getScoreColor = (percentage: number) => {
-    if (percentage >= 75) return 'bg-primary';
-    if (percentage >= 50) return 'bg-warning-500';
-    return 'bg-red-500';
-  };
   
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      setSelectedFiles(e.target.files);
-    }
-  };
-  
-  const handleUploadClick = () => {
-    if (fileInputRef.current) {
-      fileInputRef.current.click();
-    }
-  };
-  
-  const handleUploadDocuments = async () => {
-    if (!selectedFiles || selectedFiles.length === 0) {
-      toast({
-        title: "No files selected",
-        description: "Please select files to upload",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    setIsUploading(true);
-    
-    try {
-      const formData = new FormData();
-      for (let i = 0; i < selectedFiles.length; i++) {
-        formData.append("documents", selectedFiles[i]);
-      }
-      
-      const response = await fetch(`/api/loan-applications/${application.id}/documents`, {
-        method: "POST",
-        body: formData,
-      });
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error("Document upload failed:", errorText);
-        throw new Error("Failed to upload documents");
-      }
-      
-      const updatedApplication = await response.json();
-      console.log("Application updated with documents:", updatedApplication);
-      
-      // Update the application in the parent component
-      Object.assign(application, updatedApplication);
-      
-      setSelectedFiles(null);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
-      
-      toast({
-        title: "Documents Uploaded",
-        description: "Your documents have been uploaded and analyzed successfully",
-      });
-    } catch (error) {
-      console.error("Error uploading documents:", error);
-      toast({
-        title: "Upload Failed",
-        description: error instanceof Error ? error.message : "An unexpected error occurred",
-        variant: "destructive",
-      });
-    } finally {
-      setIsUploading(false);
-    }
-  };
-  
+  // Perform deep research on the application
   const performDeepResearch = async () => {
     if (!application) return;
     
@@ -695,25 +502,25 @@ export default function LoanScoringResults({ application }: LoanScoringResultsPr
     }
   };
 
+  if (!application) {
+    return null;
+  }
+
   return (
-    <Card className="bg-white rounded-lg shadow-sm border border-neutral-200 mb-8">
-      <CardHeader className="p-6 border-b border-neutral-200">
-        <div className="flex justify-between items-center">
-          <CardTitle className="text-lg font-semibold text-neutral-800 flex items-center">
-            <i className="fas fa-chart-bar text-primary mr-2"></i>
-            Loan Evaluation Results
-          </CardTitle>
-          
-          <div className="flex gap-2">
+    <Card>
+      <CardHeader className="border-b border-neutral-200 px-6">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <CardTitle className="text-xl font-bold">Loan Application Assessment</CardTitle>
+          <div className="flex flex-wrap gap-2">
             <Button 
               onClick={downloadRationaleReport} 
               disabled={isDownloading}
               size="sm"
               variant="outline"
-              className="flex items-center gap-2"
+              className="flex items-center gap-1"
             >
               <DownloadIcon className="h-4 w-4" />
-              {isDownloading ? "Generating..." : "Text Report"}
+              {isDownloading ? "Downloading..." : "Report"}
             </Button>
             
             <Button 
@@ -721,7 +528,7 @@ export default function LoanScoringResults({ application }: LoanScoringResultsPr
               disabled={isPdfDownloading}
               size="sm"
               variant="outline"
-              className="flex items-center gap-2"
+              className="flex items-center gap-1"
             >
               <DownloadIcon className="h-4 w-4" />
               {isPdfDownloading ? "Generating..." : "PDF Report"}
@@ -771,305 +578,260 @@ export default function LoanScoringResults({ application }: LoanScoringResultsPr
                 }
                 color="#0050C8"
               />
-              <div className="absolute inset-0 flex items-center justify-center flex-col">
-                <span className="text-2xl font-bold text-primary-600">
-                  {application.score ? Math.round(Number(application.score)) : 0}
-                </span>
-                <span className="text-xs text-neutral-500">score</span>
+              <div className="absolute inset-0 flex items-center justify-center font-bold text-2xl">
+                {application.score ? Math.round(Number(application.score)) : 0}
               </div>
             </div>
             
-            {/* Grade Display */}
-            <div className="flex flex-col items-center md:items-start">
-              <div className="flex items-center space-x-2 mb-1">
-                <div className={`grade-badge ${getGradeColor(application.grade || 'C-')} w-9 h-9 flex items-center justify-center rounded-full font-semibold`}>
-                  {application.grade || "C-"}
-                </div>
-                <span className="text-sm text-neutral-600">Grade</span>
-              </div>
-              <p className="text-sm text-neutral-500 max-w-xs">
-                {gradeInfo.description}
+            {/* Grade and Metadata */}
+            <div>
+              <h3 className="font-bold text-lg text-neutral-900 mb-1">
+                Grade: <span className="text-primary-700">{application.grade || "Pending"}</span>
+              </h3>
+              <p className="text-sm text-neutral-500 mb-2">{application.businessName}</p>
+              <p className="text-sm font-medium">
+                {formatCurrency(Number(application.loanAmount))} loan request
               </p>
             </div>
           </div>
           
-          {/* Grade Scale */}
-          <div className="flex-1 bg-neutral-50 p-6 rounded-lg border border-neutral-200">
-            <h3 className="text-sm font-medium text-neutral-700 mb-3">Grade Scale</h3>
-            
-            <CreditScoreBar score={
-              application.score 
-                ? Math.min(Number(application.score), 100) // Ensure it's capped at 100
-                : 0
-            } />
-            
-            <div className="mt-4">
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-xs font-medium text-neutral-700">Score Range:</span>
-                <span className="text-xs text-primary-600 font-medium">
-                  {application.score ? Math.round(Number(application.score)) : 0} / 100
-                </span>
+          {/* Deep Research Section */}
+          <div className="bg-neutral-50 p-6 rounded-lg border border-neutral-200 flex-1">
+            <h3 className="font-bold text-lg text-neutral-900 mb-3 flex justify-between items-center">
+              <span>Deep Research</span>
+              <div>
+                <Button 
+                  onClick={performDeepResearch} 
+                  disabled={isPerformingDeepResearch}
+                  size="sm"
+                  className="flex items-center gap-1 bg-indigo-600 hover:bg-indigo-700"
+                >
+                  {isPerformingDeepResearch ? (
+                    <>Researching...</>
+                  ) : (
+                    <>
+                      <SearchIcon className="h-3.5 w-3.5" />
+                      Perform Deep Research
+                    </>
+                  )}
+                </Button>
               </div>
-              <table className="w-full text-xs">
-                <tbody>
-                  <tr>
-                    <td className="py-1 text-neutral-600">A+ (90-100)</td>
-                    <td className="py-1 text-neutral-600">B+ (75-79)</td>
-                    <td className="py-1 text-neutral-600">C+ (50-59)</td>
-                  </tr>
-                  <tr>
-                    <td className="py-1 text-neutral-600">A (85-89)</td>
-                    <td className="py-1 text-neutral-600">B (65-74)</td>
-                    <td className="py-1 text-neutral-600">C (40-49)</td>
-                  </tr>
-                  <tr>
-                    <td className="py-1 text-neutral-600">A- (80-84)</td>
-                    <td className="py-1 text-neutral-600">B- (60-64)</td>
-                    <td className="py-1 text-neutral-600">C- (Below 40)</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-        
-        {/* Score Breakdown */}
-        <div className="mb-8">
-          <h3 className="text-base font-semibold text-neutral-800 mb-4">
-            Scoring Component Breakdown
-          </h3>
-          
-          <div className="grid md:grid-cols-2 gap-4">
-            {scoringComponents.map((component) => {
-              const score = getComponentScore(component.key);
-              const percentage = getComponentPercentage(component.key, component.weight);
-              const weight = component.weight * 100;
-              return (
-                <div key={component.key} className="bg-white p-4 rounded-lg border border-neutral-200">
-                  <div className="flex justify-between mb-1">
-                    <span className="text-sm font-medium text-neutral-700">{component.name}</span>
-                    <span className="text-sm font-semibold text-primary-600">
-                      {score} / {weight}
-                    </span>
-                  </div>
-                  <div className="w-full bg-neutral-100 rounded-full h-2 mb-2">
-                    <div 
-                      className={`${getScoreColor(percentage)} h-2 rounded-full`} 
-                      style={{ width: `${percentage}%` }}
-                    ></div>
-                  </div>
-                  <div className="flex justify-between text-xs">
-                    <span className="text-neutral-500">Weight: {weight}%</span>
-                    <span className="text-neutral-500">{component.desc}</span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-        
-        {/* Document Analysis */}
-        {application.documentAnalysis && application.documentAnalysis.length > 0 && (
-          <div className="mb-8">
-            <h3 className="text-base font-semibold text-neutral-800 mb-4 flex items-center">
-              <i className="fas fa-file-alt text-primary-400 mr-2"></i>
-              Document Analysis Highlights
             </h3>
             
-            <div className="bg-neutral-50 p-4 rounded-lg border border-neutral-200">
-              <ul className="space-y-3">
-                {application.documentAnalysis.map((item, index) => (
-                  <li key={index} className="flex items-start">
-                    <i className={`${index % 2 === 0 ? 'fas fa-check-circle text-success-500' : 'fas fa-exclamation-circle text-warning-500'} mt-0.5 mr-2`}></i>
-                    <div>
-                      <p className="text-sm text-neutral-700">{item}</p>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-        )}
-        
-        {/* Deep Research Section */}
-        <div className="mb-8">
-          <h3 className="text-base font-semibold text-neutral-800 mb-4 flex items-center justify-between">
-            <div className="flex items-center">
-              <i className="fas fa-search-plus text-primary-400 mr-2"></i>
-              Deep Research
-            </div>
-            
-            <div className="flex gap-2">
-              <Button 
-                onClick={performDeepResearch} 
-                disabled={isPerformingDeepResearch}
-                size="sm"
-                className="flex items-center gap-1 bg-indigo-600 hover:bg-indigo-700"
-              >
-                {isPerformingDeepResearch ? (
-                  <>Researching...</>
-                ) : (
-                  <>
-                    <SearchIcon className="h-3.5 w-3.5" />
-                    Perform Deep Research
-                  </>
-                )}
-              </Button>
-            </div>
-          </h3>
-          
-          <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-200">
-            <div className="flex items-start mb-3">
-              <div className="bg-indigo-100 p-2 rounded-full mr-3">
-                <SearchIcon className="h-5 w-5 text-indigo-600" />
+            <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-200">
+              <div className="flex items-start mb-3">
+                <div className="bg-indigo-100 p-2 rounded-full mr-3">
+                  <SearchIcon className="h-5 w-5 text-indigo-600" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-medium text-neutral-800 mb-1">
+                    Enhanced Due Diligence
+                  </h4>
+                  <p className="text-sm text-neutral-600">
+                    Our Deep Research feature performs comprehensive background checks on both the business and its owners. 
+                    This includes analyzing legal records, financial standings, market reputation, and potential red flags.
+                  </p>
+                </div>
               </div>
-              <div>
-                <h4 className="text-sm font-medium text-neutral-800 mb-1">
-                  Enhanced Due Diligence
-                </h4>
-                <p className="text-sm text-neutral-600">
-                  Our Deep Research feature performs comprehensive background checks on both the business and its owners. 
-                  This includes analyzing legal records, financial standings, market reputation, and potential red flags.
-                </p>
+              <div className="flex flex-col sm:flex-row gap-4">
+                <div className="flex-1 bg-white p-3 rounded-md border border-indigo-100">
+                  <h5 className="text-xs font-semibold text-indigo-700 uppercase mb-2">Company Research</h5>
+                  <ul className="text-xs text-neutral-600 list-disc pl-4 space-y-1">
+                    <li>Business verification</li>
+                    <li>Legal records analysis</li>
+                    <li>Financial stability assessment</li>
+                    <li>Market reputation evaluation</li>
+                  </ul>
+                </div>
+                <div className="flex-1 bg-white p-3 rounded-md border border-indigo-100">
+                  <h5 className="text-xs font-semibold text-indigo-700 uppercase mb-2">Owner Background</h5>
+                  <ul className="text-xs text-neutral-600 list-disc pl-4 space-y-1">
+                    <li>Identity verification</li>
+                    <li>Management history</li>
+                    <li>Professional reputation</li>
+                    <li>Prior business outcomes</li>
+                  </ul>
+                </div>
               </div>
             </div>
-            <div className="flex flex-col sm:flex-row gap-4">
-              <div className="flex-1 bg-white p-3 rounded-md border border-indigo-100">
-                <p className="text-xs font-medium text-indigo-700 mb-1">Company Analysis</p>
-                <ul className="text-xs text-neutral-600 list-disc pl-4 space-y-1">
-                  <li>Legal history and litigation research</li>
-                  <li>Financial stability assessment</li>
-                  <li>Market reputation and customer sentiment</li>
-                  <li>Industry risk factors identification</li>
-                </ul>
-              </div>
-              <div className="flex-1 bg-white p-3 rounded-md border border-indigo-100">
-                <p className="text-xs font-medium text-indigo-700 mb-1">Owner Analysis</p>
-                <ul className="text-xs text-neutral-600 list-disc pl-4 space-y-1">
-                  <li>Personal financial background check</li>
-                  <li>Previous business venture history</li>
-                  <li>Public record investigations</li>
-                  <li>Management experience evaluation</li>
-                </ul>
-              </div>
-            </div>
-            <p className="text-xs text-neutral-500 mt-3">
-              Results from Deep Research contribute 10% to the final loan assessment score. Findings are incorporated into the comprehensive PDF report.
-            </p>
           </div>
         </div>
         
-        {/* Document Upload Section */}
-        <div className="mb-8">
-          <h3 className="text-base font-semibold text-neutral-800 mb-4 flex items-center justify-between">
-            <div className="flex items-center">
-              <i className="fas fa-file-upload text-primary-400 mr-2"></i>
-              Upload Additional Documents
-            </div>
-            
-            <div className="flex gap-2">
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".pdf"
-                multiple
-                className="hidden"
-                onChange={handleFileChange}
-              />
-              <Button 
-                onClick={handleUploadClick} 
-                size="sm"
-                variant="outline"
-                className="flex items-center gap-1"
-              >
-                <UploadIcon className="h-3.5 w-3.5" />
-                Select Files
-              </Button>
-              <Button 
-                onClick={handleUploadDocuments} 
-                disabled={isUploading || !selectedFiles}
-                size="sm"
-                className="flex items-center gap-1"
-              >
-                {isUploading ? (
-                  <>Processing...</>
-                ) : (
-                  <>
-                    <i className="fas fa-file-medical text-xs"></i>
-                    Upload & Analyze
-                  </>
-                )}
-              </Button>
-            </div>
-          </h3>
+        {/* Component Scores */}
+        <div className="space-y-6">
+          <h3 className="font-bold text-lg text-neutral-900 mb-4">Scoring Components</h3>
           
-          {selectedFiles && selectedFiles.length > 0 && (
-            <div className="bg-neutral-50 p-4 rounded-lg border border-neutral-200 mb-4">
-              <p className="text-sm text-neutral-700 mb-2">{selectedFiles.length} file(s) selected:</p>
-              <ul className="space-y-1">
-                {Array.from(selectedFiles).map((file, index) => (
-                  <li key={index} className="flex items-center text-sm">
-                    <i className="fas fa-file-pdf text-red-500 mr-2"></i>
-                    {file.name}
-                  </li>
-                ))}
-              </ul>
-              <p className="text-xs text-neutral-500 mt-3">
-                Note: Uploading new documents will preserve existing analysis and may improve your score.
-              </p>
+          {/* Credit Score */}
+          <div className="bg-neutral-50 p-6 rounded-lg border border-neutral-200">
+            <div className="flex flex-col lg:flex-row gap-4 lg:gap-8">
+              <div className="flex-1">
+                <h4 className="font-semibold text-base mb-2">Credit Score Rating</h4>
+                <p className="text-sm text-neutral-600 mb-4">
+                  Evaluation of creditworthiness based on credit history, payment patterns, and financial obligations.
+                </p>
+                <CreditScoreBar 
+                  score={getComponentScore('creditScore')}
+                  maxScore={20}
+                />
+              </div>
+              <div className="flex-1">
+                <h4 className="font-semibold text-base mb-2">Key Factors</h4>
+                <div className="text-sm text-neutral-600">
+                  {rationale.creditScore ? (
+                    <p>{rationale.creditScore}</p>
+                  ) : (
+                    <p>Credit score assessment pending.</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          {/* Cash Flow */}
+          <div className="bg-neutral-50 p-6 rounded-lg border border-neutral-200">
+            <div className="flex flex-col lg:flex-row gap-4 lg:gap-8">
+              <div className="flex-1">
+                <h4 className="font-semibold text-base mb-2">Cash Flow Assessment</h4>
+                <p className="text-sm text-neutral-600 mb-4">
+                  Analysis of business cash inflows and outflows demonstrating ability to sustain operations and service debt.
+                </p>
+                <CreditScoreBar 
+                  score={getComponentScore('cashFlow')}
+                  maxScore={25}
+                />
+              </div>
+              <div className="flex-1">
+                <h4 className="font-semibold text-base mb-2">Key Factors</h4>
+                <div className="text-sm text-neutral-600">
+                  {rationale.cashFlow ? (
+                    <p>{rationale.cashFlow}</p>
+                  ) : (
+                    <p>Cash flow assessment pending.</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          {/* Collateral */}
+          <div className="bg-neutral-50 p-6 rounded-lg border border-neutral-200">
+            <div className="flex flex-col lg:flex-row gap-4 lg:gap-8">
+              <div className="flex-1">
+                <h4 className="font-semibold text-base mb-2">Collateral Evaluation</h4>
+                <p className="text-sm text-neutral-600 mb-4">
+                  Assessment of assets available to secure the loan, considering liquidity, value, and marketability.
+                </p>
+                <CreditScoreBar 
+                  score={getComponentScore('collateral')}
+                  maxScore={15}
+                />
+              </div>
+              <div className="flex-1">
+                <h4 className="font-semibold text-base mb-2">Key Factors</h4>
+                <div className="text-sm text-neutral-600">
+                  {rationale.collateral ? (
+                    <p>{rationale.collateral}</p>
+                  ) : (
+                    <p>Collateral assessment pending.</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          {/* Business Stability */}
+          <div className="bg-neutral-50 p-6 rounded-lg border border-neutral-200">
+            <div className="flex flex-col lg:flex-row gap-4 lg:gap-8">
+              <div className="flex-1">
+                <h4 className="font-semibold text-base mb-2">Business Stability</h4>
+                <p className="text-sm text-neutral-600 mb-4">
+                  Evaluation of business longevity, industry position, management experience, and operational resilience.
+                </p>
+                <CreditScoreBar 
+                  score={getComponentScore('businessStability')}
+                  maxScore={20}
+                />
+              </div>
+              <div className="flex-1">
+                <h4 className="font-semibold text-base mb-2">Key Factors</h4>
+                <div className="text-sm text-neutral-600">
+                  {rationale.businessStability ? (
+                    <p>{rationale.businessStability}</p>
+                  ) : (
+                    <p>Business stability assessment pending.</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          {/* Industry Outlook */}
+          <div className="bg-neutral-50 p-6 rounded-lg border border-neutral-200">
+            <div className="flex flex-col lg:flex-row gap-4 lg:gap-8">
+              <div className="flex-1">
+                <h4 className="font-semibold text-base mb-2">Industry Outlook</h4>
+                <p className="text-sm text-neutral-600 mb-4">
+                  Analysis of industry trends, growth projections, competitive landscape, and regulatory environment.
+                </p>
+                <CreditScoreBar 
+                  score={getComponentScore('industryOutlook')}
+                  maxScore={10}
+                />
+              </div>
+              <div className="flex-1">
+                <h4 className="font-semibold text-base mb-2">Key Factors</h4>
+                <div className="text-sm text-neutral-600">
+                  {rationale.industryOutlook ? (
+                    <p>{rationale.industryOutlook}</p>
+                  ) : (
+                    <p>Industry outlook assessment pending.</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          {/* Deep Research - conditionally displayed */}
+          {application.scoringDetails?.deepResearch !== undefined && (
+            <div className="bg-indigo-50 p-6 rounded-lg border border-indigo-200">
+              <div className="flex flex-col lg:flex-row gap-4 lg:gap-8">
+                <div className="flex-1">
+                  <h4 className="font-semibold text-base mb-2 flex items-center">
+                    <SearchIcon className="h-4 w-4 mr-1 text-indigo-600" />
+                    <span>Deep Research</span>
+                  </h4>
+                  <p className="text-sm text-neutral-600 mb-4">
+                    Comprehensive analysis of business and owner background, including legal records, market reputation, and risk factors.
+                  </p>
+                  <CreditScoreBar 
+                    score={getComponentScore('deepResearch')}
+                    maxScore={10}
+                    barColor="#4F46E5"
+                  />
+                </div>
+                <div className="flex-1">
+                  <h4 className="font-semibold text-base mb-2">Key Findings</h4>
+                  <div className="text-sm text-neutral-600">
+                    {rationale.deepResearch ? (
+                      <p>{rationale.deepResearch}</p>
+                    ) : (
+                      <p>Advanced deep research assessment pending. Click "Perform Deep Research" to initiate analysis.</p>
+                    )}
+                  </div>
+                </div>
+              </div>
             </div>
           )}
           
-          <div className="text-sm text-neutral-600">
-            <p>Upload additional financial documents to strengthen your application and potentially improve your score:</p>
-            <ul className="list-disc list-inside mt-2 space-y-1 text-neutral-600 text-sm ml-2">
-              <li>Tax returns</li>
-              <li>Financial statements</li>
-              <li>Cash flow projections</li>
-              <li>Business credit reports</li>
-              <li>Bank statements</li>
-            </ul>
-          </div>
-        </div>
-        
-        {/* Borrower Details */}
-        <div>
-          <h3 className="text-base font-semibold text-neutral-800 mb-4 flex items-center">
-            <i className="fas fa-user-tie text-primary-400 mr-2"></i>
-            Borrower & Application Details
-          </h3>
-          
-          <div className="bg-white rounded-lg border border-neutral-200">
-            <div className="grid md:grid-cols-2 gap-4 p-4">
-              <div>
-                <div className="mb-3">
-                  <p className="text-xs text-neutral-500 mb-1">Business Name</p>
-                  <p className="text-sm font-medium text-neutral-800">{application.businessName}</p>
-                </div>
-                <div className="mb-3">
-                  <p className="text-xs text-neutral-500 mb-1">Industry</p>
-                  <p className="text-sm font-medium text-neutral-800">{application.industry}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-neutral-500 mb-1">Years in Business</p>
-                  <p className="text-sm font-medium text-neutral-800">{application.yearsInBusiness} years</p>
-                </div>
-              </div>
-              <div>
-                <div className="mb-3">
-                  <p className="text-xs text-neutral-500 mb-1">Annual Revenue</p>
-                  <p className="text-sm font-medium text-neutral-800">{formatCurrency(Number(application.annualRevenue))}</p>
-                </div>
-                <div className="mb-3">
-                  <p className="text-xs text-neutral-500 mb-1">Requested Loan Amount</p>
-                  <p className="text-sm font-medium text-neutral-800">{formatCurrency(Number(application.loanAmount))}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-neutral-500 mb-1">Contact Email</p>
-                  <p className="text-sm font-medium text-neutral-800">{application.email}</p>
-                </div>
-              </div>
-            </div>
+          {/* Document Upload Section */}
+          <div className="bg-blue-50 p-6 rounded-lg border border-blue-200 mt-8">
+            <h4 className="font-semibold text-base mb-2 flex items-center">
+              <UploadIcon className="h-4 w-4 mr-1 text-blue-600" />
+              <span>Document Analysis</span>
+            </h4>
+            <p className="text-sm text-neutral-600 mb-4">
+              Upload additional financial documents to strengthen your application and potentially improve your score:
+            </p>
           </div>
         </div>
       </CardContent>

@@ -774,13 +774,17 @@ Please provide a general assessment based on the document name and business deta
   
   // Generate enhanced multi-agent PDF report with real-time progress updates and optimizations
   app.get("/api/loan-applications/:id/enhanced-pdf", async (req, res) => {
-    // Set a timeout to prevent hanging requests - reduced to 45 seconds
+    // Set a shorter timeout to prevent hanging requests - now only 30 seconds
     const requestTimeout = setTimeout(() => {
-      console.error("PDF generation timeout after 45 seconds");
+      console.error("PDF generation timeout after 30 seconds");
       if (!res.headersSent) {
-        res.status(504).json({ message: "PDF generation timed out (45 seconds). Please try again later." });
+        res.status(504).json({ 
+          message: "PDF generation timed out (30 seconds). Please try again.", 
+          error: "timeout",
+          errorCode: "PDF_TIMEOUT"
+        });
       }
-    }, 45000); // 45 second timeout (reduced from 60)
+    }, 30000); // 30 second timeout (further reduced from 45 seconds)
     
     try {
       const id = parseInt(req.params.id);
@@ -899,11 +903,12 @@ Please provide a general assessment based on the document name and business deta
           const researchPromise = new Promise<DeepResearchResult>(async (resolve) => {
             const startTime = new Date().getTime();
             
-            // Send regular progress updates during research
+            // Send more frequent progress updates during research
             const progressInterval = setInterval(() => {
               const elapsed = new Date().getTime() - startTime;
-              // Calculate a progress percentage between 15-75% based on elapsed time (max 30s)
-              const progressPercent = Math.min(75, 15 + Math.floor(elapsed / 30000 * 60));
+              // Calculate a progress percentage between 15-80% based on elapsed time (max 20s)
+              // Faster progression to show more activity
+              const progressPercent = Math.min(80, 15 + Math.floor(elapsed / 20000 * 65));
               
               let stage = 'analyzing_company';
               let detail = 'Researching company background and market position';
@@ -929,7 +934,7 @@ Please provide a general assessment based on the document name and business deta
                 progress: progressPercent,
                 detail
               });
-            }, 1500); // Update progress every 1.5 seconds
+            }, 900); // Update progress more frequently (every 0.9 seconds) for smoother UX
             
             try {
               // Use the lightweight research method with a time limit
