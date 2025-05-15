@@ -594,17 +594,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
             researchTimeout
           ]).catch((error: Error) => {
             console.error("Deep research timed out or failed:", error);
-            // Return default results if timeout occurs with explicitly typed fields
-            const defaultResult: DeepResearchResult = {
+            // Return default results with complete type structure
+            return {
               combinedScore: 70, // Default neutral score
               companyAnalysis: { 
-                score: 70, 
+                overview: "Limited information available",
+                legalIssues: [],
+                financialRedFlags: [],
+                reputationInsights: [],
+                score: 70,
                 highRiskFactors: [], 
                 moderateRiskFactors: [], 
                 mitigatingFactors: [] 
               },
               ownerAnalysis: { 
-                score: 70, 
+                overview: "Limited information available",
+                legalIssues: [],
+                financialRedFlags: [],
+                reputationInsights: [],
+                score: 70,
                 highRiskFactors: [], 
                 moderateRiskFactors: [], 
                 mitigatingFactors: [] 
@@ -616,7 +624,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 mitigatingFactors: []
               }
             };
-            return defaultResult;
           });
           
           // Update the loan application score with the deep research component

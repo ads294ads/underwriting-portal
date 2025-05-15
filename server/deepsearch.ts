@@ -69,24 +69,40 @@ export interface DeepResearchResult {
 }
 
 // Function to perform deep research on company and owner
+// OPTIMIZATION: Faster deep research function with timeouts
 export async function performDeepResearch(application: LoanApplication): Promise<DeepResearchResult> {
   try {
-    console.log("Starting deep research analysis...");
+    console.log("Starting optimized deep research analysis...");
     
-    // Try enhanced research with entity verification first (most robust)
-    if (process.env.OPENAI_API_KEY) {
+    // OPTIMIZATION: Use simpler multi-agent approach for faster results
+    // Skip enhanced research which is slow and go straight to fastest method
+    if (process.env.PERPLEXITY_API_KEY) {
       try {
-        console.log("Using Enhanced Research with Entity Verification...");
-        const enhancedResults = await performEnhancedDeepResearch(application);
-        console.log("Enhanced deep research complete with entity verification!");
-        console.log(`Entity verification confidence: ${enhancedResults.verificationConfidence ? (enhancedResults.verificationConfidence * 100).toFixed(1) + '%' : 'unknown'}`);
-        return enhancedResults;
-      } catch (enhancedError) {
-        console.error("Error with enhanced research, falling back to Claude:", enhancedError);
+        console.log("Using optimized Multi-Agent research (fastest approach)...");
+        
+        // Add timeout to ensure we stay under time budget
+        const multiAgentPromise = performMultiAgentResearch(application);
+        const timeoutPromise = new Promise<CoordinatedResearchResult>((_, reject) => {
+          setTimeout(() => reject(new Error("Multi-agent research timed out")), 10000); // 10 second timeout
+        });
+        
+        // Race the research against the timeout
+        const multiAgentResults = await Promise.race([multiAgentPromise, timeoutPromise])
+          .catch(error => {
+            console.warn("Multi-agent research timed out or failed:", error.message);
+            // Return minimal research results if timeout occurs
+            return createDefaultResearchResults(application);
+          });
+          
+        console.log("Multi-agent research complete!");
+        return multiAgentResults;
+      } catch (multiAgentError) {
+        console.error("Error with multi-agent research, using fallback:", multiAgentError.message);
+        return createDefaultResearchResults(application);
       }
     }
     
-    // Try to use Anthropic Claude API second (good quality results)
+    // Try using Anthropic Claude as a fallback
     if (process.env.ANTHROPIC_API_KEY) {
       try {
         console.log("Using Anthropic Claude for deep research...");

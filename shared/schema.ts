@@ -113,6 +113,7 @@ export type LoanApplication = {
   lastUpdated?: string; // Last updated timestamp
   companyAnalysis?: CompanyAnalysis; // Company analysis from deep research
   ownerAnalysis?: OwnerAnalysis; // Owner analysis from deep research
+  metadata?: string; // OPTIMIZATION: Added for storing deep research results and other large data
 }
 
 export const loanApplications = pgTable("loan_applications", {
@@ -135,6 +136,7 @@ export const loanApplications = pgTable("loan_applications", {
   lastUpdated: text("last_updated"), // Store last updated timestamp as ISO string
   companyAnalysis: json("company_analysis").$type<CompanyAnalysis>(), // Store company analysis results
   ownerAnalysis: json("owner_analysis").$type<OwnerAnalysis>(), // Store owner analysis results
+  metadata: text("metadata"), // OPTIMIZATION: Store large data like deep research results
 });
 
 export const ownerSchema = z.object({
