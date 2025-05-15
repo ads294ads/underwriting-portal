@@ -670,33 +670,42 @@ export const ResearchVerificationPanel: React.FC<ResearchVerificationPanelProps>
                     </div>
                   )}
                 
-                  {/* Management Capabilities */}
-                  {ownerAnalysis.managementCapabilities && ownerAnalysis.managementCapabilities.length > 0 && (
-                    <div>
-                      <h4 className="text-md font-medium text-green-700">Management Capabilities</h4>
-                      <ul className="mt-1 space-y-1">
-                        {ownerAnalysis.managementCapabilities.map((capability, i) => (
-                          <li key={i} className="flex items-start">
-                            <span className="text-green-600 mr-2">•</span>
-                            <span>{capability}</span>
-                          </li>
+                  {/* Reputation Insights - Enhanced */}
+                  {ownerAnalysis.reputationInsights && ownerAnalysis.reputationInsights.length > 0 && (
+                    <div className="bg-blue-50 p-4 rounded-md border border-blue-100">
+                      <h4 className="text-md font-medium text-blue-800">Reputation & Market Perception</h4>
+                      <ul className="mt-2 list-disc pl-6 space-y-1">
+                        {ownerAnalysis.reputationInsights.map((insight, i) => (
+                          <li key={i} className="text-blue-800">{insight}</li>
                         ))}
                       </ul>
                     </div>
                   )}
                   
-                  {/* Prior Business History */}
+                  {/* Prior Business History - Enhanced Format */}
                   {ownerAnalysis.priorBusinessHistory && ownerAnalysis.priorBusinessHistory.length > 0 && (
-                    <div>
-                      <h4 className="text-md font-medium text-indigo-700">Prior Business History</h4>
-                      <div className="mt-2 space-y-2">
+                    <div className="rounded-md border border-indigo-100 overflow-hidden">
+                      <div className="bg-indigo-100 px-4 py-2">
+                        <h4 className="text-md font-medium text-indigo-800">Prior Business History</h4>
+                      </div>
+                      <div className="p-0">
                         {ownerAnalysis.priorBusinessHistory.map((history, i) => (
-                          <div key={i} className="bg-gray-50 rounded-md p-2 border border-gray-200">
-                            <p className="font-medium text-gray-800">{history.companyName}</p>
-                            <div className="flex flex-wrap gap-x-4 text-sm mt-1">
-                              <span className="text-gray-600">Role: {history.role}</span>
-                              <span className="text-gray-600">Years: {history.years}</span>
-                              <span className="text-gray-600">Outcome: {history.outcome}</span>
+                          <div key={i} className={`p-4 border-b border-indigo-100 ${i % 2 === 0 ? 'bg-white' : 'bg-indigo-50'} last:border-b-0`}>
+                            <div className="flex justify-between items-center mb-2">
+                              <h5 className="font-semibold text-indigo-900">{history.companyName}</h5>
+                              <span className="text-xs bg-indigo-200 text-indigo-800 px-2 py-1 rounded-full">
+                                {history.years}
+                              </span>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                              <div className="bg-indigo-100 bg-opacity-30 p-2 rounded">
+                                <p className="text-xs font-medium text-indigo-800 mb-1">Role & Responsibilities</p>
+                                <p className="text-sm">{history.role}</p>
+                              </div>
+                              <div className="bg-indigo-100 bg-opacity-30 p-2 rounded">
+                                <p className="text-xs font-medium text-indigo-800 mb-1">Business Outcome</p>
+                                <p className="text-sm">{history.outcome}</p>
+                              </div>
                             </div>
                           </div>
                         ))}
@@ -704,18 +713,26 @@ export const ResearchVerificationPanel: React.FC<ResearchVerificationPanelProps>
                     </div>
                   )}
                 
-                  {/* Legal Issues */}
+                  {/* Legal Issues - Enhanced Format */}
                   {ownerAnalysis.legalIssues.length > 0 && (
-                    <div>
-                      <h4 className="text-md font-medium text-red-700">Legal Issues</h4>
-                      <ul className="mt-1 space-y-1">
+                    <div className="bg-red-50 p-4 rounded-md border border-red-200">
+                      <h4 className="text-md font-medium text-red-800 flex items-center">
+                        <AlertCircle className="h-4 w-4 mr-2" />
+                        Legal Issues & Concerns
+                      </h4>
+                      <p className="text-sm text-red-700 mt-1 mb-3">
+                        The following legal issues were identified during owner background research:
+                      </p>
+                      <div className="space-y-2">
                         {ownerAnalysis.legalIssues.map((issue, i) => (
-                          <li key={i} className="flex items-start">
-                            <span className="text-red-600 mr-2">•</span>
-                            <span>{issue}</span>
-                          </li>
+                          <div key={i} className="flex items-start bg-white border-l-4 border-red-500 pl-3 py-2 rounded-r shadow-sm">
+                            <span className="text-red-700">{issue}</span>
+                          </div>
                         ))}
-                      </ul>
+                      </div>
+                      <p className="text-xs text-red-600 mt-3 italic">
+                        Note: Legal issues may significantly impact loan approval decisions and terms.
+                      </p>
                     </div>
                   )}
                   
