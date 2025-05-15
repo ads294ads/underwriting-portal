@@ -23,12 +23,29 @@ import { WebSocketServer, WebSocket } from 'ws';
 const activeProgressConnections = new Map<number, Set<WebSocket>>();
 
 // Function to broadcast progress updates for a specific application
+// Last broadcast timestamp per application to prevent excessive updates
+const lastBroadcastTimestamp = new Map<number, number>();
+
 export function broadcastProgress(applicationId: number, progressData: {
   stage: string;
   message: string;
   progress: number; // 0-100
   detail?: string;
 }) {
+  // OPTIMIZATION: Limit broadcast frequency to one update every 700ms per application
+  // This significantly reduces server load and network traffic while still providing
+  // responsive updates to the client
+  const now = Date.now();
+  const lastUpdate = lastBroadcastTimestamp.get(applicationId) || 0;
+  
+  // Skip updates that are too frequent, unless it's 100% complete or an error
+  if (now - lastUpdate < 700 && progressData.progress < 100 && progressData.stage !== 'error') {
+    return; // Skip this update to reduce overhead
+  }
+  
+  // Update the timestamp of last broadcast
+  lastBroadcastTimestamp.set(applicationId, now);
+  
   // Add application ID and type to the progress data
   const fullProgressData = {
     type: 'progress',
@@ -45,22 +62,23 @@ export function broadcastProgress(applicationId: number, progressData: {
   if (connections && connections.size > 0) {
     let sentCount = 0;
     
-    // Send to all connected clients
+    // Send to all connected clients efficiently
     connections.forEach(socket => {
       if (socket.readyState === WebSocket.OPEN) {
         try {
           socket.send(messageJSON);
           sentCount++;
         } catch (err) {
-          console.error(`Error sending progress update to client for app #${applicationId}:`, err);
+          // Silent error handling to improve performance
         }
       }
     });
     
-    console.log(`Progress update broadcast to ${sentCount}/${connections.size} clients for app #${applicationId}: ${progressData.stage} (${progressData.progress}%)`);
-  } else {
-    // Log that no clients are connected for this application
-    console.log(`No clients connected for progress updates on application #${applicationId}`);
+    // Only log complete updates or milestones to reduce console spam
+    if (progressData.progress === 100 || progressData.stage === 'error' || 
+        progressData.progress % 25 === 0) { // Log at 0%, 25%, 50%, 75%, 100%
+      console.log(`Progress update for app #${applicationId}: ${progressData.stage} (${progressData.progress}%)`);
+    }
   }
 }
 
