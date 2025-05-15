@@ -13,10 +13,13 @@ import { WebSocketManager, ProgressUpdate } from "@/lib/queryClient";
 
 interface LoanScoringResultsProps {
   application: LoanApplication;
-  rationale: Record<string, string>;
+  rationale?: Record<string, string>; // Make rationale optional
 }
 
-export default function LoanScoringResults({ application, rationale }: LoanScoringResultsProps) {
+export default function LoanScoringResults({ 
+  application, 
+  rationale = {} // Provide empty object as default
+}: LoanScoringResultsProps) {
   const { toast } = useToast();
   const [isDownloading, setIsDownloading] = useState(false);
   const [isPdfDownloading, setIsPdfDownloading] = useState(false);
@@ -39,6 +42,9 @@ export default function LoanScoringResults({ application, rationale }: LoanScori
     return Number(application.scoringDetails[key]);
   };
   
+  // BUGFIX: Ensure score is treated as a number regardless of how it's stored
+  const scoreAsNumber = application.score ? Number(application.score) : 0;
+  
   // Download plain text rationale report
   const downloadRationaleReport = async () => {
     if (!application) return;
@@ -54,7 +60,7 @@ export default function LoanScoringResults({ application, rationale }: LoanScori
       reportContent += `Annual Revenue: ${formatCurrency(Number(application.annualRevenue))}\n`;
       reportContent += `Loan Amount: ${formatCurrency(Number(application.loanAmount))}\n\n`;
       
-      reportContent += `OVERALL SCORE: ${application.score}/100\n`;
+      reportContent += `OVERALL SCORE: ${scoreAsNumber}/100\n`;
       reportContent += `GRADE: ${application.grade}\n\n`;
       
       // Add overall assessment
