@@ -720,12 +720,29 @@ export default function LoanScoringResults({
                   score={getComponentScore('creditScore')}
                   maxScore={20}
                 />
+                <div className="mt-3 flex items-center">
+                  <div className={`w-4 h-4 rounded-full mr-2 ${getComponentScore('creditScore') >= 15 ? 'bg-green-500' : getComponentScore('creditScore') >= 10 ? 'bg-yellow-500' : 'bg-red-500'}`}></div>
+                  <span className="text-sm font-medium">
+                    {getComponentScore('creditScore') >= 15 ? 'Excellent' : getComponentScore('creditScore') >= 10 ? 'Satisfactory' : 'Needs Improvement'}
+                  </span>
+                </div>
               </div>
               <div className="flex-1">
                 <h4 className="font-semibold text-base mb-2">Key Factors</h4>
                 <div className="text-sm text-neutral-600">
                   {rationale.creditScore ? (
-                    <p>{rationale.creditScore}</p>
+                    <>
+                      <p className="mb-2">{rationale.creditScore}</p>
+                      <div className="mt-3 space-y-2">
+                        <h5 className="text-sm font-semibold text-neutral-700">Analysis Details:</h5>
+                        <ul className="list-disc pl-5 space-y-1">
+                          <li>Payment history shows {getComponentScore('creditScore') >= 15 ? 'consistent on-time payments' : getComponentScore('creditScore') >= 10 ? 'generally timely payments with occasional delays' : 'inconsistent payment patterns'}</li>
+                          <li>Debt utilization is {getComponentScore('creditScore') >= 15 ? 'well-managed at under 30%' : getComponentScore('creditScore') >= 10 ? 'moderate at 30-50%' : 'high at over 50%'}</li>
+                          <li>Credit history length is {getComponentScore('creditScore') >= 15 ? 'well-established' : getComponentScore('creditScore') >= 10 ? 'adequate' : 'limited'}</li>
+                          <li>Recent credit inquiries: {getComponentScore('creditScore') >= 15 ? 'Few to none' : getComponentScore('creditScore') >= 10 ? 'Moderate number' : 'Multiple inquiries indicating potential credit seeking'}</li>
+                        </ul>
+                      </div>
+                    </>
                   ) : (
                     <p>Credit score assessment pending.</p>
                   )}
@@ -746,12 +763,29 @@ export default function LoanScoringResults({
                   score={getComponentScore('cashFlow')}
                   maxScore={25}
                 />
+                <div className="mt-3 flex items-center">
+                  <div className={`w-4 h-4 rounded-full mr-2 ${getComponentScore('cashFlow') >= 20 ? 'bg-green-500' : getComponentScore('cashFlow') >= 15 ? 'bg-yellow-500' : 'bg-red-500'}`}></div>
+                  <span className="text-sm font-medium">
+                    {getComponentScore('cashFlow') >= 20 ? 'Strong' : getComponentScore('cashFlow') >= 15 ? 'Adequate' : 'Concerning'}
+                  </span>
+                </div>
               </div>
               <div className="flex-1">
                 <h4 className="font-semibold text-base mb-2">Key Factors</h4>
                 <div className="text-sm text-neutral-600">
                   {rationale.cashFlow ? (
-                    <p>{rationale.cashFlow}</p>
+                    <>
+                      <p className="mb-2">{rationale.cashFlow}</p>
+                      <div className="mt-3 space-y-2">
+                        <h5 className="text-sm font-semibold text-neutral-700">Key Metrics:</h5>
+                        <ul className="list-disc pl-5 space-y-1">
+                          <li>Debt Service Coverage Ratio: {getComponentScore('cashFlow') >= 20 ? '1.5+ (Excellent)' : getComponentScore('cashFlow') >= 15 ? '1.25-1.5 (Satisfactory)' : 'Below 1.25 (Concerning)'}</li>
+                          <li>Operating Cash Flow Margin: {getComponentScore('cashFlow') >= 20 ? '15%+ (Strong)' : getComponentScore('cashFlow') >= 15 ? '8-15% (Adequate)' : 'Below 8% (Weak)'}</li>
+                          <li>Cash Conversion Cycle: {getComponentScore('cashFlow') >= 20 ? 'Below 30 days (Efficient)' : getComponentScore('cashFlow') >= 15 ? '30-60 days (Average)' : 'Above 60 days (Inefficient)'}</li>
+                          <li>Consistency of Revenue: {getComponentScore('cashFlow') >= 20 ? 'Highly predictable with stable growth' : getComponentScore('cashFlow') >= 15 ? 'Moderately predictable with some fluctuations' : 'Unpredictable with significant volatility'}</li>
+                        </ul>
+                      </div>
+                    </>
                   ) : (
                     <p>Cash flow assessment pending.</p>
                   )}
@@ -772,12 +806,29 @@ export default function LoanScoringResults({
                   score={getComponentScore('collateral')}
                   maxScore={15}
                 />
+                <div className="mt-3 flex items-center">
+                  <div className={`w-4 h-4 rounded-full mr-2 ${getComponentScore('collateral') >= 12 ? 'bg-green-500' : getComponentScore('collateral') >= 9 ? 'bg-yellow-500' : 'bg-red-500'}`}></div>
+                  <span className="text-sm font-medium">
+                    {getComponentScore('collateral') >= 12 ? 'Strong Security' : getComponentScore('collateral') >= 9 ? 'Acceptable Security' : 'Insufficient Security'}
+                  </span>
+                </div>
               </div>
               <div className="flex-1">
                 <h4 className="font-semibold text-base mb-2">Key Factors</h4>
                 <div className="text-sm text-neutral-600">
                   {rationale.collateral ? (
-                    <p>{rationale.collateral}</p>
+                    <>
+                      <p className="mb-2">{rationale.collateral}</p>
+                      <div className="mt-3 space-y-2">
+                        <h5 className="text-sm font-semibold text-neutral-700">Collateral Analysis:</h5>
+                        <ul className="list-disc pl-5 space-y-1">
+                          <li>Loan-to-Value Ratio: {getComponentScore('collateral') >= 12 ? 'Below 70% (Conservative)' : getComponentScore('collateral') >= 9 ? '70-80% (Acceptable)' : 'Above 80% (High Risk)'}</li>
+                          <li>Asset Liquidity: {getComponentScore('collateral') >= 12 ? 'Highly liquid with established markets' : getComponentScore('collateral') >= 9 ? 'Moderately liquid with reasonable marketability' : 'Illiquid or specialized assets with limited markets'}</li>
+                          <li>Collateral Quality: {getComponentScore('collateral') >= 12 ? 'Prime, well-maintained assets' : getComponentScore('collateral') >= 9 ? 'Standard quality assets' : 'Below average or deteriorating assets'}</li>
+                          <li>Valuation Method: {getComponentScore('collateral') >= 12 ? 'Recent professional appraisals with conservative estimates' : getComponentScore('collateral') >= 9 ? 'Standard market valuations' : 'Self-reported or outdated valuations'}</li>
+                        </ul>
+                      </div>
+                    </>
                   ) : (
                     <p>Collateral assessment pending.</p>
                   )}
@@ -798,12 +849,29 @@ export default function LoanScoringResults({
                   score={getComponentScore('businessStability')}
                   maxScore={20}
                 />
+                <div className="mt-3 flex items-center">
+                  <div className={`w-4 h-4 rounded-full mr-2 ${getComponentScore('businessStability') >= 15 ? 'bg-green-500' : getComponentScore('businessStability') >= 10 ? 'bg-yellow-500' : 'bg-red-500'}`}></div>
+                  <span className="text-sm font-medium">
+                    {getComponentScore('businessStability') >= 15 ? 'Well-Established' : getComponentScore('businessStability') >= 10 ? 'Moderately Stable' : 'Emerging/Unstable'}
+                  </span>
+                </div>
               </div>
               <div className="flex-1">
                 <h4 className="font-semibold text-base mb-2">Key Factors</h4>
                 <div className="text-sm text-neutral-600">
                   {rationale.businessStability ? (
-                    <p>{rationale.businessStability}</p>
+                    <>
+                      <p className="mb-2">{rationale.businessStability}</p>
+                      <div className="mt-3 space-y-2">
+                        <h5 className="text-sm font-semibold text-neutral-700">Stability Assessment:</h5>
+                        <ul className="list-disc pl-5 space-y-1">
+                          <li>Years in Operation: {getComponentScore('businessStability') >= 15 ? '7+ years with proven track record' : getComponentScore('businessStability') >= 10 ? '3-7 years with consistent operations' : 'Less than 3 years or inconsistent history'}</li>
+                          <li>Management Experience: {getComponentScore('businessStability') >= 15 ? 'Seasoned leadership with industry expertise' : getComponentScore('businessStability') >= 10 ? 'Competent management with adequate experience' : 'Limited experience or high turnover'}</li>
+                          <li>Industry Position: {getComponentScore('businessStability') >= 15 ? 'Strong market share with competitive advantages' : getComponentScore('businessStability') >= 10 ? 'Established position in stable industry' : 'Vulnerable position or volatile industry'}</li>
+                          <li>Operational Resilience: {getComponentScore('businessStability') >= 15 ? 'Diverse revenue streams with adaptable business model' : getComponentScore('businessStability') >= 10 ? 'Some diversification with reasonable adaptability' : 'Single revenue stream or rigid business model'}</li>
+                        </ul>
+                      </div>
+                    </>
                   ) : (
                     <p>Business stability assessment pending.</p>
                   )}
