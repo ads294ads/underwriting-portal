@@ -36,10 +36,26 @@ export default function LoanScoringResults({
   
   // Function to get component score with fallback to 0
   const getComponentScore = (key: string): number => {
-    if (!application.scoringDetails || !application.scoringDetails[key]) {
+    if (!application.scoringDetails) {
+      console.log(`No scoring details available for component: ${key}`);
       return 0;
     }
-    return Number(application.scoringDetails[key]);
+    
+    // Check if key exists and has a value
+    const rawScore = application.scoringDetails[key];
+    if (rawScore === undefined || rawScore === null) {
+      console.log(`Missing score for component: ${key}`);
+      return 0;
+    }
+    
+    // Force numeric conversion and guard against NaN
+    const numericScore = Number(rawScore);
+    if (isNaN(numericScore)) {
+      console.log(`Invalid score format for component: ${key}, value: ${rawScore}`);
+      return 0;
+    }
+    
+    return numericScore;
   };
   
   // BUGFIX: Ensure score is treated as a number regardless of how it's stored
@@ -720,12 +736,8 @@ export default function LoanScoringResults({
                   score={getComponentScore('creditScore')}
                   maxScore={20}
                 />
-                <div className="mt-3 flex items-center">
-                  <div className={`w-4 h-4 rounded-full mr-2 ${getComponentScore('creditScore') >= 15 ? 'bg-green-500' : getComponentScore('creditScore') >= 10 ? 'bg-yellow-500' : 'bg-red-500'}`}></div>
-                  <span className="text-sm font-medium">
-                    {getComponentScore('creditScore') >= 15 ? 'Excellent' : getComponentScore('creditScore') >= 10 ? 'Satisfactory' : 'Needs Improvement'}
-                  </span>
-                </div>
+                {/* Removed redundant status indicator since CreditScoreBar now includes this */}
+                {/* This space intentionally left empty to maintain layout consistency */}
               </div>
               <div className="flex-1">
                 <h4 className="font-semibold text-base mb-2">Key Factors</h4>
@@ -763,12 +775,8 @@ export default function LoanScoringResults({
                   score={getComponentScore('cashFlow')}
                   maxScore={25}
                 />
-                <div className="mt-3 flex items-center">
-                  <div className={`w-4 h-4 rounded-full mr-2 ${getComponentScore('cashFlow') >= 20 ? 'bg-green-500' : getComponentScore('cashFlow') >= 15 ? 'bg-yellow-500' : 'bg-red-500'}`}></div>
-                  <span className="text-sm font-medium">
-                    {getComponentScore('cashFlow') >= 20 ? 'Strong' : getComponentScore('cashFlow') >= 15 ? 'Adequate' : 'Concerning'}
-                  </span>
-                </div>
+                {/* Removed redundant status indicator since CreditScoreBar now includes this */}
+                {/* This space intentionally left empty to maintain layout consistency */}
               </div>
               <div className="flex-1">
                 <h4 className="font-semibold text-base mb-2">Key Factors</h4>
@@ -806,12 +814,8 @@ export default function LoanScoringResults({
                   score={getComponentScore('collateral')}
                   maxScore={15}
                 />
-                <div className="mt-3 flex items-center">
-                  <div className={`w-4 h-4 rounded-full mr-2 ${getComponentScore('collateral') >= 12 ? 'bg-green-500' : getComponentScore('collateral') >= 9 ? 'bg-yellow-500' : 'bg-red-500'}`}></div>
-                  <span className="text-sm font-medium">
-                    {getComponentScore('collateral') >= 12 ? 'Strong Security' : getComponentScore('collateral') >= 9 ? 'Acceptable Security' : 'Insufficient Security'}
-                  </span>
-                </div>
+                {/* Removed redundant status indicator since CreditScoreBar now includes this */}
+                {/* This space intentionally left empty to maintain layout consistency */}
               </div>
               <div className="flex-1">
                 <h4 className="font-semibold text-base mb-2">Key Factors</h4>
@@ -849,12 +853,8 @@ export default function LoanScoringResults({
                   score={getComponentScore('businessStability')}
                   maxScore={20}
                 />
-                <div className="mt-3 flex items-center">
-                  <div className={`w-4 h-4 rounded-full mr-2 ${getComponentScore('businessStability') >= 15 ? 'bg-green-500' : getComponentScore('businessStability') >= 10 ? 'bg-yellow-500' : 'bg-red-500'}`}></div>
-                  <span className="text-sm font-medium">
-                    {getComponentScore('businessStability') >= 15 ? 'Well-Established' : getComponentScore('businessStability') >= 10 ? 'Moderately Stable' : 'Emerging/Unstable'}
-                  </span>
-                </div>
+                {/* Removed redundant status indicator since CreditScoreBar now includes this */}
+                {/* This space intentionally left empty to maintain layout consistency */}
               </div>
               <div className="flex-1">
                 <h4 className="font-semibold text-base mb-2">Key Factors</h4>
