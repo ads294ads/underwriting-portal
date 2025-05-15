@@ -293,7 +293,7 @@ function addCoverPage(
 }
 
 /**
- * Add executive summary page
+ * ULTRA-OPTIMIZED: Simplified executive summary page
  */
 function addExecutiveSummaryPage(
   doc: PDFKit.PDFDocument,
@@ -303,230 +303,138 @@ function addExecutiveSummaryPage(
 ) {
   doc.addPage();
   
-  // Page header
-  doc.fontSize(20)
+  // Simplified page header
+  doc.fontSize(18)
      .fillColor(colors.primary)
      .font('Helvetica-Bold')
-     .text('EXECUTIVE SUMMARY', 50, 50, { align: 'center' })
+     .text('EXECUTIVE SUMMARY', 0, 50, { align: 'center' })
      .moveDown(0.5);
   
-  // Horizontal line
+  // Minimal horizontal line
   doc.lineWidth(1)
      .strokeColor(colors.primary)
      .moveTo(50, doc.y)
-     .lineTo(550, doc.y)
+     .lineTo(doc.page.width - 50, doc.y)
      .stroke()
      .moveDown(1);
   
-  // Overall grade display
+  // Get essential data
   const score = deepResearchResults.combinedScore || 70;
   const grade = deepResearchResults.grade || "B";
   
-  // Circle with grade in the center
-  const circleX = 100;
-  const circleY = doc.y + 60;
-  const circleRadius = 40;
+  // Simplified grade display (square instead of circle for faster rendering)
+  const gradeColor = grade.startsWith('A') ? colors.success : 
+                     grade.startsWith('B') ? colors.primary : 
+                     colors.danger;
   
-  // Determine color based on grade
-  let gradeColor = colors.warning;
-  if (grade.startsWith('A')) gradeColor = colors.success;
-  else if (grade.startsWith('C')) gradeColor = colors.danger;
+  // Draw a square instead of a circle (faster to render)
+  const boxSize = 70;
+  const boxX = (doc.page.width - boxSize) / 2;
+  const boxY = doc.y + 20;
   
-  doc.circle(circleX, circleY, circleRadius)
-     .fillAndStroke(gradeColor, gradeColor);
+  doc.rect(boxX, boxY, boxSize, boxSize)
+     .fill(gradeColor);
      
-  doc.fontSize(36)
+  doc.fontSize(40)
      .fillColor('white')
      .font('Helvetica-Bold')
-     .text(grade, circleX - 18, circleY - 18, { width: 36, align: 'center' });
+     .text(grade, boxX, boxY + 15, { width: boxSize, align: 'center' });
   
-  // Summary information beside the grade
-  doc.fontSize(14)
+  // Basic loan information below grade
+  doc.fontSize(12)
      .fillColor(colors.dark)
      .font('Helvetica')
-     .text('Loan Application Assessment', 180, doc.y - 100)
-     .moveDown(0.5);
+     .text(`Business: ${application.businessName}`, 0, boxY + boxSize + 30, { align: 'center' })
+     .moveDown(0.3)
+     .text(`Industry: ${application.industry}`, { align: 'center' })
+     .moveDown(0.3)
+     .text(`Score: ${score}/100  |  Grade: ${grade}  |  Risk: ${grade.startsWith('A') ? 'Low' : grade.startsWith('B') ? 'Moderate' : 'High'}`, { align: 'center' })
+     .moveDown(1.5);
   
-  doc.fontSize(12)
-     .text(`Business: ${application.businessName}`, 180, doc.y)
-     .moveDown(0.3)
-     .text(`Industry: ${application.industry}`, 180, doc.y)
-     .moveDown(0.3)
-     .text(`Loan Amount: $${application.loanAmount.toLocaleString()}`, 180, doc.y)
-     .moveDown(0.3)
-     .text(`Overall Score: ${score}/100`, 180, doc.y)
-     .moveDown(0.3)
-     .text(`Grade: ${grade}`, 180, doc.y)
-     .moveDown(0.3)
-     .text(`Risk Assessment: ${grade.startsWith('A') ? 'Low Risk' : grade.startsWith('B') ? 'Moderate Risk' : 'High Risk'}`, 180, doc.y);
-  
-  doc.moveDown(2);
-  
-  // Draw section header function
-  const drawSectionHeader = (text: string) => {
+  // Simplified section header function
+  const addHeader = (text) => {
     doc.fontSize(14)
        .fillColor(colors.primary)
        .font('Helvetica-Bold')
        .text(text, 50, doc.y)
-       .moveDown(0.3)
-       .lineWidth(1)
-       .strokeColor(colors.primary)
-       .moveTo(50, doc.y)
-       .lineTo(550, doc.y)
-       .stroke()
        .moveDown(0.5);
   };
   
-  // Key Findings Summary
-  drawSectionHeader('Key Findings Summary');
+  // Simplified key findings - optimized summary generator
+  addHeader('KEY FINDINGS');
   
-  // Use the executive summary if available, otherwise generate one
-  const executiveSummary = deepResearchResults.companyAnalysis.executiveSummary || 
-    `The comprehensive multi-agent analysis of ${application.businessName} indicates a ${
-      grade.startsWith('A') ? 'solid business with strong fundamentals' : 
-      grade.startsWith('B') ? 'generally sound business with some concerns' : 
-      'business with significant risk factors that warrant careful consideration'
-    }. The deep research uncovered ${
-      deepResearchResults.companyAnalysis.legalIssues.length > 0 ? 
-        `${deepResearchResults.companyAnalysis.legalIssues.length} legal concerns` : 
-        'no significant legal issues'
-    } and ${
-      deepResearchResults.companyAnalysis.financialRedFlags.length > 0 ? 
-        `${deepResearchResults.companyAnalysis.financialRedFlags.length} financial red flags` : 
-        'no major financial red flags'
-    }. The business owner assessment revealed ${
-      deepResearchResults.ownerAnalysis.legalIssues.length > 0 ? 
-        `${deepResearchResults.ownerAnalysis.legalIssues.length} legal concerns` : 
-        'a clean legal background'
-    } and ${
-      deepResearchResults.ownerAnalysis.financialRedFlags.length > 0 ? 
-        `${deepResearchResults.ownerAnalysis.financialRedFlags.length} financial concerns` : 
-        'a stable financial history'
-    }.`;
-  
-  // Format text as paragraphs
-  const formattedSummary = executiveSummary.replace(/([.!?])\s+/g, "$1\n\n").replace(/\n{3,}/g, "\n\n");
+  // Ultra-simplified executive summary
+  const summary = `${application.businessName} received a grade of ${grade} based on our analysis. ` +
+    `${grade.startsWith('A') ? 'The business shows strong fundamentals.' : 
+      grade.startsWith('B') ? 'The business shows adequate performance with some concerns.' : 
+      'The business has significant risk factors.'} ` +
+    `Our research found ${deepResearchResults.companyAnalysis.highRiskFactors.length || 0} high-risk and ` +
+    `${deepResearchResults.companyAnalysis.mitigatingFactors.length || 0} mitigating factors.`;
   
   doc.fontSize(12)
      .fillColor(colors.dark)
      .font('Helvetica')
-     .text(formattedSummary, 50, doc.y, { width: 500, align: 'justify' })
-     .moveDown(1);
+     .text(summary, 50, doc.y, { width: doc.page.width - 100 })
+     .moveDown(1.5);
   
-  // Risk Factors
-  drawSectionHeader('Primary Risk Factors: Specific Findings');
+  // Simplified risk factors section (only top 3)
+  addHeader('TOP RISK FACTORS');
   
-  // Combine all risk factors from company and owner
+  // Get top 3 risk factors only
   const riskFactors = [
-    ...(deepResearchResults.companyAnalysis.legalIssues || []),
-    ...(deepResearchResults.companyAnalysis.financialRedFlags || []),
-    ...(deepResearchResults.ownerAnalysis.legalIssues || []),
-    ...(deepResearchResults.ownerAnalysis.financialRedFlags || [])
-  ];
+    ...(deepResearchResults.companyAnalysis.highRiskFactors || []),
+    ...(deepResearchResults.ownerAnalysis.highRiskFactors || [])
+  ].slice(0, 3);
   
   if (riskFactors.length > 0) {
-    doc.fontSize(12)
-       .fillColor(colors.dark)
-       .font('Helvetica')
-       .text("Our multi-agent deep research system identified the following specific concerns:", 50, doc.y)
-       .moveDown(0.7);
-       
-    riskFactors.slice(0, 5).forEach((factor, i) => {
+    riskFactors.forEach(factor => {
       doc.fontSize(12)
          .fillColor(colors.danger)
          .font('Helvetica-Bold')
-         .text(`• `, 50, doc.y, { continued: true })
+         .text('• ', 50, doc.y, { continued: true })
          .fillColor(colors.dark)
          .font('Helvetica')
-         .text(factor)
-         .moveDown(0.4);
-      
-      // Add detailed explanation for each risk factor if available
-      // This simulates what would happen if the factors included more detail
-      if (factor.length > 20 && i < 2) {
-        const details = deepResearchResults.riskAssessment?.highRiskFactors[i] || 
-                       deepResearchResults.companyAnalysis.detailedFindings?.risks?.[i] ||
-                       "Our researchers found this issue in public records and financial databases.";
-                       
-        doc.fontSize(11)
-           .fillColor(colors.secondary)
-           .font('Helvetica-Italic')
-           .text(`   Details: ${details}`, 70, doc.y, { width: 450 })
-           .moveDown(0.6);
-      }
+         .text(factor, { width: doc.page.width - 100 })
+         .moveDown(0.5);
     });
   } else {
     doc.fontSize(12)
-       .fillColor(colors.success)
-       .font('Helvetica-Italic')
-       .text('Our detailed research found no significant risk factors.', 50, doc.y)
-       .moveDown(0.5);
+       .fillColor(colors.dark)
+       .text('No significant risk factors identified.', 50, doc.y)
+       .moveDown(1);
   }
   
-  // Strengths
-  if (doc.y < 600) { // Only add if there's space on the page
-    drawSectionHeader('Key Strengths: Specific Findings');
-    
-    // Collect potential strengths from reputation insights
-    const strengths = [
-      ...(deepResearchResults.companyAnalysis.reputationInsights || []),
-      ...(deepResearchResults.companyAnalysis.industryPosition || []),
-      ...(deepResearchResults.ownerAnalysis.reputationInsights || []),
-      ...(deepResearchResults.ownerAnalysis.managementCapabilities || [])
-    ].filter(item => 
-      !item.toLowerCase().includes('concern') && 
-      !item.toLowerCase().includes('issue') &&
-      !item.toLowerCase().includes('negative') &&
-      !item.toLowerCase().includes('risk')
-    );
-    
-    if (strengths.length > 0) {
+  // Simplified strengths section (only top 3)
+  addHeader('TOP STRENGTHS');
+  
+  // Get top 3 mitigating factors only
+  const strengths = [
+    ...(deepResearchResults.companyAnalysis.mitigatingFactors || []),
+    ...(deepResearchResults.ownerAnalysis.mitigatingFactors || [])
+  ].slice(0, 3);
+  
+  if (strengths.length > 0) {
+    strengths.forEach(strength => {
       doc.fontSize(12)
+         .fillColor(colors.success)
+         .font('Helvetica-Bold')
+         .text('• ', 50, doc.y, { continued: true })
          .fillColor(colors.dark)
          .font('Helvetica')
-         .text("Our multi-agent deep research identified these specific positive attributes:", 50, doc.y)
-         .moveDown(0.7);
-      
-      strengths.slice(0, 3).forEach((strength, i) => {
-        doc.fontSize(12)
-           .fillColor(colors.success)
-           .font('Helvetica-Bold')
-           .text(`• `, 50, doc.y, { continued: true })
-           .fillColor(colors.dark)
-           .font('Helvetica')
-           .text(strength)
-           .moveDown(0.4);
-           
-        // Add source information to show where the strength was identified
-        if (i < 2) {
-          const sources = [
-            "Industry publication mentions", 
-            "Public financial data analysis",
-            "Customer reviews and ratings",
-            "Market position assessment",
-            "Business credit bureau data"
-          ];
-          
-          doc.fontSize(11)
-             .fillColor(colors.secondary)
-             .font('Helvetica-Italic')
-             .text(`   Source: ${sources[i % sources.length]}`, 70, doc.y, { width: 450 })
-             .moveDown(0.6);
-        }
-      });
-    } else {
-      doc.fontSize(12)
-         .fillColor(colors.primary)
-         .font('Helvetica-Italic')
-         .text('Our research identified limited key strengths.', 50, doc.y)
+         .text(strength, { width: doc.page.width - 100 })
          .moveDown(0.5);
-    }
+    });
+  } else {
+    doc.fontSize(12)
+       .fillColor(colors.dark)
+       .text('Limited strength factors identified.', 50, doc.y)
+       .moveDown(1);
   }
   
-  // Add page number
+  // Simplified page number
   doc.fontSize(10)
-     .fillColor(colors.secondary)
-     .text('Executive Summary - Page 1', 50, 740, { width: 500, align: 'center' });
+     .fillColor(colors.dark)
+     .text('Page 2', 0, doc.page.height - 50, { align: 'center' });
 }
 
 /**
