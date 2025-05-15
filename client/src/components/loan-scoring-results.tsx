@@ -298,8 +298,9 @@ export default function LoanScoringResults({
         // Continue anyway - the PDF will still be generated
       }
       
-      // Create a direct download link to the enhanced PDF endpoint
+      // Create a direct download link to the enhanced PDF endpoint with appropriate URL pattern
       const downloadUrl = `/api/loan-applications/${application.id}/enhanced-pdf`;
+      console.log("Download URL:", downloadUrl); // Debug the URL
       const filename = `${application.businessName.replace(/\s+/g, '_')}_Enhanced_Assessment.pdf`;
       
       // Send a message to the user to let them know the process has started
