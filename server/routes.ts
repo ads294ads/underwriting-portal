@@ -774,17 +774,17 @@ Please provide a general assessment based on the document name and business deta
   
   // Generate enhanced multi-agent PDF report with real-time progress updates and optimizations
   app.get("/api/loan-applications/:id/enhanced-pdf", async (req, res) => {
-    // Set a shorter timeout to prevent hanging requests - now only 30 seconds
+    // Set a much shorter timeout to prevent hanging requests - now only 22 seconds
     const requestTimeout = setTimeout(() => {
-      console.error("PDF generation timeout after 30 seconds");
+      console.error("PDF generation timeout after 22 seconds");
       if (!res.headersSent) {
         res.status(504).json({ 
-          message: "PDF generation timed out (30 seconds). Please try again.", 
+          message: "PDF generation timed out (22 seconds). Please try again.", 
           error: "timeout",
           errorCode: "PDF_TIMEOUT"
         });
       }
-    }, 30000); // 30 second timeout (further reduced from 45 seconds)
+    }, 22000); // 22 second timeout (further reduced from 30 seconds)
     
     try {
       const id = parseInt(req.params.id);
@@ -948,9 +948,9 @@ Please provide a general assessment based on the document name and business deta
             }
           });
           
-          // Time limit on the research - now reduced to 20 seconds
+          // Time limit on the research - significantly reduced to 12 seconds
           const timeoutPromise = new Promise<null>((_, reject) => {
-            setTimeout(() => reject(new Error("Deep research timed out")), 20000); // 20 second limit (reduced from 30)
+            setTimeout(() => reject(new Error("Deep research timed out")), 12000); // 12 second limit (reduced from 20)
           });
           
           // Race the research against the timeout
@@ -1241,9 +1241,9 @@ Please provide a general assessment based on the document name and business deta
           }
         });
         
-        // Set a specific timeout just for the PDF generation process - 25 seconds max
+        // Set a specific timeout just for the PDF generation process - 15 seconds max
         const pdfTimeout = new Promise<never>((_, reject) => {
-          setTimeout(() => reject(new Error("PDF generation timed out")), 25000);
+          setTimeout(() => reject(new Error("PDF generation timed out")), 15000); // 15 second limit (reduced from 25)
         });
         
         // Final progress update before sending PDF
