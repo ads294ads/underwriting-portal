@@ -724,8 +724,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Store document analysis results
       const documentAnalysisResults: DocumentAnalysisResult[] = [];
       
-      // Process each file with detailed financial analysis (using for...of to allow await)
-      for (const file of files) {
+      // OPTIMIZATION: Process files in parallel with Promise.all and timeout
+      const DOCUMENT_PROCESS_TIMEOUT = 30000; // 30 seconds total for all documents
+      const startTime = Date.now();
+      
+      // Define function to process a single file with timeout
+      const processFile = async (file: Express.Multer.File): Promise<DocumentAnalysisResult | null> => {
         try {
           console.log(`Processing file: ${file.originalname}`);
           
@@ -738,53 +742,99 @@ export async function registerRoutes(app: Express): Promise<Server> {
             console.log(`Encrypted file ${file.originalname} (${file.buffer.length} bytes -> ${encryptedBuffer.length} bytes)`);
             
             try {
-              // Extract text from the file (using new proper PDF parsing)
-              console.log(`Starting text extraction from ${file.originalname}`);
+              // OPTIMIZATION: Simple extraction with a size limit
+              console.log(`Starting optimized text extraction from ${file.originalname}`);
               fileContent = await extractTextContentFromFile(file);
-              console.log(`Text extraction complete: ${fileContent.length} characters`);
+              
+              // OPTIMIZATION: Truncate large content to 4000 chars
+              if (fileContent.length > 4000) {
+                console.log(`Truncating content from ${fileContent.length} to 4000 chars for faster processing`);
+                fileContent = fileContent.substring(0, 4000) + "... [content truncated for faster processing]";
+              }
               
               // Check if we got enough meaningful content
               if (fileContent.length < 200 || fileContent.split(' ').length < 30) {
-                console.log(`File ${file.originalname} content appears to be binary or too short - using enhanced context analysis`);
-                
                 // Determine document type for better context
                 const documentType = determineDocumentTypeFromFilename(file.originalname);
                 
-                // Generate context-based content for analysis
-                fileContent = generateContextBasedContent(file.originalname, documentType, application);
-                console.log(`Generated context-based analysis prompt (${fileContent.length} chars)`);
-              } else {
-                console.log(`Successfully extracted content for analysis from ${file.originalname} (${fileContent.length} chars)`);
+                // Generate minimized context-based content
+                fileContent = `Document Analysis: ${file.originalname}
+Business: ${application.businessName}, Industry: ${application.industry}
+Years: ${application.yearsInBusiness}, Revenue: $${application.annualRevenue}
+Loan: $${application.loanAmount}`;
               }
             } catch (extractError) {
               console.error(`Error extracting text from ${file.originalname}:`, extractError);
               
-              // Fallback to basic context information with business details
-              fileContent = `Document Analysis Request for: ${file.originalname}
-Business Name: ${application.businessName}
-Industry: ${application.industry}
-Years in Business: ${application.yearsInBusiness}
-Annual Revenue: $${application.annualRevenue}
-Loan Amount Requested: $${application.loanAmount}
-Credit Information: ${(application as any).creditScore || 'Not provided'}
-Business Details: ${(application as any).businessType || 'Not specified'}
-
-This document appears to be in a format that could not be automatically analyzed. 
-Please provide a general assessment based on the document name and business details above.`;
+              // Minimized fallback content
+              fileContent = `Document: ${file.originalname} for ${application.businessName} (${application.industry})`;
             }
           } else {
             console.warn(`File ${file.originalname} has no buffer content`);
             fileContent = `Empty document: ${file.originalname}`;
           }
           
-          // Analyze document using our enhanced document analyzer
-          console.log(`Analyzing document content for ${file.originalname}`);
-          const analysisResult = await analyzeDocument(fileContent, file.originalname, application);
-          documentAnalysisResults.push(analysisResult);
-          console.log(`Document ${file.originalname} analyzed successfully`);
+          // OPTIMIZATION: Add timeout for document analysis
+          const analysisTimeout = 8000; // 8 seconds per document max
+          const analysisPromise = analyzeDocument(fileContent, file.originalname, application);
+          const timeoutPromise = new Promise<DocumentAnalysisResult>((_, reject) => {
+            setTimeout(() => reject(new Error("Document analysis timed out")), analysisTimeout);
+          });
+          
+          // Race the analysis operation against the timeout
+          const analysisResult = await Promise.race([analysisPromise, timeoutPromise])
+            .catch(error => {
+              console.warn(`Analysis timeout or error for ${file.originalname}: ${error.message}`);
+              
+              // Return basic analysis result if timeout occurs
+              return {
+                documentType: determineDocumentTypeFromFilename(file.originalname),
+                fileName: file.originalname,
+                keyFindings: ["Limited analysis due to processing constraints"],
+                financialMetrics: {},
+                underwritingEvaluation: {
+                  strengths: [],
+                  weaknesses: [],
+                  risks: ["Limited analysis performed due to time constraints"],
+                  mitigatingFactors: []
+                },
+                overallAssessment: `Document ${file.originalname} for ${application.businessName} was processed with limited analysis.`,
+                impactOnScore: 5 // Neutral impact
+              } as DocumentAnalysisResult;
+            });
+          
+          console.log(`Document ${file.originalname} analyzed`);
+          return analysisResult;
         } catch (error) {
-          console.error(`Error analyzing document ${file.originalname}:`, error);
+          console.error(`Error processing document ${file.originalname}:`, error);
+          return null;
         }
+      };
+      
+      // Create a master timeout for all documents
+      const masterTimeoutPromise = new Promise<void>((_, reject) => {
+        setTimeout(() => reject(new Error("Document analysis master timeout")), DOCUMENT_PROCESS_TIMEOUT);
+      });
+      
+      // Process all files in parallel with Promise.all and master timeout
+      try {
+        const processingPromises = files.map(file => processFile(file));
+        const results = await Promise.race([
+          Promise.all(processingPromises),
+          masterTimeoutPromise.then(() => {
+            console.warn("Master timeout reached for document processing");
+            throw new Error("Document processing took too long");
+          })
+        ]).catch(error => {
+          console.warn(`Document processing limited due to time constraints: ${error.message}`);
+          return [] as (DocumentAnalysisResult | null)[];
+        });
+        
+        // Filter out null results
+        documentAnalysisResults.push(...results.filter(Boolean) as DocumentAnalysisResult[]);
+        console.log(`Processed ${documentAnalysisResults.length} documents in ${Date.now() - startTime}ms`);
+      } catch (processError) {
+        console.error("Error in parallel document processing:", processError);
       }
       
       // Extract key findings for simple document analysis display
