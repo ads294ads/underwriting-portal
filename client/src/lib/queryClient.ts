@@ -79,16 +79,31 @@ export class WebSocketManager {
           resolve(socket);
         };
         
-        socket.onclose = () => {
-          console.log("WebSocket connection closed");
+        socket.onclose = (event) => {
+          console.log("WebSocket connection closed", event.code, event.reason);
           this.socket = null;
+          this.connectionPromise = null;
+          
+          // Attempt to reconnect after a short delay if not closed cleanly
+          if (!event.wasClean) {
+            console.log("Connection closed unexpectedly, will try to reconnect in 3 seconds...");
+            setTimeout(() => {
+              console.log("Attempting WebSocket reconnection...");
+              this.getConnection().catch(err => {
+                console.error("Reconnection attempt failed:", err);
+              });
+            }, 3000);
+          }
         };
         
         socket.onerror = (error) => {
           console.error("WebSocket error:", error);
           this.socket = null;
           this.connectionPromise = null;
-          reject(error);
+          
+          // Don't reject the promise as it can cause unhandled rejections
+          // Instead, resolve with null to indicate error but prevent crashes
+          resolve(null as any);
         };
         
         socket.onmessage = (event) => {
