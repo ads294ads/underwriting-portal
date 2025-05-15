@@ -163,23 +163,31 @@ interface CoordinatedResearchResult {
  * @param application The loan application to research
  */
 export async function performMultiAgentResearch(application: LoanApplication): Promise<CoordinatedResearchResult> {
-  console.log(`Starting multi-agent research for ${application.businessName}`);
+  console.log(`Starting optimized multi-agent research for ${application.businessName}`);
   
-  // Step 1: Dispatch specialized agents to research the company
-  const companyResearchPromises = researchAgents.map(agent => 
+  // OPTIMIZATION: Reduce the number of agents to only 2 specialists instead of all 5
+  // This significantly reduces API calls while still getting quality research
+  const essentialAgents = [
+    researchAgents[0], // BusinessAnalyst - covers business operations
+    researchAgents[2]  // FinancialAuditor - covers financial risks
+  ];
+  
+  // Step 1: Dispatch only essential agents to research the company (2 instead of 5)
+  const companyResearchPromises = essentialAgents.map(agent => 
     agentResearchCompany(agent, application)
   );
   
-  // Step 2: Dispatch specialized agents to research the primary owner
-  // For simplicity, we'll research the first owner with >= 20% ownership
+  // Step 2: Only research owner if they own a significant portion (>=25% instead of 20%)
   // First check for ownershipPercentage, then fall back to ownership property
   const primaryOwner = application.businessOwners?.find(owner => 
-    (owner.ownershipPercentage !== undefined && owner.ownershipPercentage >= 20) || 
-    (owner.ownership !== undefined && owner.ownership >= 20)
+    (owner.ownershipPercentage !== undefined && owner.ownershipPercentage >= 25) || 
+    (owner.ownership !== undefined && owner.ownership >= 25)
   );
   
+  // OPTIMIZATION: Only use the BusinessAnalyst agent for owner research
+  // This cuts more API calls while still getting essential owner background
   const ownerResearchPromises = primaryOwner ? 
-    researchAgents.map(agent => agentResearchPerson(agent, application, primaryOwner.name)) :
+    [agentResearchPerson(essentialAgents[0], application, primaryOwner.name)] :
     [];
   
   // Step 3: Wait for all research to complete
@@ -668,9 +676,10 @@ async function callPerplexityAPI(
       body: JSON.stringify({
         model: "llama-3.1-sonar-small-128k-online",
         messages,
-        temperature: 0.2,
-        max_tokens: 2048,
-        frequency_penalty: 1.0,
+        temperature: 0.1, // Reduced temperature for faster, more deterministic responses
+        max_tokens: 750, // Reduced max tokens by 63% for much faster responses
+        top_p: 0.9,
+        frequency_penalty: 0.0,
         presence_penalty: 0.0
       })
     });

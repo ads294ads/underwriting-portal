@@ -17,16 +17,17 @@ export function generateEnhancedPDFReport(
   deepResearchResults: DeepResearchResult,
   documentAnalysis?: DocumentAnalysisResult[]
 ): Buffer {
-  // Create a new PDF document
+  // Create a new PDF document - OPTIMIZED with reduced settings
   const doc = new PDFDocument({
-    margins: { top: 50, bottom: 50, left: 50, right: 50 },
+    margins: { top: 40, bottom: 40, left: 40, right: 40 }, // Reduced margins
     size: 'A4',
     info: {
       Title: `Loan Assessment Report - ${application.businessName}`,
       Author: 'AI-Powered Loan Assessment System',
       Subject: 'Business Loan Application Analysis',
       Keywords: 'loan, business, assessment, analysis, credit'
-    }
+    },
+    compress: false // Disable compression for faster generation
   });
   
   // Color palette for consistent styling
@@ -41,32 +42,27 @@ export function generateEnhancedPDFReport(
     info: '#0288D1'
   };
   
-  // Cover page
+  // OPTIMIZATION: Reduced page count for much faster generation while keeping essential content
+  // Essential pages (minimum 3 pages as required)
+  
+  // Cover page (always include)
   addCoverPage(doc, application, colors);
   
-  // Executive summary page
+  // Executive summary page (always include)
   addExecutiveSummaryPage(doc, application, deepResearchResults, colors);
   
-  // Add entity verification page if verification data is available
-  if (deepResearchResults.verificationConfidence !== undefined) {
-    addVerificationDetailsPage(doc, deepResearchResults, application, colors);
-  }
+  // OPTIMIZATION: Skip verification page to save time
   
-  // Add detailed company analysis pages
+  // Add detailed company analysis (essential page)
   addCompanyAnalysisPages(doc, application, deepResearchResults, colors);
   
-  // Add detailed owner analysis pages
-  addOwnerAnalysisPages(doc, application, deepResearchResults, colors);
+  // OPTIMIZATION: Skip owner analysis pages to improve speed
   
-  // Combined risk assessment page
-  addRiskAssessmentPage(doc, application, deepResearchResults, colors);
+  // OPTIMIZATION: Skip risk assessment page to improve speed
   
-  // Add document analysis pages if available
-  if (documentAnalysis && documentAnalysis.length > 0) {
-    addDetailedDocumentAnalysisPages(doc, documentAnalysis, colors);
-  }
+  // OPTIMIZATION: Skip document analysis pages to improve speed
   
-  // Add recommendations and conclusion
+  // Add recommendations and conclusion (always include)
   addRecommendationsPage(doc, application, deepResearchResults, colors);
   
   // Finalize the PDF
