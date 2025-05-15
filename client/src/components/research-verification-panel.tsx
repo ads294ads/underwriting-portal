@@ -174,6 +174,45 @@ export const ResearchVerificationPanel: React.FC<ResearchVerificationPanelProps>
                 </div>
               </div>
               
+              {/* Legal Findings Section - New! */}
+              <div className="bg-red-50 p-4 rounded-lg border border-red-200">
+                <h3 className="text-lg font-semibold mb-2 text-red-800">Legal Findings</h3>
+                
+                {/* Company Legal Issues */}
+                {companyAnalysis.legalIssues && companyAnalysis.legalIssues.length > 0 ? (
+                  <div className="mb-3">
+                    <h4 className="text-sm font-medium text-red-700 mb-1">Company Legal Issues</h4>
+                    <ul className="text-sm text-red-800 space-y-1 ml-4 list-disc">
+                      {companyAnalysis.legalIssues.map((issue, i) => (
+                        <li key={i}>{issue}</li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : (
+                  <div className="mb-3">
+                    <h4 className="text-sm font-medium text-green-700 mb-1">Company Legal Issues</h4>
+                    <p className="text-sm text-green-800">No legal issues found for the company.</p>
+                  </div>
+                )}
+                
+                {/* Owner Legal Issues */}
+                {ownerAnalysis.legalIssues && ownerAnalysis.legalIssues.length > 0 ? (
+                  <div>
+                    <h4 className="text-sm font-medium text-red-700 mb-1">Owner Legal Issues</h4>
+                    <ul className="text-sm text-red-800 space-y-1 ml-4 list-disc">
+                      {ownerAnalysis.legalIssues.map((issue, i) => (
+                        <li key={i}>{issue}</li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : (
+                  <div>
+                    <h4 className="text-sm font-medium text-green-700 mb-1">Owner Legal Issues</h4>
+                    <p className="text-sm text-green-800">No legal issues found for the owner.</p>
+                  </div>
+                )}
+              </div>
+              
               {/* Specific Notable Events Section - New! */}
               {companyAnalysis.specificEvents && companyAnalysis.specificEvents.length > 0 && (
                 <div>
