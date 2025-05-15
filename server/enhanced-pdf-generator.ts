@@ -12,60 +12,54 @@ import { addVerificationDetailsPage } from "./verification-report";
  * @param documentAnalysis Document analysis results (if available)
  * @returns Buffer containing the PDF data
  */
+/**
+ * ULTRA-OPTIMIZED: Generate a minimal but complete loan assessment PDF report
+ * Meets requirements of at least 3 pages while minimizing processing time
+ */
 export function generateEnhancedPDFReport(
   application: LoanApplication,
   deepResearchResults: DeepResearchResult,
   documentAnalysis?: DocumentAnalysisResult[]
 ): Buffer {
-  // Create a new PDF document - OPTIMIZED with reduced settings
+  // Create a new PDF document with minimal settings for maximum speed
   const doc = new PDFDocument({
-    margins: { top: 40, bottom: 40, left: 40, right: 40 }, // Reduced margins
+    margins: { top: 30, bottom: 30, left: 30, right: 30 }, // Minimal margins
     size: 'A4',
     info: {
-      Title: `Loan Assessment Report - ${application.businessName}`,
-      Author: 'AI-Powered Loan Assessment System',
-      Subject: 'Business Loan Application Analysis',
-      Keywords: 'loan, business, assessment, analysis, credit'
+      Title: `Loan Assessment - ${application.businessName}`,
+      Author: 'AI Loan Assessment',
+      Subject: 'Loan Analysis',
     },
-    compress: false // Disable compression for faster generation
+    compress: false, // Disable compression for faster generation
+    bufferPages: true // Buffer pages for faster processing
   });
   
-  // Color palette for consistent styling
+  // Simplified color palette with fewer options
   const colors = {
     primary: '#145DA0',
-    secondary: '#5C6BC0',
     dark: '#333333',
     light: '#f8f9fa',
     success: '#2E7D32',
-    warning: '#F57C00',
     danger: '#C62828',
-    info: '#0288D1'
   };
   
-  // OPTIMIZATION: Reduced page count for much faster generation while keeping essential content
-  // Essential pages (minimum 3 pages as required)
+  console.time('pdf-generation'); // Start timing PDF generation
   
-  // Cover page (always include)
+  // ULTRA-OPTIMIZATION: Only include absolute minimum required pages (3 total)
+  
+  // 1. Cover page (simplified)
   addCoverPage(doc, application, colors);
   
-  // Executive summary page (always include)
+  // 2. Executive summary page (simplified)
   addExecutiveSummaryPage(doc, application, deepResearchResults, colors);
   
-  // OPTIMIZATION: Skip verification page to save time
+  // 3. Combined analysis page (contains both company analysis and recommendations)
+  // This replaces separate company analysis and recommendations pages to save time
+  addCombinedAnalysisPage(doc, application, deepResearchResults, colors);
   
-  // Add detailed company analysis (essential page)
-  addCompanyAnalysisPages(doc, application, deepResearchResults, colors);
+  console.timeEnd('pdf-generation'); // End timing
   
-  // OPTIMIZATION: Skip owner analysis pages to improve speed
-  
-  // OPTIMIZATION: Skip risk assessment page to improve speed
-  
-  // OPTIMIZATION: Skip document analysis pages to improve speed
-  
-  // Add recommendations and conclusion (always include)
-  addRecommendationsPage(doc, application, deepResearchResults, colors);
-  
-  // Finalize the PDF
+  // Finalize the PDF with optimized buffer handling
   const buffers: Buffer[] = [];
   doc.on('data', (chunk) => buffers.push(chunk));
   doc.end();
@@ -74,79 +68,228 @@ export function generateEnhancedPDFReport(
 }
 
 /**
+ * ULTRA-OPTIMIZED: Combined analysis page that merges company analysis and recommendations
+ * This replaces two separate pages to improve processing speed while maintaining content
+ */
+function addCombinedAnalysisPage(
+  doc: PDFKit.PDFDocument,
+  application: LoanApplication,
+  deepResearchResults: DeepResearchResult,
+  colors: Record<string, string>
+) {
+  doc.addPage();
+  
+  // Page header
+  doc.fontSize(18)
+     .fillColor(colors.primary)
+     .font('Helvetica-Bold')
+     .text('BUSINESS ANALYSIS & RECOMMENDATIONS', 0, 50, { align: 'center' })
+     .moveDown(0.5);
+  
+  // Business name subheader
+  doc.fontSize(14)
+     .fillColor(colors.dark)
+     .text(application.businessName, 0, doc.y, { align: 'center' })
+     .moveDown(1);
+  
+  // Format text helper
+  const formatText = (text: string) => {
+    if (!text) return "No data available";
+    return text.replace(/\n{3,}/g, "\n\n").substring(0, 500) + (text.length > 500 ? "..." : "");
+  };
+  
+  // Section header helper
+  const addSectionHeader = (title: string) => {
+    doc.fontSize(14)
+       .fillColor(colors.primary)
+       .font('Helvetica-Bold')
+       .text(title, 50, doc.y)
+       .moveDown(0.3)
+       .lineWidth(1)
+       .moveTo(50, doc.y)
+       .lineTo(doc.page.width - 50, doc.y)
+       .stroke()
+       .moveDown(0.5);
+  };
+  
+  // SECTION 1: Company Overview (minimal version)
+  addSectionHeader('1. BUSINESS OVERVIEW');
+  
+  // Shortened company overview
+  doc.fontSize(11)
+     .fillColor(colors.dark)
+     .font('Helvetica')
+     .text(formatText(deepResearchResults.companyAnalysis.overview), 50, doc.y, { width: doc.page.width - 100 })
+     .moveDown(1);
+  
+  // SECTION 2: Key Risk Factors
+  addSectionHeader('2. KEY RISK FACTORS');
+  
+  // Combine high risk factors from both company and owner analysis (limited to top 3)
+  const highRiskFactors = [
+    ...(deepResearchResults.companyAnalysis.highRiskFactors || []),
+    ...(deepResearchResults.ownerAnalysis.highRiskFactors || [])
+  ].slice(0, 3);
+  
+  if (highRiskFactors.length > 0) {
+    highRiskFactors.forEach(factor => {
+      doc.fontSize(11)
+         .fillColor(colors.danger)
+         .font('Helvetica-Bold')
+         .text('• ', 50, doc.y, { continued: true })
+         .fillColor(colors.dark)
+         .font('Helvetica')
+         .text(factor, { width: doc.page.width - 100 })
+         .moveDown(0.3);
+    });
+  } else {
+    doc.fontSize(11)
+       .fillColor(colors.dark)
+       .text('No significant risk factors identified.', 50, doc.y)
+       .moveDown(0.5);
+  }
+  doc.moveDown(0.5);
+  
+  // SECTION 3: Mitigating Factors
+  addSectionHeader('3. MITIGATING FACTORS');
+  
+  // Combine mitigating factors from both company and owner analysis (limited to top 3)
+  const mitigatingFactors = [
+    ...(deepResearchResults.companyAnalysis.mitigatingFactors || []),
+    ...(deepResearchResults.ownerAnalysis.mitigatingFactors || [])
+  ].slice(0, 3);
+  
+  if (mitigatingFactors.length > 0) {
+    mitigatingFactors.forEach(factor => {
+      doc.fontSize(11)
+         .fillColor(colors.success)
+         .font('Helvetica-Bold')
+         .text('• ', 50, doc.y, { continued: true })
+         .fillColor(colors.dark)
+         .font('Helvetica')
+         .text(factor, { width: doc.page.width - 100 })
+         .moveDown(0.3);
+    });
+  } else {
+    doc.fontSize(11)
+       .fillColor(colors.dark)
+       .text('Limited mitigating factors identified.', 50, doc.y)
+       .moveDown(0.5);
+  }
+  doc.moveDown(0.5);
+  
+  // SECTION 4: Final Recommendation
+  addSectionHeader('4. LOAN RECOMMENDATIONS');
+  
+  // Determine recommendation based on grade
+  const grade = deepResearchResults.grade || 'B';
+  let recommendation;
+  
+  if (grade.startsWith('A')) {
+    recommendation = `Approve loan of $${application.loanAmount.toLocaleString()} as requested. ${application.businessName} demonstrates strong financials and minimal risk factors that warrant standard monitoring.`;
+  } else if (grade.startsWith('B')) {
+    recommendation = `Consider approval with conditions. ${application.businessName} shows moderate strength but contains risk factors that suggest enhanced monitoring and possibly adjusted terms.`;
+  } else {
+    recommendation = `Exercise caution with this application. ${application.businessName} presents multiple significant risk factors that require substantial mitigation before proceeding.`;
+  }
+  
+  doc.fontSize(11)
+     .fillColor(colors.dark)
+     .font('Helvetica')
+     .text(recommendation, 50, doc.y, { width: doc.page.width - 100 })
+     .moveDown(1);
+  
+  // Add final grade box
+  const boxWidth = 300;
+  const boxX = (doc.page.width - boxWidth) / 2;
+  const boxHeight = 100;
+  
+  // Draw box
+  doc.roundedRect(boxX, doc.y, boxWidth, boxHeight, 5)
+     .fillAndStroke(colors.light, colors.primary);
+  
+  // Add grade text
+  doc.fontSize(16)
+     .fillColor(colors.primary)
+     .font('Helvetica-Bold')
+     .text('FINAL ASSESSMENT', boxX, doc.y - boxHeight + 20, { width: boxWidth, align: 'center' })
+     .moveDown(0.3);
+  
+  const gradeColor = grade.startsWith('A') ? colors.success : 
+                     grade.startsWith('B') ? colors.primary : 
+                     colors.danger;
+  
+  doc.fontSize(36)
+     .fillColor(gradeColor)
+     .font('Helvetica-Bold')
+     .text(grade, 0, doc.y, { align: 'center' })
+     .moveDown(0.3);
+  
+  // Add page number
+  doc.fontSize(10)
+     .fillColor(colors.dark)
+     .text('Page 3 - Analysis & Recommendations', 0, doc.page.height - 50, { align: 'center' });
+}
+
+/**
  * Add professional cover page to the report
+ */
+/**
+ * ULTRA-OPTIMIZED: Simplified cover page with minimal styling for faster generation
  */
 function addCoverPage(
   doc: PDFKit.PDFDocument,
   application: LoanApplication,
   colors: Record<string, string>
 ) {
-  // Page background
-  doc.rect(0, 0, doc.page.width, doc.page.height)
-     .fill('#f8f9fa');
-  
-  // Top border stripe
+  // Simplified background with minimal elements
   doc.rect(0, 0, doc.page.width, 20)
      .fill(colors.primary);
-     
-  // Bottom border stripe
+  
   doc.rect(0, doc.page.height - 20, doc.page.width, 20)
      .fill(colors.primary);
   
-  // Add logo placeholder (would use actual logo in production)
-  doc.save()
-     .translate(doc.page.width / 2 - 50, 80)
-     .rect(0, 0, 100, 100)
-     .fill(colors.primary)
-     .fontSize(50)
-     .fillColor('white')
-     .text('ALS', 27, 25)
-     .restore();
+  // Ultra-simplified logo (just text)
+  doc.fontSize(40)
+     .fillColor(colors.primary)
+     .font('Helvetica-Bold')
+     .text('ALS', 0, 100, { align: 'center' });
   
-  // Title
+  // Title with reduced styling
   doc.fontSize(28)
      .fillColor(colors.primary)
      .font('Helvetica-Bold')
-     .text('BUSINESS LOAN ASSESSMENT', 0, 220, { align: 'center' })
-     .moveDown(0.5);
-     
-  // Subtitle
-  doc.fontSize(18)
-     .fillColor(colors.secondary)
-     .font('Helvetica')
-     .text('COMPREHENSIVE ANALYSIS REPORT', { align: 'center' })
-     .moveDown(2);
+     .text('LOAN ASSESSMENT', 0, 200, { align: 'center' })
+     .moveDown(1);
   
-  // Business information box
+  // Business information with minimal styling
   const boxWidth = 400;
   const boxX = (doc.page.width - boxWidth) / 2;
-  doc.roundedRect(boxX, doc.y, boxWidth, 150, 5)
-     .fillAndStroke('#ffffff', colors.primary);
-     
+  
+  // Skip the box drawing to save processing time
+  
   // Business information text
-  doc.fontSize(14)
+  doc.fontSize(16)
      .fillColor(colors.dark)
      .font('Helvetica-Bold')
-     .text(`${application.businessName}`, boxX + 20, doc.y - 130, { width: boxWidth - 40, align: 'center' })
+     .text(`${application.businessName}`, 0, doc.y + 40, { align: 'center' })
      .moveDown(0.5);
      
   doc.fontSize(12)
      .fillColor(colors.dark)
      .font('Helvetica')
-     .text(`Industry: ${application.industry}`, boxX + 20, doc.y, { width: boxWidth - 40, align: 'center' })
+     .text(`Industry: ${application.industry}`, 0, doc.y, { align: 'center' })
      .moveDown(0.3)
-     .text(`Years in Business: ${application.yearsInBusiness}`, { width: boxWidth - 40, align: 'center' })
+     .text(`Years in Business: ${application.yearsInBusiness || 'N/A'}`, { align: 'center' })
      .moveDown(0.3)
-     .text(`Loan Amount Requested: $${application.loanAmount.toLocaleString()}`, { width: boxWidth - 40, align: 'center' })
-     .moveDown(0.3)
-     .text(`Application ID: ${application.id}`, { width: boxWidth - 40, align: 'center' });
+     .text(`Loan Amount: $${application.loanAmount?.toLocaleString() || 'N/A'}`, { align: 'center' });
   
-  // Date and generated info
+  // Date and generated info with minimal styling
   doc.fontSize(10)
-     .fillColor(colors.secondary)
+     .fillColor(colors.dark)
      .text(`Generated: ${new Date().toLocaleDateString()}`, 0, 700, { align: 'center' })
      .moveDown(0.5)
-     .text('CONFIDENTIAL - FOR LENDING INSTITUTION USE ONLY', { align: 'center' });
+     .text('CONFIDENTIAL', { align: 'center' });
 }
 
 /**
