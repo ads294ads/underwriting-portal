@@ -370,6 +370,74 @@ export const ResearchVerificationPanel: React.FC<ResearchVerificationPanelProps>
                       <p className="mt-1 text-gray-700">{companyAnalysis.executiveSummary}</p>
                     </div>
                   )}
+                  
+                  {/* Financial Metrics Section - Enhanced */}
+                  {companyAnalysis.financialMetrics && companyAnalysis.financialMetrics.length > 0 && (
+                    <div className="bg-blue-50 p-4 rounded-md border border-blue-100">
+                      <h4 className="text-md font-medium text-blue-800">Financial Metrics</h4>
+                      <div className="mt-2 overflow-x-auto">
+                        <table className="min-w-full text-sm">
+                          <thead className="bg-blue-100">
+                            <tr>
+                              <th className="px-4 py-2 text-left text-blue-800 font-medium">Metric</th>
+                              <th className="px-4 py-2 text-left text-blue-800 font-medium">Value</th>
+                              <th className="px-4 py-2 text-left text-blue-800 font-medium">Industry Avg</th>
+                              <th className="px-4 py-2 text-left text-blue-800 font-medium">Trend</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {companyAnalysis.financialMetrics.map((metric, i) => (
+                              <tr key={i} className={i % 2 === 0 ? 'bg-blue-50' : 'bg-white'}>
+                                <td className="px-4 py-2 font-medium">{metric.metric}</td>
+                                <td className="px-4 py-2">{metric.value}</td>
+                                <td className="px-4 py-2">{metric.industryAverage}</td>
+                                <td className="px-4 py-2">
+                                  <span className={`px-2 py-1 rounded text-xs font-medium
+                                    ${metric.trend.toLowerCase().includes('improv') || 
+                                      metric.trend.toLowerCase().includes('increas') || 
+                                      metric.trend.toLowerCase().includes('posit') ? 
+                                        'bg-green-100 text-green-800' : 
+                                      metric.trend.toLowerCase().includes('declin') || 
+                                      metric.trend.toLowerCase().includes('decreas') || 
+                                      metric.trend.toLowerCase().includes('negat') ? 
+                                        'bg-red-100 text-red-800' : 
+                                        'bg-gray-100 text-gray-800'
+                                    }`}>
+                                    {metric.trend}
+                                  </span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Significant Business Events - Enhanced */}
+                  {companyAnalysis.specificEvents && companyAnalysis.specificEvents.length > 0 && (
+                    <div className="bg-amber-50 p-4 rounded-md border border-amber-100">
+                      <h4 className="text-md font-medium text-amber-800">Significant Business Events</h4>
+                      <div className="mt-2 space-y-3">
+                        {companyAnalysis.specificEvents.map((event, i) => (
+                          <div key={i} className="border-l-4 border-amber-400 pl-3 py-1">
+                            <div className="flex justify-between items-center">
+                              <p className="font-medium text-amber-900">{event.event}</p>
+                              <span className="text-xs bg-amber-200 text-amber-800 px-2 py-1 rounded-full">
+                                {event.date}
+                              </span>
+                            </div>
+                            <p className="text-sm text-amber-700 mt-1">
+                              <span className="font-medium">Impact:</span> {event.impact}
+                            </p>
+                            <p className="text-xs text-amber-600 mt-1">
+                              <span className="font-medium">Source:</span> {event.source}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 
                   {/* Industry Position */}
                   {companyAnalysis.industryPosition && companyAnalysis.industryPosition.length > 0 && (
@@ -527,6 +595,78 @@ export const ResearchVerificationPanel: React.FC<ResearchVerificationPanelProps>
                     <div>
                       <h4 className="text-md font-medium text-gray-800">Executive Summary</h4>
                       <p className="mt-1 text-gray-700">{ownerAnalysis.executiveSummary}</p>
+                    </div>
+                  )}
+                  
+                  {/* Owner Business History - Enhanced */}
+                  {ownerAnalysis.priorBusinessHistory && ownerAnalysis.priorBusinessHistory.length > 0 && (
+                    <div className="bg-purple-50 p-4 rounded-md border border-purple-100">
+                      <h4 className="text-md font-medium text-purple-800">Prior Business Experience</h4>
+                      <div className="mt-2">
+                        {ownerAnalysis.priorBusinessHistory.map((history, i) => (
+                          <div key={i} className="mb-3 border-b border-purple-100 pb-3 last:border-0 last:pb-0">
+                            <div className="flex justify-between items-center">
+                              <h5 className="font-medium text-purple-900">{history.companyName}</h5>
+                              <span className="text-xs bg-purple-200 text-purple-800 px-2 py-1 rounded">
+                                {history.years}
+                              </span>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2 mt-2">
+                              <div>
+                                <p className="text-xs text-purple-800 font-medium">Role</p>
+                                <p className="text-sm">{history.role}</p>
+                              </div>
+                              <div>
+                                <p className="text-xs text-purple-800 font-medium">Outcome</p>
+                                <p className="text-sm">{history.outcome}</p>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Management Capabilities - Enhanced */}
+                  {ownerAnalysis.managementCapabilities && ownerAnalysis.managementCapabilities.length > 0 && (
+                    <div className="bg-green-50 p-4 rounded-md border border-green-100">
+                      <h4 className="text-md font-medium text-green-800">Management Capabilities</h4>
+                      <div className="mt-2">
+                        <ul className="list-disc pl-5 space-y-1">
+                          {ownerAnalysis.managementCapabilities.map((capability, i) => (
+                            <li key={i} className="text-green-800">{capability}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Legal Issues & Financial Red Flags - Enhanced */}
+                  {(ownerAnalysis.legalIssues.length > 0 || ownerAnalysis.financialRedFlags.length > 0) && (
+                    <div className="bg-red-50 p-4 rounded-md border border-red-100">
+                      <h4 className="text-md font-medium text-red-800">Risk Factors</h4>
+                      
+                      {ownerAnalysis.legalIssues.length > 0 && (
+                        <div className="mt-2">
+                          <h5 className="text-sm font-medium text-red-700">Legal Issues</h5>
+                          <ul className="list-disc pl-5 space-y-1 mt-1">
+                            {ownerAnalysis.legalIssues.map((issue, i) => (
+                              <li key={i} className="text-red-700">{issue}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      
+                      {ownerAnalysis.financialRedFlags.length > 0 && (
+                        <div className="mt-3">
+                          <h5 className="text-sm font-medium text-red-700">Financial Red Flags</h5>
+                          <ul className="list-disc pl-5 space-y-1 mt-1">
+                            {ownerAnalysis.financialRedFlags.map((flag, i) => (
+                              <li key={i} className="text-red-700">{flag}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
                     </div>
                   )}
                 

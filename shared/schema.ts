@@ -101,10 +101,14 @@ export type LoanApplication = {
   email: string;
   businessOwners?: Owner[] | null;
   owners?: Owner[]; // Alias for businessOwners for compatibility
+  businessStructure?: string; // Added for PDF report
+  loanPurpose?: string; // Added for PDF report
+  existingDebt?: string | number; // Added for PDF report
+  numberOfEmployees?: string | number; // Added for PDF report
   city?: string;
   state?: string;
   fileUploaded?: boolean | null;
-  score?: string;
+  score?: string | number;
   grade?: string;
   scoringDetails?: Record<string, number>;
   documentAnalysis?: string[];
@@ -114,6 +118,13 @@ export type LoanApplication = {
   companyAnalysis?: CompanyAnalysis; // Company analysis from deep research
   ownerAnalysis?: OwnerAnalysis; // Owner analysis from deep research
   metadata?: string; // OPTIMIZATION: Added for storing deep research results and other large data
+  
+  // Scoring component fields with standardized values
+  creditScore?: string | number;
+  cashFlow?: string | number;
+  collateral?: string | number;
+  businessStability?: string | number;
+  industryOutlook?: string | number;
 }
 
 export const loanApplications = pgTable("loan_applications", {
