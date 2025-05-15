@@ -915,7 +915,12 @@ Loan: $${application.loanAmount}`;
       
       if (!application) {
         clearTimeout(requestTimeout);
-        return res.status(404).json({ message: "Loan application not found" });
+        console.error(`Enhanced PDF endpoint: Application ID ${id} not found in storage`);
+        return res.status(404).json({ 
+          message: "Loan application not found", 
+          requestedId: id,
+          endpoint: "enhanced-pdf"
+        });
       }
       
       console.log(`Generating enhanced multi-agent PDF report for application ID: ${id}`);
@@ -1439,6 +1444,34 @@ Loan: $${application.loanAmount}`;
     }
   });
 
+  // Check if a loan application exists (helpful for debugging)
+  app.get("/api/loan-applications/:id/check", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      console.log(`Checking if application ID ${id} exists`);
+      const application = await storage.getLoanApplication(id);
+      
+      if (!application) {
+        console.log(`Application ID ${id} NOT found`);
+        return res.status(404).json({ 
+          exists: false, 
+          message: "Application not found",
+          requestedId: id
+        });
+      }
+      
+      console.log(`Application ID ${id} found`);
+      return res.json({ 
+        exists: true, 
+        id: application.id,
+        businessName: application.businessName
+      });
+    } catch (error) {
+      console.error("Error checking application:", error);
+      return res.status(500).json({ error: "Server error checking application" });
+    }
+  });
+  
   // Perform deep research on a loan application
   app.post("/api/loan-applications/:id/deep-research", async (req, res) => {
     try {

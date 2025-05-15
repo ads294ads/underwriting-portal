@@ -222,6 +222,32 @@ export default function LoanScoringResults({
     setEnhancedPdfDownloadComplete(false);
     setEnhancedPdfError(null);
     
+    // First check if the application exists in the server 
+    try {
+      const checkUrl = `/api/loan-applications/${application.id}/check`;
+      console.log("Checking if application exists:", checkUrl);
+      const checkResponse = await fetch(checkUrl);
+      
+      if (!checkResponse.ok) {
+        const errorData = await checkResponse.json();
+        console.error("Application check failed:", errorData);
+        toast({
+          title: "Error Preparing PDF",
+          description: `Cannot find application data (ID: ${application.id}). Please try submitting the form again.`,
+          variant: "destructive",
+        });
+        setIsEnhancedPdfDownloading(false);
+        setShowProgressIndicator(false);
+        return;
+      }
+      
+      const checkData = await checkResponse.json();
+      console.log("Application exists check result:", checkData);
+    } catch (error) {
+      console.error("Error checking application:", error);
+      // Continue with PDF download anyway
+    }
+    
     // Create a tracking variable we can access in callbacks
     const downloadState = {
       downloadStarted: false,
@@ -300,7 +326,12 @@ export default function LoanScoringResults({
       
       // Create a direct download link to the enhanced PDF endpoint with appropriate URL pattern
       const downloadUrl = `/api/loan-applications/${application.id}/enhanced-pdf`;
-      console.log("Download URL:", downloadUrl); // Debug the URL
+      console.log("Download URL:", downloadUrl, "Application ID:", application.id); // Debug the URL and ID
+      console.log("Application data:", JSON.stringify({
+        id: application.id,
+        businessName: application.businessName,
+        email: application.email
+      }));
       const filename = `${application.businessName.replace(/\s+/g, '_')}_Enhanced_Assessment.pdf`;
       
       // Send a message to the user to let them know the process has started
@@ -379,8 +410,17 @@ export default function LoanScoringResults({
               } else {
                 // If there was an error response, parse and show it
                 const text = await response.text();
-                console.error("Server error downloading PDF:", text);
-                throw new Error(`Server error: ${text}`);
+                console.error("Server error downloading PDF:", response.status, response.statusText, text);
+                
+                // Add more detailed debugging for 404 errors specifically
+                if (response.status === 404) {
+                  console.error("404 Not Found Error Details:");
+                  console.error("- URL attempted:", downloadUrl);
+                  console.error("- Application ID:", application.id);
+                  console.error("- Application exists:", !!application);
+                }
+                
+                throw new Error(`Failed to download PDF: ${response.status} - ${text || response.statusText}`);
               }
             } catch (error) {
               console.error(`Download attempt ${retryCount + 1} failed:`, error);
