@@ -272,35 +272,14 @@ function determineDocumentTypeFromFilename(filename: string): string {
 }
 
 // Generate context-based content for document analysis
+// OPTIMIZATION: Simplified context generation with minimal prompt for faster AI processing
 function generateContextBasedContent(filename: string, documentType: string, application: any): string {
-  return `Document Analysis Request for: ${filename}
-Document Type: ${documentType}
+  return `Doc: ${filename} (${documentType})
+Business: ${application.businessName} (${application.industry})
+Revenue: $${application.annualRevenue || '?'}, Years: ${application.yearsInBusiness || '?'}
+Loan: $${application.loanAmount || '?'}
 
-BUSINESS CONTEXT:
-Business Name: ${application.businessName}
-Industry: ${application.industry}
-Years in Business: ${application.yearsInBusiness || 'Not specified'}
-Annual Revenue: $${application.annualRevenue || 'Not specified'}
-Loan Amount Requested: $${application.loanAmount || 'Not specified'}
-Business Description: ${application.businessDescription || `A business operating in the ${application.industry} industry`}
-
-OWNER INFORMATION:
-${application.businessOwners && application.businessOwners.length > 0 ? 
-  `Primary Owner: ${application.businessOwners[0].name}
-  Ownership Percentage: ${application.businessOwners[0].ownership || 'Not specified'}%` : 
-  'Owner information not provided'}
-
-DOCUMENT ANALYSIS REQUIREMENTS:
-This ${documentType} was uploaded as part of a business loan application. As an expert underwriter, please:
-
-1. Analyze what financial metrics would typically appear in this type of document for a business in the ${application.industry} industry
-2. Provide expected values or ranges for each metric based on the business size ($${application.annualRevenue || 'unknown'} annual revenue)
-3. Evaluate how these metrics would impact loan underwriting decisions
-4. Identify potential red flags or positive indicators that would appear in this document type
-5. Assess industry-specific considerations for the ${application.industry} sector
-6. Explain how this document contributes to the overall loan evaluation
-
-Your analysis should strictly follow standard business lending underwriting criteria, be detailed and specific to this business profile, and provide actionable insights for loan decision-making.`;
+Analyze: financial metrics, industry standards, loan impact, red flags, strengths/weaknesses.`;
 }
 
 // Get the encryption service instance
