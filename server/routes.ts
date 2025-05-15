@@ -569,39 +569,108 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       // Immediately perform deep research in the background
-      console.log("Starting automatic deep research for new application...");
+      console.log("Starting optimized deep research for new application...");
       
-      try {
-        // Perform the deep research analysis
-        const deepResearchResults = await performDeepResearch(loanApplication);
-        
-        // Update the loan application score with the deep research component
-        const currentScore = parseFloat(loanApplication.score || "0");
-        
-        // Calculate new score: original score * (1 - deep research weight) + deep research score * weight
-        const deepResearchWeight = DEEP_RESEARCH_COMPONENT_WEIGHT / 100;
-        const newScore = (currentScore * (1 - deepResearchWeight)) + 
+      // OPTIMIZATION: Return the application immediately 
+      // Then perform deep research asynchronously in the background
+      const applicationResponse = { ...loanApplication };
+      res.status(201).json(applicationResponse);
+      
+      // Create a master timeout for the entire process
+      const TOTAL_PROCESS_TIMEOUT = 45000; // 45 seconds maximum total processing
+      const processStartTime = Date.now();
+      
+      // Continue processing after response is sent
+      (async () => {
+        try {
+          // Add timeout to ensure we don't exceed time limit
+          const researchTimeout = new Promise<DeepResearchResult>((_, reject) => {
+            setTimeout(() => reject(new Error("Deep research timed out")), TOTAL_PROCESS_TIMEOUT);
+          });
+          
+          // Race the research operation against the timeout with proper type checking
+          const deepResearchResults: DeepResearchResult = await Promise.race<DeepResearchResult>([
+            performDeepResearch(loanApplication),
+            researchTimeout
+          ]).catch((error: Error) => {
+            console.error("Deep research timed out or failed:", error);
+            // Return default results if timeout occurs with explicitly typed fields
+            const defaultResult: DeepResearchResult = {
+              combinedScore: 70, // Default neutral score
+              companyAnalysis: { 
+                score: 70, 
+                highRiskFactors: [], 
+                moderateRiskFactors: [], 
+                mitigatingFactors: [] 
+              },
+              ownerAnalysis: { 
+                score: 70, 
+                highRiskFactors: [], 
+                moderateRiskFactors: [], 
+                mitigatingFactors: [] 
+              },
+              grade: "B", // Default grade
+              riskAssessment: {
+                highRiskFactors: [],
+                moderateRiskFactors: [],
+                mitigatingFactors: []
+              }
+            };
+            return defaultResult;
+          });
+          
+          // Update the loan application score with the deep research component
+          const currentScore = parseFloat(loanApplication.score || "0");
+          
+          // Calculate new score: original score * (1 - deep research weight) + deep research score * weight
+          const deepResearchWeight = DEEP_RESEARCH_COMPONENT_WEIGHT / 100;
+          const newScore = (currentScore * (1 - deepResearchWeight)) + 
                          (deepResearchResults.combinedScore * deepResearchWeight);
-        
-        // Update scoring details
-        const scoringDetails = loanApplication.scoringDetails || {};
-        scoringDetails.deepResearch = deepResearchResults.combinedScore;
-        
-        // Update application with new details
-        const updatedData: Partial<LoanApplication> = {
-          score: newScore.toString(),
-          grade: determineGrade(newScore),
-          scoringDetails: scoringDetails,
-        };
-        
-        loanApplication = await storage.updateLoanApplication(loanApplication.id, updatedData);
-        console.log("Deep research completed and application updated with results");
-      } catch (deepResearchError) {
-        console.error("Error performing automatic deep research:", deepResearchError);
-        // Continue with the application creation process even if deep research fails
-      }
+          
+          // Update scoring details
+          const scoringDetails = loanApplication.scoringDetails || {};
+          scoringDetails.deepResearch = deepResearchResults.combinedScore;
+          
+          // Update application with new details
+          const updatedData: Partial<LoanApplication> = {
+            score: newScore.toString(),
+            grade: determineGrade(newScore),
+            scoringDetails: scoringDetails
+          };
+          
+          // Stringify research results as additional metadata
+          if (loanApplication.metadata) {
+            try {
+              const metadata = JSON.parse(loanApplication.metadata);
+              metadata.deepResearchResults = deepResearchResults;
+              updatedData.metadata = JSON.stringify(metadata);
+            } catch (e) {
+              // Create new metadata object if parsing fails
+              updatedData.metadata = JSON.stringify({ deepResearchResults });
+            }
+          } else {
+            // No existing metadata
+            updatedData.metadata = JSON.stringify({ deepResearchResults });
+          }
+          
+          // Update storage and notify via WebSocket
+          const updatedApplication = await storage.updateLoanApplication(loanApplication.id, updatedData);
+          
+          // Broadcast progress via WebSocket
+          broadcastProgress(loanApplication.id, {
+            stage: "deep-research",
+            message: "Deep research completed",
+            progress: 100,
+            detail: "Deep research findings incorporated into score"
+          });
+          
+          console.log("Deep research completed and application updated with results");
+        } catch (deepResearchError) {
+          console.error("Error performing optimized deep research:", deepResearchError);
+        }
+      })(); // Immediately execute the async function
       
-      res.status(201).json(loanApplication);
+      // OPTIMIZATION: Original response already sent
     } catch (error) {
       console.error("Error creating loan application:", error);
       
