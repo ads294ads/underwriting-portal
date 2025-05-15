@@ -293,7 +293,7 @@ function addCoverPage(
 }
 
 /**
- * ULTRA-OPTIMIZED: Simplified executive summary page
+ * Enhanced executive summary page with more detailed insights
  */
 function addExecutiveSummaryPage(
   doc: PDFKit.PDFDocument,
@@ -303,14 +303,14 @@ function addExecutiveSummaryPage(
 ) {
   doc.addPage();
   
-  // Simplified page header
-  doc.fontSize(18)
+  // Professional page header
+  doc.fontSize(20)
      .fillColor(colors.primary)
      .font('Helvetica-Bold')
      .text('EXECUTIVE SUMMARY', 0, 50, { align: 'center' })
      .moveDown(0.5);
   
-  // Minimal horizontal line
+  // Professional horizontal line
   doc.lineWidth(1)
      .strokeColor(colors.primary)
      .moveTo(50, doc.y)
@@ -319,122 +319,263 @@ function addExecutiveSummaryPage(
      .moveDown(1);
   
   // Get essential data
-  const score = deepResearchResults.combinedScore || 70;
-  const grade = deepResearchResults.grade || "B";
+  const score = application.score || deepResearchResults.combinedScore || 70;
+  const grade = application.grade || deepResearchResults.grade || "B";
   
-  // Simplified grade display (square instead of circle for faster rendering)
+  // Enhanced report data section - grid layout
+  const colWidth = (doc.page.width - 100) / 2;
+  
+  // Business Profile section
+  doc.fontSize(14)
+     .fillColor(colors.primary)
+     .font('Helvetica-Bold')
+     .text('BUSINESS PROFILE', 50, doc.y)
+     .moveDown(0.5);
+  
+  // Two-column layout for business details
+  const startY = doc.y;
+  
+  // Left column
+  doc.fontSize(11)
+     .fillColor(colors.dark)
+     .font('Helvetica-Bold')
+     .text('Business Name:', 50, startY)
+     .moveDown(0.5)
+     .text('Industry:', 50, doc.y)
+     .moveDown(0.5)
+     .text('Years in Business:', 50, doc.y)
+     .moveDown(0.5)
+     .text('Business Structure:', 50, doc.y);
+     
+  // Right column - values
+  doc.fontSize(11)
+     .fillColor(colors.dark)
+     .font('Helvetica')
+     .text(application.businessName, 50 + 120, startY)
+     .moveDown(0.5)
+     .text(application.industry, 50 + 120, doc.y - 12)
+     .moveDown(0.5)
+     .text(`${application.yearsInBusiness || 'N/A'}`, 50 + 120, doc.y - 12)
+     .moveDown(0.5)
+     .text(application.businessStructure || 'N/A', 50 + 120, doc.y - 12)
+     .moveDown(1);
+  
+  // Loan request details section
+  doc.fontSize(14)
+     .fillColor(colors.primary)
+     .font('Helvetica-Bold')
+     .text('LOAN REQUEST DETAILS', 50, doc.y + 10)
+     .moveDown(0.5);
+  
+  // Two-column layout for loan details
+  const loanStartY = doc.y;
+  
+  // Left column
+  doc.fontSize(11)
+     .fillColor(colors.dark)
+     .font('Helvetica-Bold')
+     .text('Loan Amount:', 50, loanStartY)
+     .moveDown(0.5)
+     .text('Loan Purpose:', 50, doc.y)
+     .moveDown(0.5)
+     .text('Existing Debt:', 50, doc.y);
+     
+  // Right column - values
+  doc.fontSize(11)
+     .fillColor(colors.dark)
+     .font('Helvetica')
+     .text(`$${application.loanAmount?.toLocaleString() || 'N/A'}`, 50 + 120, loanStartY)
+     .moveDown(0.5)
+     .text(application.loanPurpose || 'N/A', 50 + 120, doc.y - 12)
+     .moveDown(0.5)
+     .text(`$${application.existingDebt?.toLocaleString() || 'N/A'}`, 50 + 120, doc.y - 12)
+     .moveDown(1.5);
+  
+  // Enhanced grade display with more context
   const gradeColor = grade.startsWith('A') ? colors.success : 
                      grade.startsWith('B') ? colors.primary : 
                      colors.danger;
   
-  // Draw a square instead of a circle (faster to render)
-  const boxSize = 70;
-  const boxX = (doc.page.width - boxSize) / 2;
-  const boxY = doc.y + 20;
+  // Professional box with grade and detailed assessment
+  doc.rect(50, doc.y, doc.page.width - 100, 100)
+     .lineWidth(2)
+     .strokeColor(gradeColor)
+     .fillColor('#f8f9fa')
+     .fillAndStroke();
   
-  doc.rect(boxX, boxY, boxSize, boxSize)
-     .fill(gradeColor);
+  // Left side - grade in circle
+  const circleX = 90;
+  const circleY = doc.y + 50;
+  const circleRadius = 35;
+  
+  doc.circle(circleX, circleY, circleRadius)
+     .fillColor(gradeColor)
+     .fill();
      
-  doc.fontSize(40)
+  doc.fontSize(30)
      .fillColor('white')
      .font('Helvetica-Bold')
-     .text(grade, boxX, boxY + 15, { width: boxSize, align: 'center' });
+     .text(grade, circleX - 15, circleY - 15);
   
-  // Basic loan information below grade
-  doc.fontSize(12)
+  // Right side - comprehensive assessment
+  doc.fontSize(14)
+     .fillColor(colors.dark)
+     .font('Helvetica-Bold')
+     .text('ASSESSMENT SUMMARY', 150, doc.y + 15);
+  
+  // Assessment text with detailed explanation
+  const assessmentText = grade.startsWith('A') ? 
+    `Strong application with minimal risk factors. ${application.businessName} demonstrates excellent financial health, robust cash flow, and strong business stability.` : 
+    grade.startsWith('B') ? 
+    `Acceptable application with moderate risk factors. ${application.businessName} shows adequate financial capacity but with some areas requiring additional monitoring or reinforcement.` :
+    `Higher-risk application with significant concerns. ${application.businessName} exhibits financial vulnerabilities that require substantial mitigation strategies and enhanced monitoring.`;
+  
+  doc.fontSize(11)
      .fillColor(colors.dark)
      .font('Helvetica')
-     .text(`Business: ${application.businessName}`, 0, boxY + boxSize + 30, { align: 'center' })
-     .moveDown(0.3)
-     .text(`Industry: ${application.industry}`, { align: 'center' })
-     .moveDown(0.3)
-     .text(`Score: ${score}/100  |  Grade: ${grade}  |  Risk: ${grade.startsWith('A') ? 'Low' : grade.startsWith('B') ? 'Moderate' : 'High'}`, { align: 'center' })
-     .moveDown(1.5);
+     .text(assessmentText, 150, doc.y + 5, { width: 350, align: 'left' });
   
-  // Simplified section header function
+  // Score breakdown
+  doc.text(`Overall Score: ${score}/100  |  Risk Level: ${grade.startsWith('A') ? 'Low' : grade.startsWith('B') ? 'Moderate' : 'High'}`, 150, doc.y + 10);
+  
+  // Move position after the box
+  doc.moveDown(7);
+  
+  // Detailed section header function
   const addHeader = (text: string) => {
     doc.fontSize(14)
        .fillColor(colors.primary)
        .font('Helvetica-Bold')
        .text(text, 50, doc.y)
-       .moveDown(0.5);
+       .lineWidth(1)
+       .moveTo(50, doc.y + 5)
+       .lineTo(doc.page.width - 50, doc.y + 5)
+       .stroke()
+       .moveDown(0.7);
   };
   
-  // Simplified key findings - optimized summary generator
-  addHeader('KEY FINDINGS');
+  // Key findings section with more detailed analysis
+  addHeader('KEY FINDINGS & INSIGHTS');
   
-  // Ultra-simplified executive summary
-  const summary = `${application.businessName} received a grade of ${grade} based on our analysis. ` +
-    `${grade.startsWith('A') ? 'The business shows strong fundamentals.' : 
-      grade.startsWith('B') ? 'The business shows adequate performance with some concerns.' : 
-      'The business has significant risk factors.'} ` +
-    `Our research found ${deepResearchResults.companyAnalysis.highRiskFactors.length || 0} high-risk and ` +
-    `${deepResearchResults.companyAnalysis.mitigatingFactors.length || 0} mitigating factors.`;
+  // Enhanced executive summary with more specific details
+  const enhancedSummary = `${application.businessName} ${grade.startsWith('A') ? 'demonstrates strong financial health' : 
+    grade.startsWith('B') ? 'shows adequate financial performance with some areas of concern' : 
+    'exhibits several significant financial challenges'}. Through our multi-agent deep research process, we identified ${deepResearchResults.companyAnalysis.highRiskFactors.length || 0} high-risk factors that could impact loan performance, along with ${deepResearchResults.companyAnalysis.mitigatingFactors.length || 0} mitigating factors that strengthen the application.`;
   
-  doc.fontSize(12)
+  doc.fontSize(11)
      .fillColor(colors.dark)
      .font('Helvetica')
-     .text(summary, 50, doc.y, { width: doc.page.width - 100 })
-     .moveDown(1.5);
+     .text(enhancedSummary, 50, doc.y, { width: doc.page.width - 100, align: 'justify' })
+     .moveDown(1);
   
-  // Simplified risk factors section (only top 3)
-  addHeader('TOP RISK FACTORS');
+  // Extract industry positioning if available
+  if (deepResearchResults.companyAnalysis.industryPosition && deepResearchResults.companyAnalysis.industryPosition.length > 0) {
+    doc.font('Helvetica-Bold')
+       .text('Industry Position:', 50, doc.y, { continued: true })
+       .font('Helvetica')
+       .text(` ${deepResearchResults.companyAnalysis.industryPosition[0]}`, { width: doc.page.width - 100 })
+       .moveDown(0.5);
+  }
   
-  // Get top 3 risk factors only
+  // Extract market trends if available
+  if (deepResearchResults.companyAnalysis.marketTrends && deepResearchResults.companyAnalysis.marketTrends.length > 0) {
+    doc.font('Helvetica-Bold')
+       .text('Market Trends:', 50, doc.y, { continued: true })
+       .font('Helvetica')
+       .text(` ${deepResearchResults.companyAnalysis.marketTrends[0]}`, { width: doc.page.width - 100 })
+       .moveDown(1);
+  }
+  
+  // Risk assessment with detailed factors
+  addHeader('RISK ASSESSMENT');
+  
+  // High-impact risk factors with more context  
+  doc.fontSize(12)
+     .fillColor(colors.danger)
+     .font('Helvetica-Bold')
+     .text('High-Impact Risk Factors:', 50, doc.y)
+     .moveDown(0.3);
+     
+  // Get high risk factors with improved presentation
   const riskFactors = [
     ...(deepResearchResults.companyAnalysis.highRiskFactors || []),
     ...(deepResearchResults.ownerAnalysis.highRiskFactors || [])
   ].slice(0, 3);
   
   if (riskFactors.length > 0) {
+    doc.fontSize(11)
+       .fillColor(colors.dark)
+       .font('Helvetica');
     riskFactors.forEach(factor => {
-      doc.fontSize(12)
-         .fillColor(colors.danger)
+      doc.fillColor(colors.danger)
          .font('Helvetica-Bold')
          .text('• ', 50, doc.y, { continued: true })
          .fillColor(colors.dark)
          .font('Helvetica')
-         .text(factor, { width: doc.page.width - 100 })
+         .text(factor, { width: doc.page.width - 120 })
          .moveDown(0.5);
     });
   } else {
-    doc.fontSize(12)
+    doc.fontSize(11)
        .fillColor(colors.dark)
-       .text('No significant risk factors identified.', 50, doc.y)
-       .moveDown(1);
+       .text('No significant high-impact risks identified.', 50, doc.y)
+       .moveDown(0.5);
   }
   
-  // Simplified strengths section (only top 3)
-  addHeader('TOP STRENGTHS');
-  
-  // Get top 3 mitigating factors only
+  // Mitigating factors with more context
+  doc.fontSize(12)
+     .fillColor(colors.success)
+     .font('Helvetica-Bold')
+     .text('Mitigating Factors:', 50, doc.y + 5)
+     .moveDown(0.3);
+     
+  // Get mitigating factors with improved presentation
   const strengths = [
     ...(deepResearchResults.companyAnalysis.mitigatingFactors || []),
     ...(deepResearchResults.ownerAnalysis.mitigatingFactors || [])
   ].slice(0, 3);
   
   if (strengths.length > 0) {
+    doc.fontSize(11)
+       .fillColor(colors.dark)
+       .font('Helvetica');
     strengths.forEach(strength => {
-      doc.fontSize(12)
-         .fillColor(colors.success)
+      doc.fillColor(colors.success)
          .font('Helvetica-Bold')
          .text('• ', 50, doc.y, { continued: true })
          .fillColor(colors.dark)
          .font('Helvetica')
-         .text(strength, { width: doc.page.width - 100 })
+         .text(strength, { width: doc.page.width - 120 })
          .moveDown(0.5);
     });
   } else {
-    doc.fontSize(12)
+    doc.fontSize(11)
        .fillColor(colors.dark)
-       .text('Limited strength factors identified.', 50, doc.y)
-       .moveDown(1);
+       .text('Limited mitigating factors identified.', 50, doc.y)
+       .moveDown(0.5);
   }
   
-  // Simplified page number
+  // Legal findings section - crucial for bankers
+  if (deepResearchResults.companyAnalysis.legalIssues && deepResearchResults.companyAnalysis.legalIssues.length > 0) {
+    addHeader('LEGAL FINDINGS');
+    
+    doc.fontSize(11)
+       .fillColor(colors.dark)
+       .font('Helvetica-Bold')
+       .text('The following legal issues were identified during deep research:', 50, doc.y)
+       .moveDown(0.5);
+    
+    deepResearchResults.companyAnalysis.legalIssues.slice(0, 3).forEach(issue => {
+      doc.font('Helvetica')
+         .text(`• ${issue}`, 60, doc.y, { width: doc.page.width - 120 })
+         .moveDown(0.5);
+    });
+  }
+  
+  // Professional page number with document section information
   doc.fontSize(10)
      .fillColor(colors.dark)
-     .text('Page 2', 0, doc.page.height - 50, { align: 'center' });
+     .text('Page 2 | Executive Summary', 0, doc.page.height - 50, { align: 'center' });
 }
 
 /**
@@ -505,6 +646,80 @@ function addCompanyAnalysisPages(
      .text('Analysis performed by specialized AI agents focusing on business operations, market position, and competitive landscape.', 
            50, yPos, { width: 500 })
      .moveDown(1);
+  
+  // Add specific financial metrics if available
+  if (deepResearchResults.companyAnalysis.financialMetrics && deepResearchResults.companyAnalysis.financialMetrics.length > 0) {
+    doc.fontSize(14)
+       .fillColor(colors.primary)
+       .font('Helvetica-Bold')
+       .text('Financial Metrics Analysis', 50, doc.y)
+       .moveDown(0.5);
+    
+    // Create a table-like structure for financial metrics
+    doc.fontSize(11)
+       .fillColor(colors.dark)
+       .font('Helvetica-Bold')
+       .text('Metric', 60, doc.y, { width: 120 })
+       .text('Value', 180, doc.y - 11, { width: 100 })
+       .text('Industry Average', 280, doc.y - 11, { width: 120 })
+       .text('Trend', 400, doc.y - 11, { width: 100 })
+       .moveDown(0.3);
+    
+    doc.lineWidth(0.5)
+       .moveTo(60, doc.y)
+       .lineTo(500, doc.y)
+       .stroke()
+       .moveDown(0.5);
+    
+    // Add financial metrics (limited to first 4 for space)
+    deepResearchResults.companyAnalysis.financialMetrics.slice(0, 4).forEach(metric => {
+      doc.fontSize(11)
+         .fillColor(colors.dark)
+         .font('Helvetica')
+         .text(metric.metric || 'N/A', 60, doc.y, { width: 120 })
+         .text(metric.value || 'N/A', 180, doc.y - 11, { width: 100 })
+         .text(metric.industryAverage || 'N/A', 280, doc.y - 11, { width: 120 });
+      
+      // Color-code trend information
+      const trendText = metric.trend || 'N/A';
+      const trendColor = trendText.toLowerCase().includes('improv') || trendText.toLowerCase().includes('increas') ? 
+                         colors.success : trendText.toLowerCase().includes('declin') || trendText.toLowerCase().includes('decreas') ? 
+                         colors.danger : colors.dark;
+      
+      doc.fillColor(trendColor)
+         .text(trendText, 400, doc.y - 11, { width: 100 })
+         .moveDown(0.7);
+    });
+    
+    doc.moveDown(0.5);
+  }
+  
+  // Add specific events if available
+  if (deepResearchResults.companyAnalysis.specificEvents && deepResearchResults.companyAnalysis.specificEvents.length > 0) {
+    doc.fontSize(14)
+       .fillColor(colors.primary)
+       .font('Helvetica-Bold')
+       .text('Significant Business Events', 50, doc.y)
+       .moveDown(0.5);
+    
+    // Add events in a structured format
+    deepResearchResults.companyAnalysis.specificEvents.slice(0, 3).forEach(event => {
+      doc.fontSize(11)
+         .fillColor(colors.dark)
+         .font('Helvetica-Bold')
+         .text(event.event || 'N/A', 60, doc.y);
+      
+      doc.fontSize(10)
+         .font('Helvetica')
+         .text(`Date: ${event.date || 'Unknown'}  |  Source: ${event.source || 'Not specified'}`, 60, doc.y);
+      
+      doc.fontSize(10)
+         .text(`Impact: ${event.impact || 'No impact assessment available'}`, 60, doc.y, { width: 490 })
+         .moveDown(0.7);
+    });
+    
+    doc.moveDown(0.5);
+  }
   
   // Add detailed business operations analysis
   if (deepResearchResults.companyAnalysis.detailedFindings?.businessOperations?.length) {
