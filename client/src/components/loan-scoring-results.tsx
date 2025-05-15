@@ -581,15 +581,11 @@ export default function LoanScoringResults({
             {/* Score Display */}
             <div className="relative w-24 h-24">
               <DonutChart 
-                percentage={
-                  application.score 
-                    ? Math.min(Number(application.score), 100) // Ensure it's capped at 100
-                    : 0
-                }
+                percentage={Math.min(scoreAsNumber, 100)} // Using our precomputed number value
                 color="#0050C8"
               />
               <div className="absolute inset-0 flex items-center justify-center font-bold text-2xl">
-                {application.score ? Math.round(Number(application.score)) : 0}
+                {Math.round(scoreAsNumber)}
               </div>
             </div>
             
