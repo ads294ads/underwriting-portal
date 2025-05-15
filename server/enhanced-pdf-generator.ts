@@ -352,7 +352,7 @@ function addExecutiveSummaryPage(
      .moveDown(1.5);
   
   // Simplified section header function
-  const addHeader = (text) => {
+  const addHeader = (text: string) => {
     doc.fontSize(14)
        .fillColor(colors.primary)
        .font('Helvetica-Bold')

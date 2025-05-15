@@ -703,8 +703,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Store document analysis results
       const documentAnalysisResults: DocumentAnalysisResult[] = [];
       
-      // OPTIMIZATION: Process files in parallel with Promise.all and timeout
-      const DOCUMENT_PROCESS_TIMEOUT = 30000; // 30 seconds total for all documents
+      // ULTRA-OPTIMIZATION: Process files in parallel with reduced timeouts
+      const DOCUMENT_PROCESS_TIMEOUT = 20000; // 20 seconds total for all documents (reduced from 30s)
       const startTime = Date.now();
       
       // Define function to process a single file with timeout
