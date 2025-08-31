@@ -40,8 +40,12 @@ export default function ComprehensiveLoanApplication() {
   });
 
   // Check if comprehensive analysis has already been performed
-  const hasComprehensiveAnalysis = application && 'financialAnalysis' in application && 
-    application.financialAnalysis && 'lenderRecommendation' in application && application.lenderRecommendation;
+  const hasComprehensiveAnalysis = application && 
+    typeof application === 'object' && 
+    'financialAnalysis' in application && 
+    application.financialAnalysis && 
+    'lenderRecommendation' in application && 
+    application.lenderRecommendation;
 
   // Set up WebSocket for real-time progress updates
   useEffect(() => {

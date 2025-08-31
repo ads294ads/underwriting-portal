@@ -2506,7 +2506,7 @@ Loan: $${application.loanAmount}`;
         detail: 'Evaluating financial strength, risk factors, and market position'
       });
 
-      const comprehensiveResults = await comprehensiveAnalysisEngine.performComprehensiveAnalysis(
+      const comprehensiveResults = await comprehensiveAnalysisEngine.performCompleteAnalysis(
         application, 
         documentAnalysis
       );
