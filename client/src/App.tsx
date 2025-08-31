@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { queryClient } from "./lib/queryClient";
 import NotFound from "@/pages/not-found";
 import Home from "@/pages/home";
+import ComprehensiveLoanApplication from "@/pages/comprehensive-loan-application";
 import Header from "@/components/header";
 import Footer from "@/components/footer";
 
@@ -12,6 +13,7 @@ function Router() {
   return (
     <Switch>
       <Route path="/" component={Home} />
+      <Route path="/loan-applications/:id/comprehensive" component={ComprehensiveLoanApplication} />
       <Route component={NotFound} />
     </Switch>
   );
