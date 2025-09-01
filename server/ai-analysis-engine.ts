@@ -63,8 +63,7 @@ Focus on practical lending considerations and provide specific recommendations f
             content: analysisPrompt
           }
         ],
-        temperature: 0.3,
-        max_tokens: 4000
+        max_completion_tokens: 4000
       });
 
       const aiAnalysis = response.choices[0].message.content;

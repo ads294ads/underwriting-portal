@@ -74,7 +74,7 @@ ${sampleDocText}
           }
         ],
         temperature: 0.1,
-        max_tokens: 500, // Reduced token count for faster response
+        max_completion_tokens: 500, // Reduced token count for faster response
         response_format: { type: "json_object" }
       }, { signal: controller.signal });
       
