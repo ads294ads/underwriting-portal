@@ -674,7 +674,7 @@ async function callPerplexityAPI(
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: "llama-3.1-sonar-small-128k-online",
+        model: "sonar-pro",
         messages,
         temperature: 0.1, // Reduced temperature for faster, more deterministic responses
         max_tokens: 750, // Reduced max tokens by 63% for much faster responses
