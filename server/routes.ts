@@ -21,6 +21,7 @@ import { comprehensiveAnalysisEngine } from "./comprehensive-analysis";
 import { institutionalPDFGenerator } from "./institutional-pdf-generator";
 import { enhancedDocumentAnalyzer } from "./enhanced-document-analyzer";
 import { comprehensiveBusinessResearch } from "./comprehensive-business-research";
+import { realLoanAnalyzer } from "./real-loan-analyzer";
 import { WebSocketServer, WebSocket } from 'ws';
 
 // Store active WebSocket connections by application ID for real-time progress updates
@@ -2462,6 +2463,83 @@ Loan: $${application.loanAmount}`;
       console.error("Error in verification status check:", error);
       return res.status(500).json({ 
         error: "Error checking verification status",
+        details: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // REAL LOAN ANALYSIS - Actual Document Analysis & Business Research
+  app.post("/api/loan-applications/:id/real-analysis", async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      const application = await storage.getLoanApplication(id);
+      
+      if (!application) {
+        return res.status(404).json({ error: "Application not found" });
+      }
+
+      console.log(`=== Starting REAL ANALYSIS for ${application.businessName} ===`);
+
+      // Get uploaded document paths
+      const documentPaths = [];
+      if (application.fileUploaded && req.body.documentPaths) {
+        documentPaths.push(...req.body.documentPaths);
+      }
+
+      if (documentPaths.length === 0) {
+        return res.status(400).json({ 
+          error: "No documents uploaded for analysis. Please upload financial documents first." 
+        });
+      }
+
+      broadcastProgress(id, {
+        stage: 'starting',
+        message: 'Starting real document analysis',
+        progress: 10,
+        detail: 'Extracting actual data from uploaded financial documents'
+      });
+
+      // Perform comprehensive real analysis
+      const realAnalysis = await realLoanAnalyzer.performComprehensiveAnalysis(
+        application, 
+        documentPaths
+      );
+
+      broadcastProgress(id, {
+        stage: 'complete',
+        message: 'Real analysis complete',
+        progress: 100,
+        detail: `Analysis confidence: ${realAnalysis.confidence}%`
+      });
+
+      // Update application with real analysis results
+      const updateData = {
+        ...application,
+        realAnalysisResults: JSON.stringify(realAnalysis),
+        lastUpdated: new Date().toISOString()
+      };
+
+      await storage.updateLoanApplication(id, updateData);
+
+      res.json({
+        success: true,
+        analysis: realAnalysis,
+        message: 'Real analysis completed with actual document extraction and business research'
+      });
+
+    } catch (error) {
+      console.error("Real analysis error:", error);
+      
+      const id = parseInt(req.params.id);
+      broadcastProgress(id, {
+        stage: 'error',
+        message: 'Real analysis failed',
+        progress: 0,
+        detail: error instanceof Error ? error.message : 'Unknown error occurred'
+      });
+
+      res.status(500).json({ 
+        error: "Failed to perform real analysis",
         details: error instanceof Error ? error.message : "Unknown error"
       });
     }
