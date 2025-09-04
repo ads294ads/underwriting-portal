@@ -2480,17 +2480,14 @@ Loan: $${application.loanAmount}`;
 
       console.log(`=== Starting REAL ANALYSIS for ${application.businessName} ===`);
 
-      // Get uploaded document paths
-      const documentPaths = [];
-      if (application.fileUploaded && req.body.documentPaths) {
-        documentPaths.push(...req.body.documentPaths);
-      }
-
-      if (documentPaths.length === 0) {
+      // Check if documents have been uploaded and processed
+      if (!application.fileUploaded || !application.documentAnalysis || application.documentAnalysis.length === 0) {
         return res.status(400).json({ 
           error: "No documents uploaded for analysis. Please upload financial documents first." 
         });
       }
+
+      console.log(`Found ${application.documentAnalysis.length} processed documents for analysis`);
 
       broadcastProgress(id, {
         stage: 'starting',
@@ -2499,10 +2496,9 @@ Loan: $${application.loanAmount}`;
         detail: 'Extracting actual data from uploaded financial documents'
       });
 
-      // Perform comprehensive real analysis
-      const realAnalysis = await realLoanAnalyzer.performComprehensiveAnalysis(
-        application, 
-        documentPaths
+      // Perform comprehensive real analysis using existing processed documents
+      const realAnalysis = await realLoanAnalyzer.performComprehensiveAnalysisFromProcessedData(
+        application
       );
 
       broadcastProgress(id, {

@@ -127,7 +127,7 @@ If you cannot extract actual numbers, set values to null and lower confidence. D
         max_completion_tokens: 3000
       });
 
-      const analysis = JSON.parse(response.choices[0].message.content);
+      const analysis = JSON.parse(response.choices[0].message.content || '{}');
       
       return {
         documentType: analysis.documentType || 'unknown',
@@ -142,7 +142,7 @@ If you cannot extract actual numbers, set values to null and lower confidence. D
       
     } catch (error) {
       console.error('Error analyzing document:', error);
-      throw new Error(`Failed to analyze document: ${error.message}`);
+      throw new Error(`Failed to analyze document: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
   

@@ -96,10 +96,10 @@ export default function ComprehensiveLoanApplication() {
     }
   }, [applicationId]);
 
-  // Mutation to perform comprehensive analysis
+  // Mutation to perform comprehensive analysis  
   const comprehensiveAnalysisMutation = useMutation({
     mutationFn: async () => {
-      const response = await fetch(`/api/loan-applications/${applicationId}/comprehensive-analysis`, {
+      const response = await fetch(`/api/loan-applications/${applicationId}/real-analysis`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

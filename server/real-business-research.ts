@@ -70,7 +70,7 @@ export class RealBusinessResearch {
       
     } catch (error) {
       console.error('Research failed:', error);
-      return this.getMinimalResearchResult(companyName, ownerNames, error.message);
+      return this.getMinimalResearchResult(companyName, ownerNames, error instanceof Error ? error.message : String(error));
     }
   }
   
@@ -177,7 +177,7 @@ Provide factual information only. If not found, state clearly.`;
           professionalHistory: [],
           education: [],
           linkedinProfile: null,
-          publicRecords: [`Research failed: ${error.message}`]
+          publicRecords: [`Research failed: ${error instanceof Error ? error.message : String(error)}`]
         });
       }
     }
@@ -202,12 +202,15 @@ Provide factual information only. If not found, state clearly.`;
     const reviews = [];
     const ratingMatches = researchText.match(/(\d+\.?\d*)\s*(?:\/\s*5|stars?|rating)/gi);
     if (ratingMatches) {
-      reviews.push({
-        platform: 'General',
-        rating: parseFloat(ratingMatches[0].match(/\d+\.?\d*/)[0]),
-        reviewCount: 0,
-        recentReviews: []
-      });
+      const ratingMatch = ratingMatches[0].match(/\d+\.?\d*/);
+      if (ratingMatch) {
+        reviews.push({
+          platform: 'General',
+          rating: parseFloat(ratingMatch[0]),
+          reviewCount: 0,
+          recentReviews: []
+        });
+      }
     }
     
     return {
@@ -234,7 +237,7 @@ Provide factual information only. If not found, state clearly.`;
                   !researchText.toLowerCase().includes('no results');
                   
     const linkedinMatch = researchText.match(/linkedin[^\s]*:\s*(https?:\/\/[^\s]+)/i);
-    const linkedinProfile = linkedinMatch ? linkedinMatch[1] : null;
+    const linkedinProfile = linkedinMatch?.[1] || null;
     
     return {
       name,
@@ -272,8 +275,8 @@ Provide factual information only. If not found, state clearly.`;
     const totalRisks = Object.values(companyResearch.risks).flat().length;
     riskScore += totalRisks * 10;
     
-    const riskLevel = riskScore > 60 ? 'high' : riskScore > 30 ? 'moderate' : 'low';
-    const legitimacy = riskScore < 20 ? 'verified' : riskScore < 50 ? 'unverified' : 'questionable';
+    const riskLevel: 'low' | 'moderate' | 'high' = riskScore > 60 ? 'high' : riskScore > 30 ? 'moderate' : 'low';
+    const legitimacy: 'verified' | 'questionable' | 'unverified' = riskScore < 20 ? 'verified' : riskScore < 50 ? 'unverified' : 'questionable';
     
     return {
       legitimacy,
