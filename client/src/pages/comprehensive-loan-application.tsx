@@ -37,7 +37,7 @@ export default function ComprehensiveLoanApplication() {
   const { data: application, isLoading: isLoadingApp } = useQuery({
     queryKey: ['/api/loan-applications', applicationId],
     enabled: !!applicationId,
-  });
+  }) as { data: any, isLoading: boolean };
 
   // Check if comprehensive analysis has already been performed
   const hasComprehensiveAnalysis = application && 

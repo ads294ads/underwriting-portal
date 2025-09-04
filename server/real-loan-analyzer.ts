@@ -1,4 +1,4 @@
-import { realDocumentAnalyzer, DocumentInsights } from './real-document-analyzer';
+import { realDocumentAnalyzer, DocumentInsights, RealFinancialData } from './real-document-analyzer';
 import { realBusinessResearch, BusinessIntelligence } from './real-business-research';
 import OpenAI from 'openai';
 

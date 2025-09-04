@@ -2563,7 +2563,7 @@ Loan: $${application.loanAmount}`;
 
       // Step 1: Enhanced Document Analysis (if documents uploaded)
       let enhancedDocumentResults: any[] = [];
-      if (application.fileUploaded && application.documentPaths && application.documentPaths.length > 0) {
+      if (application.fileUploaded) {
         broadcastProgress(id, {
           stage: 'documents',
           message: 'Performing deep document analysis with AI',
@@ -2571,7 +2571,7 @@ Loan: $${application.loanAmount}`;
           detail: 'Extracting detailed financial metrics using OpenAI and Anthropic'
         });
         
-        const documentPromises = application.documentPaths.map(async (docPath: string) => {
+        const documentPromises = (application.documentAnalysis || []).map(async (docAnalysis: string) => {
           return await enhancedDocumentAnalyzer.analyzeDocument(docPath);
         });
         
