@@ -170,7 +170,7 @@ export const insertLoanApplicationSchema = createInsertSchema(loanApplications)
     scoringDetails: true,
     documentAnalysis: true,
     deepResearchCompleted: true,
-  })
+  } as any)
   .extend({
     // Converting numeric fields to allow both string and number inputs
     yearsInBusiness: z.union([z.string(), z.number()]).transform(val => 

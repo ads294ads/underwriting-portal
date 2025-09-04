@@ -31,7 +31,7 @@ export default function ComprehensiveLoanApplication() {
   const [websocket, setWebsocket] = useState<WebSocket | null>(null);
   const { toast } = useToast();
 
-  const applicationId = params?.id ? parseInt(params.id) : null;
+  const applicationId = params && 'id' in params ? parseInt(String((params as any).id)) : null;
 
   // Fetch application data
   const { data: application, isLoading: isLoadingApp } = useQuery({

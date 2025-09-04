@@ -1122,7 +1122,7 @@ Loan: $${application.loanAmount}`;
                 }
                 
                 // Update the application with deep research results
-                const currentScore = application.score ? parseFloat(application.score) : 0;
+                const currentScore = application.score ? parseFloat(String(application.score)) : 0;
                 const deepResearchWeight = DEEP_RESEARCH_COMPONENT_WEIGHT / 100;
                 const newScore = (currentScore * (1 - deepResearchWeight)) + 
                                 (results.combinedScore * deepResearchWeight);
@@ -1493,7 +1493,7 @@ Loan: $${application.loanAmount}`;
       const deepResearchResults = await performDeepResearch(application);
       
       // Update the loan application score with the deep research component
-      const currentScore = application.score ? parseFloat(application.score) : 0;
+      const currentScore = application.score ? parseFloat(String(application.score)) : 0;
       
       // Calculate new score: original score * (1 - deep research weight) + deep research score * weight
       const deepResearchWeight = DEEP_RESEARCH_COMPONENT_WEIGHT / 100;
@@ -1570,7 +1570,7 @@ Loan: $${application.loanAmount}`;
         console.log("Deep research results retrieved for PDF report");
         
         // Update the application with deep research results if they're new or improved
-        const currentScore = application.score ? parseFloat(application.score) : 0;
+        const currentScore = application.score ? parseFloat(String(application.score)) : 0;
         const deepResearchWeight = DEEP_RESEARCH_COMPONENT_WEIGHT / 100;
         
         // Only update if we don't already have a deep research component or if the score improved
@@ -2624,8 +2624,8 @@ Loan: $${application.loanAmount}`;
           ...comprehensiveResults.riskAssessment,
           // Add business research risk factors
           operationalRisk: [
-            ...comprehensiveResults.riskAssessment.operationalRisk,
-            ...businessResearch.riskFactors.operational
+            ...(Array.isArray(comprehensiveResults.riskAssessment?.operationalRisk) ? comprehensiveResults.riskAssessment.operationalRisk : []),
+            ...(businessResearch.riskFactors as any).operationalRisks || []
           ],
           reputationalRisks: businessResearch.riskFactors.reputationalRisks,
           legalRisks: businessResearch.riskFactors.legalIssues
@@ -2633,7 +2633,7 @@ Loan: $${application.loanAmount}`;
         marketAnalysis: {
           ...comprehensiveResults.marketAnalysis,
           competitivePosition: businessResearch.competitivePosition,
-          industryOutlook: comprehensiveResults.marketAnalysis.industryOutlook,
+          industryOutlook: (comprehensiveResults.marketAnalysis as any).industryOutlook || 'Stable',
           reputationAnalysis: businessResearch.reputationAnalysis
         },
         managementAnalysis: {
@@ -2797,20 +2797,20 @@ Loan: $${application.loanAmount}`;
       }
 
       // Check if comprehensive analysis has been performed
-      if (!application.financialAnalysis || !application.lenderRecommendation) {
+      if (!(application as any).financialAnalysis || !(application as any).lenderRecommendation) {
         return res.status(400).json({ 
           error: "Comprehensive analysis required before generating institutional report" 
         });
       }
 
       const analyses = {
-        financialAnalysis: application.financialAnalysis,
-        riskAssessment: application.riskAssessment,
-        marketAnalysis: application.marketAnalysis,
-        managementAnalysis: application.managementAnalysis,
-        collateralAnalysis: application.collateralAnalysis,
-        complianceCheck: application.complianceCheck,
-        lenderRecommendation: application.lenderRecommendation
+        financialAnalysis: (application as any).financialAnalysis,
+        riskAssessment: (application as any).riskAssessment,
+        marketAnalysis: (application as any).marketAnalysis,
+        managementAnalysis: (application as any).managementAnalysis,
+        collateralAnalysis: (application as any).collateralAnalysis,
+        complianceCheck: (application as any).complianceCheck,
+        lenderRecommendation: (application as any).lenderRecommendation
       };
 
       // Generate institutional-quality PDF report
