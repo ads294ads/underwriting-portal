@@ -611,7 +611,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
           
           // Update the loan application score with the deep research component
-          const currentScore = parseFloat(loanApplication.score || "0");
+          const currentScore = parseFloat(String(loanApplication.score || "0"));
           
           // Calculate new score: original score * (1 - deep research weight) + deep research score * weight
           const deepResearchWeight = DEEP_RESEARCH_COMPONENT_WEIGHT / 100;
@@ -2572,7 +2572,7 @@ Loan: $${application.loanAmount}`;
         });
         
         const documentPromises = (application.documentAnalysis || []).map(async (docAnalysis: string) => {
-          return await enhancedDocumentAnalyzer.analyzeDocument(docPath);
+          return await enhancedDocumentAnalyzer.analyzeDocument(docAnalysis);
         });
         
         enhancedDocumentResults = await Promise.all(documentPromises);
@@ -2623,9 +2623,9 @@ Loan: $${application.loanAmount}`;
         riskAssessment: {
           ...comprehensiveResults.riskAssessment,
           // Add business research risk factors
-          operationalRisks: [
-            ...comprehensiveResults.riskAssessment.operationalRisks,
-            ...businessResearch.riskFactors.operationalRisks
+          operationalRisk: [
+            ...comprehensiveResults.riskAssessment.operationalRisk,
+            ...businessResearch.riskFactors.operational
           ],
           reputationalRisks: businessResearch.riskFactors.reputationalRisks,
           legalRisks: businessResearch.riskFactors.legalIssues
