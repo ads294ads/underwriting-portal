@@ -12,7 +12,7 @@ import Footer from "@/components/footer";
 function Router() {
   return (
     <Switch>
-      <Route path="/" component={Home} />
+      <Route path="/" component={ComprehensiveLoanApplication} />
       <Route path="/loan-applications/:id/comprehensive" component={ComprehensiveLoanApplication} />
       <Route component={NotFound} />
     </Switch>
