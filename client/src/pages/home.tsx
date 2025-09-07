@@ -2,18 +2,20 @@ import { useState } from "react";
 import PageHeader from "@/components/page-header";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import LoanApplicationForm from "@/components/loan-application-form";
-import LoanScoringResults from "@/components/loan-scoring-results";
 import LoanApplicantsTable from "@/components/loan-applicants-table";
 import { LoanApplication } from "@/types/loan";
+import { useLocation } from "wouter";
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState("application");
   const [currentApplication, setCurrentApplication] = useState<LoanApplication | null>(null);
+  const [, setLocation] = useLocation();
 
-  // Handle the form submission and switch to results tab
+  // Handle the form submission and redirect to comprehensive analysis
   const handleApplicationSubmit = (application: LoanApplication) => {
     setCurrentApplication(application);
-    setActiveTab("results");
+    // Redirect to the comprehensive analysis page
+    setLocation(`/loan-applications/${application.id}/comprehensive`);
   };
 
   // Handle viewing a specific application from the table
@@ -57,7 +59,9 @@ export default function Home() {
         
         <TabsContent value="results" className="mt-6">
           {currentApplication ? (
-            <LoanScoringResults application={currentApplication} />
+            <div className="bg-white rounded-lg shadow-sm border border-neutral-200 p-8 text-center">
+              <p className="text-neutral-600">Application analysis complete! View detailed results in the comprehensive analysis.</p>
+            </div>
           ) : (
             <div className="bg-white rounded-lg shadow-sm border border-neutral-200 p-8 text-center">
               <p className="text-neutral-600">Submit an application to see evaluation results</p>
