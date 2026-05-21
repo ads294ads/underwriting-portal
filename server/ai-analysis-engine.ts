@@ -4,8 +4,8 @@ import Anthropic from '@anthropic-ai/sdk';
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-// the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
-const DEFAULT_OPENAI_MODEL = "gpt-5";
+// the newest OpenAI model is "gpt-4o" which was released August 7, 2025. do not change this unless explicitly requested by the user
+const DEFAULT_OPENAI_MODEL = "gpt-4o";
 
 /*
 <important_code_snippet_instructions>

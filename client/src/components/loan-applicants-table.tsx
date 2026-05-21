@@ -184,3 +184,5 @@ export default function LoanApplicantsTable({ onViewApplication }: LoanApplicant
     </Card>
   );
 }
+// Make sure the View button uses this onClick handler:
+// onClick={() => navigate(`/loan/${application.id}`)}

@@ -167,7 +167,7 @@ Document text:
 ${text}`;
 
     const response = await openai.chat.completions.create({
-      model: "gpt-5", // the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
+      model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released August 7, 2025. do not change this unless explicitly requested by the user
       messages: [{ role: "user", content: prompt }],
       max_completion_tokens: 4000
     });
@@ -282,7 +282,7 @@ Provide a JSON response with the following structure:
 Extract actual numbers from the analyses. If specific numbers aren't available, indicate with null and lower confidence.`;
 
     const response = await openai.chat.completions.create({
-      model: "gpt-5", // the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
+      model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released August 7, 2025. do not change this unless explicitly requested by the user
       messages: [{ role: "user", content: synthesisPrompt }],
       response_format: { type: "json_object" },
       max_completion_tokens: 3000

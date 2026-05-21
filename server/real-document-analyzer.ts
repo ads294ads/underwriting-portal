@@ -121,7 +121,7 @@ Return ONLY a JSON object with this structure:
 If you cannot extract actual numbers, set values to null and lower confidence. DO NOT make up numbers.`;
 
       const response = await openai.chat.completions.create({
-        model: "gpt-5",
+        model: "gpt-4o",
         messages: [{ role: "user", content: prompt }],
         response_format: { type: "json_object" },
         max_completion_tokens: 3000
