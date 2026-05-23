@@ -7,3 +7,5 @@ vite.config.ts.*
 .env.production
 .env
 .env.production
+.env
+.env.production
