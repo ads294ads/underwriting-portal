@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { LoanApplication } from "@/types/loan";
 import { formatCurrency } from "@/lib/formatter";
+import { useNavigate } from "react-router-dom";
 
 interface LoanApplicantsTableProps {
   onViewApplication: (application: LoanApplication) => void;
@@ -13,6 +14,7 @@ interface LoanApplicantsTableProps {
 export default function LoanApplicantsTable({ onViewApplication }: LoanApplicantsTableProps) {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const navigate = useNavigate();
   const itemsPerPage = 5;
 
   const { data: applications, isLoading, error } = useQuery<LoanApplication[]>({
@@ -124,7 +126,7 @@ export default function LoanApplicantsTable({ onViewApplication }: LoanApplicant
                       <Button 
                         variant="link"
                         className="text-primary-600 hover:text-primary-800 font-medium"
-                        onClick={() => onViewApplication(application)}
+                        onClick={() => navigate(`/loan/${application.id}`)}
                       >
                         View
                       </Button>

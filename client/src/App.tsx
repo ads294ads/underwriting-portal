@@ -1,4 +1,8 @@
 import { Switch, Route } from "wouter";
+import LoanDetail from "@/pages/loan-detail";
+
+// Inside your route definitions:
+<Route path="/loan/:id" element={<LoanDetail />} />
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
