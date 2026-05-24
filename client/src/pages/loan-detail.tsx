@@ -1,12 +1,14 @@
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, Download } from "lucide-react";
+import { useLocation } from "wouter";
 
 export default function LoanDetail() {
-  const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
+  const params = useParams();
+  const id = params?.id;
+  const [, setLocation] = useLocation();
 
   const { data: application, isLoading, error } = useQuery({
     queryKey: [`/api/loan-applications/${id}`],
@@ -34,7 +36,7 @@ export default function LoanDetail() {
     <div className="min-h-screen bg-gray-50 p-8">
       <div className="max-w-4xl mx-auto">
         <button
-          onClick={() => navigate(-1)}
+          onClick={() => setLocation(-1)}
           className="flex items-center gap-2 text-blue-600 hover:text-blue-800 mb-6"
         >
           <ArrowLeft size={20} />
@@ -93,7 +95,7 @@ export default function LoanDetail() {
               <CardTitle>Financial Analysis</CardTitle>
             </CardHeader>
             <CardContent>
-              <pre className="bg-gray-100 p-4 rounded overflow-auto max-h-96">
+              <pre className="bg-gray-100 p-4 rounded overflow-auto max-h-96 text-sm">
                 {JSON.stringify(application.financialAnalysis, null, 2)}
               </pre>
             </CardContent>
@@ -106,7 +108,7 @@ export default function LoanDetail() {
               <CardTitle>Risk Assessment</CardTitle>
             </CardHeader>
             <CardContent>
-              <pre className="bg-gray-100 p-4 rounded overflow-auto max-h-96">
+              <pre className="bg-gray-100 p-4 rounded overflow-auto max-h-96 text-sm">
                 {JSON.stringify(application.riskAssessment, null, 2)}
               </pre>
             </CardContent>
