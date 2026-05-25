@@ -3544,3 +3544,42 @@ function generateDetailedDocumentInsights(documentTypes: string[], metrics: stri
 }
 
 
+
+import { performEnhancedAnalysis } from "./enhanced-comprehensive-analysis";
+
+// Add this route to your existing routes
+app.post("/api/loan-applications/:id/enhanced-analysis", async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Get application data
+    const application = applications.find((a) => a.id === parseInt(id));
+    if (!application) {
+      return res.status(404).json({ error: "Application not found" });
+    }
+
+    // Get documents as base64
+    const documents = application.documents || [];
+    
+    // Run enhanced analysis
+    const analysis = await performEnhancedAnalysis(
+      parseInt(id),
+      application.businessName,
+      documents,
+      application
+    );
+
+    // Save results
+    application.enhancedAnalysis = analysis;
+    application.lastUpdated = new Date();
+
+    res.json({
+      success: true,
+      analysis,
+      recommendation: analysis.recommendation,
+    });
+  } catch (error) {
+    console.error("Enhanced analysis error:", error);
+    res.status(500).json({ error: "Analysis failed" });
+  }
+});

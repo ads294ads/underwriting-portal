@@ -1,399 +1,235 @@
-import { useState, useEffect } from "react";
-import { useRoute } from "wouter";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Progress } from "@/components/ui/progress";
+import { useState } from "react";
+import { useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { apiRequest, queryClient } from "@/lib/queryClient";
-import { 
-  Building2, FileText, TrendingUp, Shield, Users, Target, 
-  CheckCircle, AlertTriangle, DollarSign, Clock, RefreshCcw,
-  Download, ArrowLeft
-} from "lucide-react";
-import ComprehensiveLoanAnalysis from "@/components/comprehensive-loan-analysis";
-import { Link } from "wouter";
-import { useToast } from "@/hooks/use-toast";
-
-interface ProgressUpdate {
-  stage: string;
-  message: string;
-  progress: number;
-  detail?: string;
-  applicationId: number;
-}
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { AlertCircle, CheckCircle, Loader } from "lucide-react";
 
 export default function ComprehensiveLoanApplication() {
-  const [match, params] = useRoute("/loan-applications/:id/comprehensive");
-  const [progressData, setProgressData] = useState<ProgressUpdate | null>(null);
-  const [analysisComplete, setAnalysisComplete] = useState(false);
-  const [websocket, setWebsocket] = useState<WebSocket | null>(null);
-  const { toast } = useToast();
+  const [, setLocation] = useLocation();
+  const [applicationId, setApplicationId] = useState<number | null>(null);
+  const [analysisStatus, setAnalysisStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
+  const [analysisResult, setAnalysisResult] = useState<any>(null);
 
-  const applicationId = params && 'id' in params ? parseInt(String((params as any).id)) : null;
+  // Get current application from URL or session
+  const { data: application, isLoading: appLoading } = useQuery({
+    queryKey: ["/api/loan-applications"],
+    select: (data: any[]) => data[data.length - 1], // Get latest application
+  });
 
-  // Fetch application data
-  const { data: application, isLoading: isLoadingApp } = useQuery({
-    queryKey: ['/api/loan-applications', applicationId],
-    enabled: !!applicationId,
-  }) as { data: any, isLoading: boolean };
-
-  // Check if comprehensive analysis has already been performed
-  const hasComprehensiveAnalysis = application && 
-    typeof application === 'object' && 
-    'financialAnalysis' in application && 
-    application.financialAnalysis && 
-    'lenderRecommendation' in application && 
-    application.lenderRecommendation;
-
-  // Set up WebSocket for real-time progress updates
-  useEffect(() => {
-    if (!applicationId) return;
-
-    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const wsUrl = `${protocol}//${window.location.host}/ws`;
-    
-    try {
-      const ws = new WebSocket(wsUrl);
-      
-      ws.onopen = () => {
-        console.log("Connected to WebSocket for progress updates");
-        setWebsocket(ws);
-      };
-      
-      ws.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          if (data.type === 'progress' && data.applicationId === applicationId) {
-            setProgressData(data);
-            
-            if (data.progress === 100 && data.stage === 'complete') {
-              setAnalysisComplete(true);
-              // Refetch application data to get the new analysis results
-              queryClient.invalidateQueries({ queryKey: ['/api/loan-applications', applicationId] });
-            }
-          }
-        } catch (error) {
-          console.error("Error parsing WebSocket message:", error);
-        }
-      };
-      
-      ws.onerror = (error) => {
-        console.error("WebSocket error:", error);
-      };
-      
-      ws.onclose = () => {
-        console.log("WebSocket connection closed");
-        setWebsocket(null);
-      };
-      
-      return () => {
-        ws.close();
-      };
-    } catch (error) {
-      console.error("Failed to create WebSocket:", error);
-    }
-  }, [applicationId]);
-
-  // Mutation to perform comprehensive analysis  
-  const comprehensiveAnalysisMutation = useMutation({
-    mutationFn: async () => {
-      const response = await fetch(`/api/loan-applications/${applicationId}/real-analysis`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+  // Mutation for starting enhanced analysis
+  const enhancedAnalysisMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const response = await fetch(`/api/loan-applications/${id}/enhanced-analysis`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
       });
-      if (!response.ok) {
-        throw new Error('Failed to perform comprehensive analysis');
-      }
+      if (!response.ok) throw new Error("Analysis failed");
       return response.json();
     },
     onSuccess: (data) => {
-      console.log("Comprehensive analysis completed:", data);
-      queryClient.invalidateQueries({ queryKey: ['/api/loan-applications', applicationId] });
-      setAnalysisComplete(true);
-      toast({
-        title: "Analysis Complete",
-        description: "Comprehensive business analysis has been completed successfully.",
-      });
+      setAnalysisStatus("success");
+      setAnalysisResult(data);
+      console.log("Enhanced analysis complete:", data);
     },
     onError: (error) => {
-      console.error("Comprehensive analysis failed:", error);
-      toast({
-        title: "Analysis Failed",
-        description: "Failed to complete comprehensive analysis. Please try again.",
-        variant: "destructive",
-      });
-    }
+      setAnalysisStatus("error");
+      console.error("Analysis error:", error);
+    },
   });
 
-  // Function to start comprehensive analysis
-  const startComprehensiveAnalysis = () => {
-    setProgressData(null);
-    setAnalysisComplete(false);
-    comprehensiveAnalysisMutation.mutate();
+  const handleStartAnalysis = async () => {
+    if (!application?.id) {
+      alert("No application found");
+      return;
+    }
+
+    setApplicationId(application.id);
+    setAnalysisStatus("loading");
+    await enhancedAnalysisMutation.mutateAsync(application.id);
   };
 
-  // Function to download institutional PDF
-  const downloadInstitutionalPDF = async () => {
-    try {
-      const response = await fetch(`/api/loan-applications/${applicationId}/institutional-pdf`);
-      
-      if (!response.ok) {
-        throw new Error('Failed to generate PDF report');
-      }
-      
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.style.display = 'none';
-      a.href = url;
-      a.download = `${(application as any)?.businessName || 'Business'}_Institutional_Analysis.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-      
-      toast({
-        title: "Report Downloaded",
-        description: "Institutional-quality PDF report has been downloaded successfully.",
-      });
-    } catch (error) {
-      console.error("PDF download failed:", error);
-      toast({
-        title: "Download Failed",
-        description: "Failed to download PDF report. Please try again.",
-        variant: "destructive",
-      });
+  const handleViewResults = () => {
+    if (application?.id) {
+      setLocation(`/loan/${application.id}`);
     }
   };
 
-  if (isLoadingApp) {
-    return (
-      <div className="max-w-7xl mx-auto p-6">
-        <Card>
-          <CardContent className="p-8">
-            <div className="flex items-center justify-center">
-              <Clock className="h-8 w-8 animate-spin text-blue-600 mr-3" />
-              <span className="text-lg">Loading application data...</span>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
+  if (appLoading) {
+    return <div className="p-8">Loading application...</div>;
   }
 
   if (!application) {
-    return (
-      <div className="max-w-7xl mx-auto p-6">
-        <Card>
-          <CardContent className="p-8 text-center">
-            <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-            <h2 className="text-xl font-semibold mb-2">Application Not Found</h2>
-            <p className="text-gray-600 mb-4">The requested loan application could not be found.</p>
-            <Link href="/loan-applications">
-              <Button>
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back to Applications
-              </Button>
-            </Link>
-          </CardContent>
-        </Card>
-      </div>
-    );
+    return <div className="p-8">No application found</div>;
   }
 
   return (
-    <div className="max-w-7xl mx-auto p-6 space-y-6">
-      {/* Header Section */}
-      <div className="flex justify-between items-start">
-        <div>
-          <div className="flex items-center gap-2 mb-2">
-            <Link href="/loan-applications">
-              <Button variant="ghost" size="sm">
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back
-              </Button>
-            </Link>
-          </div>
-          <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
-            <Building2 className="h-8 w-8 text-blue-600" />
-            Comprehensive Analysis
-          </h1>
-          <p className="text-lg text-gray-600">{(application as any)?.businessName || 'Business Name'}</p>
-        </div>
-        
-        <div className="text-right">
-          <p className="text-sm text-gray-500 mb-1">Loan Request</p>
-          <p className="text-2xl font-bold text-gray-900">
-            ${Number((application as any)?.loanAmount || 0).toLocaleString()}
-          </p>
-        </div>
-      </div>
-
-      {/* Analysis Status Card */}
-      {!hasComprehensiveAnalysis && (
-        <Card className="border-l-4 border-l-blue-500">
+    <div className="min-h-screen bg-gray-50 p-8">
+      <div className="max-w-4xl mx-auto">
+        {/* Application Summary */}
+        <Card className="mb-6">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Target className="h-5 w-5 text-blue-600" />
-              Institutional-Quality Analysis
-            </CardTitle>
+            <CardTitle>{application.businessName}</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-gray-700 mb-4">
-              Perform comprehensive business analysis with advanced financial metrics, risk assessment, 
-              market analysis, and detailed reporting that meets institutional lending standards.
-            </p>
-            
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-              <div className="text-center p-3 bg-blue-50 rounded-lg">
-                <TrendingUp className="h-6 w-6 text-blue-600 mx-auto mb-2" />
-                <p className="text-sm font-medium">Financial Analysis</p>
-              </div>
-              <div className="text-center p-3 bg-red-50 rounded-lg">
-                <Shield className="h-6 w-6 text-red-600 mx-auto mb-2" />
-                <p className="text-sm font-medium">Risk Assessment</p>
-              </div>
-              <div className="text-center p-3 bg-green-50 rounded-lg">
-                <Users className="h-6 w-6 text-green-600 mx-auto mb-2" />
-                <p className="text-sm font-medium">Management Review</p>
-              </div>
-              <div className="text-center p-3 bg-purple-50 rounded-lg">
-                <FileText className="h-6 w-6 text-purple-600 mx-auto mb-2" />
-                <p className="text-sm font-medium">Detailed Report</p>
-              </div>
-            </div>
-            
-            <Button 
-              onClick={startComprehensiveAnalysis}
-              disabled={comprehensiveAnalysisMutation.isPending}
-              className="w-full bg-blue-600 hover:bg-blue-700"
-              size="lg"
-            >
-              {comprehensiveAnalysisMutation.isPending ? (
-                <RefreshCcw className="h-5 w-5 mr-2 animate-spin" />
-              ) : (
-                <Target className="h-5 w-5 mr-2" />
-              )}
-              Start Comprehensive Analysis
-            </Button>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Progress Card (shown during analysis) */}
-      {progressData && !analysisComplete && (
-        <Card className="border-l-4 border-l-orange-500">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <RefreshCcw className="h-5 w-5 text-orange-600 animate-spin" />
-              Analysis in Progress
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
               <div>
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm font-medium text-gray-700">{progressData.message}</span>
-                  <span className="text-sm text-gray-500">{progressData.progress}%</span>
-                </div>
-                <Progress value={progressData.progress} className="w-full" />
+                <p className="text-sm text-gray-600">Industry</p>
+                <p className="font-semibold">{application.industry}</p>
               </div>
-              
-              {progressData.detail && (
-                <p className="text-sm text-gray-600">{progressData.detail}</p>
-              )}
-              
-              <div className="flex items-center gap-2">
-                <Badge variant="outline" className="capitalize">
-                  {progressData.stage.replace('_', ' ')}
-                </Badge>
+              <div>
+                <p className="text-sm text-gray-600">Annual Revenue</p>
+                <p className="font-semibold">${application.annualRevenue?.toLocaleString()}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-600">Loan Amount</p>
+                <p className="font-semibold">${application.loanAmount?.toLocaleString()}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-600">Current Score</p>
+                <p className="font-semibold">{application.score} ({application.grade})</p>
               </div>
             </div>
           </CardContent>
         </Card>
-      )}
 
-      {/* Comprehensive Analysis Results */}
-      {hasComprehensiveAnalysis && (
-        <>
-          {/* Success Banner */}
-          <Card className="border-l-4 border-l-green-500 bg-green-50">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <CheckCircle className="h-5 w-5 text-green-600" />
-                  <span className="font-medium text-green-800">
-                    Comprehensive analysis complete - Institutional-quality report ready
-                  </span>
-                </div>
-                <Button 
-                  onClick={downloadInstitutionalPDF}
-                  className="bg-green-600 hover:bg-green-700"
-                >
-                  <Download className="h-4 w-4 mr-2" />
-                  Download PDF Report
-                </Button>
+        {/* Analysis Card */}
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle>Institutional-Quality Analysis</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <p className="text-gray-700">
+              Perform comprehensive AI-driven underwriting analysis using:
+            </p>
+            <ul className="space-y-2 text-sm">
+              <li className="flex items-start gap-3">
+                <span className="text-blue-600 font-bold">•</span>
+                <span><strong>Claude (Anthropic):</strong> Deep financial analysis, profitability, cash flow, liquidity, leverage, risk assessment</span>
+              </li>
+              <li className="flex items-start gap-3">
+                <span className="text-blue-600 font-bold">•</span>
+                <span><strong>GPT-4 (OpenAI):</strong> Business viability, market position, competitive advantage, growth potential, operational efficiency</span>
+              </li>
+              <li className="flex items-start gap-3">
+                <span className="text-blue-600 font-bold">•</span>
+                <span><strong>Perplexity:</strong> Owner background research, professional history, online presence, credit indicators, industry expertise</span>
+              </li>
+            </ul>
+
+            <div className="bg-blue-50 border border-blue-200 rounded p-4">
+              <p className="text-sm text-blue-900">
+                ℹ️ Analysis will examine uploaded documents, extract financial metrics, research ownership, 
+                assess market conditions, and generate a comprehensive lending recommendation.
+              </p>
+            </div>
+
+            {/* Status Messages */}
+            {analysisStatus === "loading" && (
+              <div className="flex items-center gap-3 p-4 bg-blue-50 border border-blue-200 rounded">
+                <Loader className="animate-spin text-blue-600" size={20} />
+                <span className="text-blue-900">
+                  Running comprehensive analysis... This may take 30-60 seconds.
+                </span>
               </div>
-            </CardContent>
-          </Card>
+            )}
 
-          {/* Comprehensive Analysis Component */}
-          <ComprehensiveLoanAnalysis
-            application={application}
-            analyses={{
-              financialAnalysis: (application as any)?.financialAnalysis,
-              riskAssessment: (application as any)?.riskAssessment,
-              marketAnalysis: (application as any)?.marketAnalysis,
-              managementAnalysis: (application as any)?.managementAnalysis,
-              collateralAnalysis: (application as any)?.collateralAnalysis,
-              complianceCheck: (application as any)?.complianceCheck,
-              lenderRecommendation: (application as any)?.lenderRecommendation
-            }}
-            onGenerateReport={downloadInstitutionalPDF}
-          />
-        </>
-      )}
+            {analysisStatus === "success" && (
+              <div className="flex items-start gap-3 p-4 bg-green-50 border border-green-200 rounded">
+                <CheckCircle className="text-green-600 flex-shrink-0" size={20} />
+                <div>
+                  <p className="text-green-900 font-semibold">Analysis Complete!</p>
+                  <p className="text-sm text-green-800 mt-1">
+                    <strong>Recommendation:</strong> {analysisResult?.recommendation}
+                  </p>
+                </div>
+              </div>
+            )}
 
-      {/* Action Bar */}
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex justify-between items-center">
-            <div className="flex items-center gap-4">
-              <Link href="/loan-applications">
-                <Button variant="outline">
-                  <ArrowLeft className="h-4 w-4 mr-2" />
-                  Back to Applications
-                </Button>
-              </Link>
-              
-              {hasComprehensiveAnalysis && (
-                <Button 
-                  onClick={startComprehensiveAnalysis}
-                  variant="outline"
-                  disabled={comprehensiveAnalysisMutation.isPending}
+            {analysisStatus === "error" && (
+              <div className="flex items-start gap-3 p-4 bg-red-50 border border-red-200 rounded">
+                <AlertCircle className="text-red-600 flex-shrink-0" size={20} />
+                <div>
+                  <p className="text-red-900 font-semibold">Analysis Failed</p>
+                  <p className="text-sm text-red-800 mt-1">
+                    Please check that all documents are uploaded and try again.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Analysis Details */}
+            {analysisResult && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="bg-gray-50 p-4 rounded">
+                    <p className="text-xs text-gray-600 uppercase font-semibold">Financial Health</p>
+                    <p className="text-2xl font-bold text-blue-600">
+                      {analysisResult.analysis?.combinedAssessment?.financialHealth?.score || "N/A"}
+                    </p>
+                  </div>
+                  <div className="bg-gray-50 p-4 rounded">
+                    <p className="text-xs text-gray-600 uppercase font-semibold">Business Viability</p>
+                    <p className="text-2xl font-bold text-green-600">
+                      {analysisResult.analysis?.combinedAssessment?.businessViability?.score || "N/A"}
+                    </p>
+                  </div>
+                  <div className="bg-gray-50 p-4 rounded">
+                    <p className="text-xs text-gray-600 uppercase font-semibold">Owner Credibility</p>
+                    <p className="text-2xl font-bold text-purple-600">
+                      {analysisResult.analysis?.combinedAssessment?.ownershipQuality?.credibility || "N/A"}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="bg-gray-50 p-4 rounded">
+                  <p className="text-sm font-semibold text-gray-900 mb-2">Financial Findings:</p>
+                  <pre className="text-xs overflow-auto max-h-40 bg-white p-2 rounded border">
+                    {JSON.stringify(analysisResult.analysis?.financialAnalysis, null, 2)}
+                  </pre>
+                </div>
+
+                <div className="bg-gray-50 p-4 rounded">
+                  <p className="text-sm font-semibold text-gray-900 mb-2">Business Analysis:</p>
+                  <pre className="text-xs overflow-auto max-h-40 bg-white p-2 rounded border">
+                    {JSON.stringify(analysisResult.analysis?.businessAnalysis, null, 2)}
+                  </pre>
+                </div>
+              </div>
+            )}
+
+            {/* Action Buttons */}
+            <div className="flex gap-3 pt-4 border-t">
+              {analysisStatus !== "loading" && (
+                <Button
+                  onClick={handleStartAnalysis}
+                  className="flex-1 bg-blue-600 hover:bg-blue-700"
+                  disabled={analysisStatus === "loading"}
                 >
-                  <RefreshCcw className="h-4 w-4 mr-2" />
-                  Re-run Analysis
+                  {analysisStatus === "loading" ? "Analyzing..." : "Start Enhanced Analysis"}
                 </Button>
               )}
-            </div>
-            
-            {hasComprehensiveAnalysis && (
-              <Button 
-                onClick={downloadInstitutionalPDF}
-                className="bg-blue-600 hover:bg-blue-700"
+
+              {analysisStatus === "success" && (
+                <Button
+                  onClick={handleViewResults}
+                  className="flex-1 bg-green-600 hover:bg-green-700"
+                >
+                  View Full Report
+                </Button>
+              )}
+
+              <Button
+                onClick={() => setLocation("/")}
+                variant="outline"
+                className="flex-1"
               >
-                <Download className="h-4 w-4 mr-2" />
-                Download Institutional Report
+                Back to Applicants
               </Button>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
