@@ -2,7 +2,7 @@ import { useParams, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, Download } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 
 export default function LoanDetail() {
   const params = useParams() as { id?: string };
@@ -14,23 +14,8 @@ export default function LoanDetail() {
     enabled: !!id,
   });
 
-  const downloadPDF = async () => {
-    try {
-      const response = await fetch(`/api/loan-applications/${id}/pdf`);
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `loan-report-${id}.pdf`;
-      a.click();
-      window.URL.revokeObjectURL(url);
-    } catch (err) {
-      console.error("PDF download failed:", err);
-    }
-  };
-
   const handleBack = () => {
-    setLocation("/loan-applications");
+    setLocation("/");
   };
 
   if (!id) return <div className="p-8">Loading...</div>;
@@ -49,12 +34,8 @@ export default function LoanDetail() {
           Back to Applications
         </button>
 
-        <div className="flex justify-between items-center mb-6">
+        <div className="mb-6">
           <h1 className="text-3xl font-bold">{application.businessName}</h1>
-          <Button onClick={downloadPDF} className="flex items-center gap-2">
-            <Download size={20} />
-            Download PDF Report
-          </Button>
         </div>
 
         <div className="grid grid-cols-2 gap-6 mb-6">
@@ -99,28 +80,35 @@ export default function LoanDetail() {
           </Card>
         </div>
 
-        {application.financialAnalysis && (
+        {application.scoringDetails && (
           <Card className="mb-6">
             <CardHeader>
-              <CardTitle>Financial Analysis</CardTitle>
+              <CardTitle>Scoring Details</CardTitle>
             </CardHeader>
             <CardContent>
-              <pre className="bg-gray-100 p-4 rounded overflow-auto max-h-96 text-xs">
-                {JSON.stringify(application.financialAnalysis, null, 2)}
-              </pre>
+              <div className="grid grid-cols-2 gap-4">
+                {Object.entries(application.scoringDetails).map(([key, value]) => (
+                  <div key={key}>
+                    <p className="text-sm text-gray-600">{key.replace(/([A-Z])/g, ' $1').trim()}</p>
+                    <p className="font-semibold">{value}</p>
+                  </div>
+                ))}
+              </div>
             </CardContent>
           </Card>
         )}
 
-        {application.riskAssessment && (
-          <Card>
+        {application.documentAnalysis && (
+          <Card className="mb-6">
             <CardHeader>
-              <CardTitle>Risk Assessment</CardTitle>
+              <CardTitle>Document Analysis</CardTitle>
             </CardHeader>
             <CardContent>
-              <pre className="bg-gray-100 p-4 rounded overflow-auto max-h-96 text-xs">
-                {JSON.stringify(application.riskAssessment, null, 2)}
-              </pre>
+              <div className="space-y-2">
+                {Array.isArray(application.documentAnalysis) && application.documentAnalysis.map((doc: string, i: number) => (
+                  <p key={i} className="text-sm text-gray-700">{doc}</p>
+                ))}
+              </div>
             </CardContent>
           </Card>
         )}
