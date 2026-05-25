@@ -1,17 +1,17 @@
-import { useParams } from "wouter";
+import { useParams, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, Download } from "lucide-react";
-import { useLocation } from "wouter";
 
 export default function LoanDetail() {
-  const params = useParams();
+  const params = useParams() as { id?: string };
   const id = params?.id;
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
 
   const { data: application, isLoading, error } = useQuery({
     queryKey: [`/api/loan-applications/${id}`],
+    enabled: !!id,
   });
 
   const downloadPDF = async () => {
@@ -23,12 +23,18 @@ export default function LoanDetail() {
       a.href = url;
       a.download = `loan-report-${id}.pdf`;
       a.click();
+      window.URL.revokeObjectURL(url);
     } catch (err) {
       console.error("PDF download failed:", err);
     }
   };
 
-  if (isLoading) return <div className="p-8">Loading...</div>;
+  const handleBack = () => {
+    setLocation("/loan-applications");
+  };
+
+  if (!id) return <div className="p-8">Loading...</div>;
+  if (isLoading) return <div className="p-8">Loading application...</div>;
   if (error) return <div className="p-8 text-red-600">Error loading application</div>;
   if (!application) return <div className="p-8">Application not found</div>;
 
@@ -36,11 +42,11 @@ export default function LoanDetail() {
     <div className="min-h-screen bg-gray-50 p-8">
       <div className="max-w-4xl mx-auto">
         <button
-          onClick={() => setLocation(-1)}
-          className="flex items-center gap-2 text-blue-600 hover:text-blue-800 mb-6"
+          onClick={handleBack}
+          className="flex items-center gap-2 text-blue-600 hover:text-blue-800 mb-6 font-medium"
         >
           <ArrowLeft size={20} />
-          Back
+          Back to Applications
         </button>
 
         <div className="flex justify-between items-center mb-6">
@@ -69,6 +75,10 @@ export default function LoanDetail() {
                 <p className="text-sm text-gray-600">Loan Amount</p>
                 <p className="font-semibold">${application.loanAmount?.toLocaleString()}</p>
               </div>
+              <div>
+                <p className="text-sm text-gray-600">Years in Business</p>
+                <p className="font-semibold">{application.yearsInBusiness || 'N/A'}</p>
+              </div>
             </CardContent>
           </Card>
 
@@ -95,7 +105,7 @@ export default function LoanDetail() {
               <CardTitle>Financial Analysis</CardTitle>
             </CardHeader>
             <CardContent>
-              <pre className="bg-gray-100 p-4 rounded overflow-auto max-h-96 text-sm">
+              <pre className="bg-gray-100 p-4 rounded overflow-auto max-h-96 text-xs">
                 {JSON.stringify(application.financialAnalysis, null, 2)}
               </pre>
             </CardContent>
@@ -108,7 +118,7 @@ export default function LoanDetail() {
               <CardTitle>Risk Assessment</CardTitle>
             </CardHeader>
             <CardContent>
-              <pre className="bg-gray-100 p-4 rounded overflow-auto max-h-96 text-sm">
+              <pre className="bg-gray-100 p-4 rounded overflow-auto max-h-96 text-xs">
                 {JSON.stringify(application.riskAssessment, null, 2)}
               </pre>
             </CardContent>
