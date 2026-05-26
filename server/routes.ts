@@ -2546,12 +2546,14 @@ Loan: $${application.loanAmount}`;
   try {
     const applicationId = parseInt(req.params.id);
     
+    // Fetch from storage
+    const applications = await storage.getAllLoanApplications();
     const application = applications.find(app => app.id === applicationId);
+    
     if (!application) {
       return res.status(404).json({ error: "Application not found" });
     }
 
-    // Use existing documentAnalysis and metadata instead of re-analyzing
     const existingAnalysis = application.metadata ? JSON.parse(application.metadata) : {};
     
     const enhancedAnalysis = {
@@ -2581,153 +2583,6 @@ Loan: $${application.loanAmount}`;
     });
   }
 });
-
-  app.post("/api/loan-applications/:id/enhanced-analysis", async (req: Request, res: Response) => {
-    try {
-      const id = parseInt(req.params.id);
-      const application = await storage.getLoanApplication(id);
-      
-      if (!application) {
-        return res.status(404).json({ error: "Application not found" });
-      }
-
-      console.log(`Starting enhanced comprehensive analysis for ${application.businessName}`);
-
-      // Broadcast initial progress
-      broadcastProgress(id, {
-        stage: 'starting',
-        message: 'Initializing enhanced AI-powered analysis',
-        progress: 5,
-        detail: 'Preparing deep document analysis and comprehensive research'
-      });
-
-      // Step 1: Enhanced Document Analysis (if documents uploaded)
-      let enhancedDocumentResults: any[] = [];
-      if (application.fileUploaded) {
-        broadcastProgress(id, {
-          stage: 'documents',
-          message: 'Performing deep document analysis with AI',
-          progress: 25,
-          detail: 'Extracting detailed financial metrics using OpenAI and Anthropic'
-        });
-        
-        const documentPromises = (application.documentAnalysis || []).map(async (docAnalysis: string) => {
-          return await enhancedDocumentAnalyzer.analyzeDocument(docAnalysis);
-        });
-        
-        enhancedDocumentResults = await Promise.all(documentPromises);
-      }
-
-      // Step 2: Comprehensive Business Research
-      broadcastProgress(id, {
-        stage: 'research',
-        message: 'Conducting comprehensive online business research',
-        progress: 50,
-        detail: 'Researching company reputation, reviews, and owner background'
-      });
-
-      const ownerNames = application.businessOwners?.map((owner: any) => owner.name) || [];
-      const businessResearch = await comprehensiveBusinessResearch.researchCompany(
-        application.businessName,
-        ownerNames,
-        application.industry
-      );
-
-      // Step 3: Generate Comprehensive AI Analysis
-      broadcastProgress(id, {
-        stage: 'analysis',
-        message: 'Generating comprehensive AI-powered analysis',
-        progress: 75,
-        detail: 'Synthesizing all data for lending recommendation'
-      });
-
-      const comprehensiveResults = await comprehensiveAnalysisEngine.performCompleteAnalysis(
-        application, 
-        enhancedDocumentResults.map(doc => doc.executiveSummary)
-      );
-
-      // Step 4: Store Enhanced Results
-      broadcastProgress(id, {
-        stage: 'saving',
-        message: 'Saving enhanced analysis results',
-        progress: 90,
-        detail: 'Storing comprehensive research and AI insights'
-      });
-
-      // Update application with all enhanced analysis results
-      const updateData = {
-        ...application,
-        enhancedDocumentAnalysis: enhancedDocumentResults,
-        businessResearch: businessResearch,
-        financialAnalysis: comprehensiveResults.financialAnalysis,
-        riskAssessment: {
-          ...comprehensiveResults.riskAssessment,
-          // Add business research risk factors
-          operationalRisk: [
-            ...(Array.isArray(comprehensiveResults.riskAssessment?.operationalRisk) ? comprehensiveResults.riskAssessment.operationalRisk : []),
-            ...(businessResearch.riskFactors as any).operationalRisks || []
-          ],
-          reputationalRisks: businessResearch.riskFactors.reputationalRisks,
-          legalRisks: businessResearch.riskFactors.legalIssues
-        },
-        marketAnalysis: {
-          ...comprehensiveResults.marketAnalysis,
-          competitivePosition: businessResearch.competitivePosition,
-          industryOutlook: (comprehensiveResults.marketAnalysis as any).industryOutlook || 'Stable',
-          reputationAnalysis: businessResearch.reputationAnalysis
-        },
-        managementAnalysis: {
-          ...comprehensiveResults.managementAnalysis,
-          ownerBackgroundCheck: businessResearch.ownerAnalysis
-        },
-        lenderRecommendation: comprehensiveResults.lenderRecommendation,
-        analysisMetadata: {
-          analysisType: 'enhanced_ai_powered',
-          documentConfidence: enhancedDocumentResults.length > 0 ? 
-            enhancedDocumentResults.reduce((sum, doc) => sum + doc.confidence, 0) / enhancedDocumentResults.length : 0,
-          researchConfidence: businessResearch.confidence,
-          lastAnalyzed: new Date().toISOString()
-        }
-      };
-
-      await storage.updateLoanApplication(id, updateData);
-
-      broadcastProgress(id, {
-        stage: 'complete',
-        message: 'Enhanced comprehensive analysis complete',
-        progress: 100,
-        detail: 'AI-powered analysis with real business research ready'
-      });
-
-      res.json({
-        success: true,
-        enhancedAnalysis: {
-          documentAnalysis: enhancedDocumentResults,
-          businessResearch: businessResearch,
-          comprehensiveResults: comprehensiveResults,
-          metadata: updateData.analysisMetadata
-        }
-      });
-
-    } catch (error) {
-      console.error("Enhanced comprehensive analysis error:", error);
-      
-      const id = parseInt(req.params.id);
-      broadcastProgress(id, {
-        stage: 'error',
-        message: 'Enhanced analysis failed',
-        progress: 0,
-        detail: error instanceof Error ? error.message : 'Unknown error occurred'
-      });
-
-      res.status(500).json({ 
-        error: "Failed to perform enhanced comprehensive analysis",
-        details: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
-  });
-
-  // Comprehensive Analysis Endpoint - New Institutional-Quality Analysis
   app.post("/api/loan-applications/:id/comprehensive-analysis", async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
