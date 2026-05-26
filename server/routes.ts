@@ -2542,11 +2542,10 @@ Loan: $${application.loanAmount}`;
   });
 
   // Enhanced Comprehensive Analysis with Real AI Research
-  app.post("/api/loan-applications/:id/enhanced-analysis", async (req: Request, res: Response) => {
+app.post("/api/loan-applications/:id/enhanced-analysis", async (req: Request, res: Response) => {
   try {
     const applicationId = parseInt(req.params.id);
     
-    // Fetch from storage
     const applications = await storage.getAllLoanApplications();
     const application = applications.find(app => app.id === applicationId);
     
@@ -2554,18 +2553,33 @@ Loan: $${application.loanAmount}`;
       return res.status(404).json({ error: "Application not found" });
     }
 
-    const existingAnalysis = application.metadata ? JSON.parse(application.metadata) : {};
+    const documentText = (application.documentAnalysis || []).join("\n");
+    const metadataObj = application.metadata ? JSON.parse(application.metadata) : {};
     
-    const enhancedAnalysis = {
-      financialScore: 65,
-      businessViabilityScore: 70,
-      credibilityScore: 75,
+    const analysisPrompt = `Analyze this business loan application.
+Business: ${application.businessName}
+Industry: ${application.industry}
+Revenue: $${application.annualRevenue}
+Loan: $${application.loanAmount}
+
+Return JSON with financialScore, businessViabilityScore, credibilityScore (0-100), overallRisk (LOW/MODERATE/HIGH/VERY_HIGH), recommendation (APPROVE/REVIEW/DECLINE), reasoning.`;
+
+    const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+    const message = await anthropic.messages.create({
+      model: "claude-3-5-sonnet-20241022",
+      max_tokens: 500,
+      messages: [{ role: "user", content: analysisPrompt }]
+    });
+
+    let analysisText = message.content[0].type === 'text' ? message.content[0].text : '';
+    const jsonMatch = analysisText.match(/\{[\s\S]*\}/);
+    const enhancedAnalysis = jsonMatch ? JSON.parse(jsonMatch[0]) : {
+      financialScore: 70,
+      businessViabilityScore: 75,
+      credibilityScore: 80,
       overallRisk: "MODERATE",
-      recommendation: application.score >= 80 ? "APPROVE" : "REVIEW",
-      reasoning: `Based on score of ${application.score} and grade ${application.grade}. ${application.documentAnalysis?.[0] || 'No document analysis available'}`,
-      financialFindings: existingAnalysis.deepResearchResults?.companyAnalysis || {},
-      businessFindings: existingAnalysis.deepResearchResults?.companyAnalysis?.detailedFindings || {},
-      ownerFindings: existingAnalysis.deepResearchResults?.ownerAnalysis || {}
+      recommendation: "REVIEW",
+      reasoning: "Requires further review"
     };
 
     application.enhancedAnalysis = enhancedAnalysis;
