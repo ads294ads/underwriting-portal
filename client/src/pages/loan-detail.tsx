@@ -19,6 +19,26 @@ export default function LoanDetail() {
     enabled: !!id,
   });
 
+  const handleDownloadPDF = async () => {
+    if (!id) return;
+    try {
+      const response = await fetch(`/api/loan-applications/${id}/pdf`);
+      if (!response.ok) throw new Error("Failed to download PDF");
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `loan-report-${id}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (err) {
+      alert("Failed to download PDF: " + err);
+    }
+  };
+
   if (isLoading) return <div className="p-8">Loading...</div>;
   if (error || !application) return <div className="p-8">Application not found</div>;
 
@@ -150,7 +170,10 @@ export default function LoanDetail() {
 
         {/* Action Buttons */}
         <div className="flex gap-3">
-          <Button className="flex-1 bg-blue-600 hover:bg-blue-700 flex items-center justify-center gap-2">
+          <Button 
+            onClick={handleDownloadPDF}
+            className="flex-1 bg-blue-600 hover:bg-blue-700 flex items-center justify-center gap-2"
+          >
             <Download size={16} />
             Download PDF Report
           </Button>
