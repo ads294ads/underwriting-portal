@@ -2572,7 +2572,7 @@ Return this exact JSON structure (no markdown, no extra text):
 
     const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
     const message = await anthropic.messages.create({
-      model: "claude-3-5-sonnet-20240620",
+      model: "claude-opus-4-1-20250805",
       max_tokens: 500,
       messages: [{ role: "user", content: analysisPrompt }]
     });
