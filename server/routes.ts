@@ -2542,7 +2542,6 @@ Loan: $${application.loanAmount}`;
     }
   });
 
-  // Enhanced Comprehensive Analysis with Real AI Research
 app.post("/api/loan-applications/:id/enhanced-analysis", async (req: Request, res: Response) => {
   try {
     const applicationId = parseInt(req.params.id);
@@ -2554,27 +2553,34 @@ app.post("/api/loan-applications/:id/enhanced-analysis", async (req: Request, re
       return res.status(404).json({ error: "Application not found" });
     }
 
-    const documentText = (application.documentAnalysis || []).join("\n");
-    const metadataObj = application.metadata ? JSON.parse(application.metadata) : {};
-    
-    const analysisPrompt = `Analyze this business loan application.
+    const analysisPrompt = `Analyze this business loan application and return ONLY valid JSON.
 Business: ${application.businessName}
 Industry: ${application.industry}
 Revenue: $${application.annualRevenue}
 Loan: $${application.loanAmount}
+Score: ${application.score}
 
-Return JSON with financialScore, businessViabilityScore, credibilityScore (0-100), overallRisk (LOW/MODERATE/HIGH/VERY_HIGH), recommendation (APPROVE/REVIEW/DECLINE), reasoning.`;
+Return this exact JSON structure (no markdown, no extra text):
+{
+  "financialScore": <0-100>,
+  "businessViabilityScore": <0-100>,
+  "credibilityScore": <0-100>,
+  "overallRisk": "LOW|MODERATE|HIGH|VERY_HIGH",
+  "recommendation": "APPROVE|REVIEW|DECLINE",
+  "reasoning": "brief explanation"
+}`;
 
     const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
     const message = await anthropic.messages.create({
-      model: "claude-3-5-sonnet-20241022",
+      model: "claude-3-5-sonnet-20240620",
       max_tokens: 500,
       messages: [{ role: "user", content: analysisPrompt }]
     });
 
     let analysisText = message.content[0].type === 'text' ? message.content[0].text : '';
     const jsonMatch = analysisText.match(/\{[\s\S]*\}/);
-    const enhancedAnalysis = jsonMatch ? JSON.parse(jsonMatch[0]) : {
+    
+    let enhancedAnalysis = {
       financialScore: 70,
       businessViabilityScore: 75,
       credibilityScore: 80,
@@ -2583,11 +2589,31 @@ Return JSON with financialScore, businessViabilityScore, credibilityScore (0-100
       reasoning: "Requires further review"
     };
 
-    application.enhancedAnalysis = enhancedAnalysis;
+    if (jsonMatch) {
+      try {
+        enhancedAnalysis = JSON.parse(jsonMatch[0]);
+      } catch (e) {
+        console.error("Failed to parse Claude response:", analysisText);
+      }
+    }
+
+    // Save to storage
+    await storage.updateLoanApplication(applicationId, {
+      ...application,
+      enhancedAnalysis: enhancedAnalysis
+    });
 
     res.json({
       success: true,
-      analysis: enhancedAnalysis,
+      analysis: {
+        combinedAssessment: {
+          financialHealth: { score: enhancedAnalysis.financialScore },
+          businessViability: { score: enhancedAnalysis.businessViabilityScore },
+          ownershipQuality: { credibility: enhancedAnalysis.credibilityScore }
+        },
+        financialAnalysis: { risk: enhancedAnalysis.overallRisk, reasoning: enhancedAnalysis.reasoning },
+        businessAnalysis: { recommendation: enhancedAnalysis.recommendation }
+      },
       recommendation: enhancedAnalysis.recommendation
     });
   } catch (error: any) {
