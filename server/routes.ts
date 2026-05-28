@@ -3493,5 +3493,21 @@ function generateDetailedDocumentInsights(documentTypes: string[], metrics: stri
     }
   });
 
+
+  app.post("/api/loan-applications/:id/comprehensive-underwriting", async (req: Request, res: Response) => {
+    try {
+      const applicationId = parseInt(req.params.id);
+      const applications = await storage.getAllLoanApplications();
+      const application = applications.find(app => app.id === applicationId);
+      if (!application) return res.status(404).json({ error: "Application not found" });
+      const report = await performComprehensiveUnderwriting(application);
+      await storage.updateLoanApplication(applicationId, { ...application, comprehensiveUnderwritingReport: report });
+      res.json({ success: true, report });
+    } catch (error: any) {
+      console.error("Underwriting error:", error);
+      res.status(500).json({ error: "Failed", details: error.message });
+    }
+  });
+
   return server;
 }

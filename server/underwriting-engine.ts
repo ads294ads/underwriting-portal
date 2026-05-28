@@ -1,94 +1,101 @@
-import { analyzeDocumentsWithClaude, DocumentAnalysisResult } from "./document-processor";
-import { calculateFinancialRatios, compareToBenchmark } from "./financial-calculator";
-import { researchBackgroundWithClaude } from "./background-researcher";
-import { calculateRiskScore } from "./risk-scorer";
-import { generateComprehensiveReport, ComprehensiveReport } from "./report-generator";
+import Anthropic from "@anthropic-ai/sdk";
 import { LoanApplication } from "../shared/schema";
 
-export async function performComprehensiveUnderwriting(
-  application: LoanApplication
-): Promise<ComprehensiveReport> {
-  console.log(`[UNDERWRITING] Starting analysis for ${application.businessName}`);
-
+export async function performComprehensiveUnderwriting(application: LoanApplication) {
   try {
-    // STEP 1: Analyze documents with Claude
-    console.log("[STEP 1] Analyzing documents...");
-    const documentAnalysis = await analyzeDocumentsWithClaude(
-      application.businessName,
-      application.documentAnalysis || []
-    );
-    console.log(`[STEP 1] Document analysis confidence: ${documentAnalysis.confidence}%`);
+    const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+    
+    // STEP 1: Extract financials from uploaded documents
+    console.log("[UNDERWRITING] Step 1: Analyzing documents...");
+    const docAnalysisPrompt = `You are a banking analyst. Review these financial documents for ${application.businessName} in the ${application.industry} industry.
 
-    // STEP 2: Calculate financial ratios
-    console.log("[STEP 2] Calculating financial ratios...");
-    const ratios = calculateFinancialRatios(
-      documentAnalysis.revenue || application.annualRevenue,
-      documentAnalysis.netIncome,
-      documentAnalysis.totalAssets,
-      documentAnalysis.totalLiabilities,
-      documentAnalysis.cashOnHand,
-      documentAnalysis.accountsReceivable,
-      documentAnalysis.inventory,
-      documentAnalysis.operatingExpense,
-      documentAnalysis.costOfGoodsSold,
-      documentAnalysis.interestExpense
-    );
-    console.log(`[STEP 2] Current Ratio: ${ratios.liquidity.currentRatio.toFixed(2)}x`);
+Documents uploaded: ${application.documentAnalysis?.join(", ") || "None"}
 
-    // STEP 3: Compare to industry benchmarks
-    console.log("[STEP 3] Benchmarking against industry...");
-    const benchmark = compareToBenchmark(ratios, application.industry);
-    console.log(`[STEP 3] Industry: ${application.industry}, Assessment: ${benchmark.assessment}`);
+Extract and analyze:
+- Revenue, expenses, net income, cash position
+- Assets, liabilities, equity
+- Any red flags or concerns
+- How do stated financials match the claims?
 
-    // STEP 4: Research background
-    console.log("[STEP 4] Researching company and owner background...");
-    const background = await researchBackgroundWithClaude(
-      application.businessName,
-      application.industry,
-      application.yearsInBusiness,
-      application.businessOwners?.map(o => o.name) || [],
-      documentAnalysis.revenue || application.annualRevenue
-    );
-    console.log(`[STEP 4] Risk Level: ${background.riskLevel}`);
+Return as JSON with: revenue, netIncome, assets, liabilities, cashPosition, redFlags, confidenceScore (0-100).`;
 
-    // STEP 5: Calculate risk score
-    console.log("[STEP 5] Calculating comprehensive risk score...");
-    const riskScore = calculateRiskScore(
-      ratios.liquidity.currentRatio,
-      ratios.profitability.netMargin,
-      ratios.leverage.debtToEquity,
-      ratios.leverage.interestCoverage,
-      documentAnalysis.revenue || application.annualRevenue,
-      application.yearsInBusiness,
-      application.loanAmount,
-      application.industry,
-      application.businessOwners?.length || 1
-    );
-    console.log(`[STEP 5] Overall Risk: ${riskScore.overallRisk.toFixed(0)}/100, Recommendation: ${riskScore.recommendation}`);
+    const docResponse = await anthropic.messages.create({
+      model: "claude-opus-4-1-20250805",
+      max_tokens: 1000,
+      messages: [{ role: "user", content: docAnalysisPrompt }]
+    });
 
-    // STEP 6: Generate comprehensive report
-    console.log("[STEP 6] Generating comprehensive report...");
-    const report = generateComprehensiveReport(
-      application.businessName,
-      application.loanAmount,
-      application.annualRevenue,
-      application.industry,
-      application.yearsInBusiness,
-      application.businessOwners?.map(o => o.name) || [],
-      documentAnalysis,
-      ratios,
-      benchmark,
-      background,
-      riskScore,
-      parseFloat(application.score),
-      application.grade
-    );
-    console.log("[STEP 6] Report generated successfully");
+    let documentAnalysis = { revenue: 0, netIncome: 0, assets: 0, liabilities: 0, cashPosition: 0, redFlags: [], confidenceScore: 0 };
+    try {
+      const jsonMatch = docResponse.content[0].type === 'text' ? docResponse.content[0].text.match(/\{[\s\S]*\}/) : null;
+      if (jsonMatch) documentAnalysis = JSON.parse(jsonMatch[0]);
+    } catch (e) {}
 
-    console.log(`[UNDERWRITING] Analysis complete for ${application.businessName}`);
+    // STEP 2: Synthesize underwriting recommendation
+    console.log("[UNDERWRITING] Step 2: Synthesizing underwriting decision...");
+    const underwritingPrompt = `You are a senior loan officer making an underwriting decision.
+
+Business: ${application.businessName}
+Industry: ${application.industry}
+Loan Request: $${application.loanAmount}
+Claimed Annual Revenue: $${application.annualRevenue}
+
+Financial Analysis from Documents:
+- Actual Revenue: $${documentAnalysis.revenue || application.annualRevenue}
+- Net Income: $${documentAnalysis.netIncome}
+- Assets: $${documentAnalysis.assets}
+- Liabilities: $${documentAnalysis.liabilities}
+- Cash Position: $${documentAnalysis.cashPosition}
+
+Red Flags Found: ${documentAnalysis.redFlags.join(", ") || "None"}
+
+Question: Does this loan make sense? Would you approve, review further, or decline?
+- Consider: loan-to-revenue ratio, liquidity, leverage, income stability
+- Do the numbers pencil out?
+- Are there credibility concerns?
+
+Return JSON: { recommendation: "APPROVE|REVIEW|DECLINE", reasoning: "...", riskScore: 0-100, keyMetrics: {...}, nextSteps: [...] }`;
+
+    const underwritingResponse = await anthropic.messages.create({
+      model: "claude-opus-4-1-20250805",
+      max_tokens: 1500,
+      messages: [{ role: "user", content: underwritingPrompt }]
+    });
+
+    let underwriting = { recommendation: "REVIEW", reasoning: "Analysis incomplete", riskScore: 50, keyMetrics: {}, nextSteps: [] };
+    try {
+      const jsonMatch = underwritingResponse.content[0].type === 'text' ? underwritingResponse.content[0].text.match(/\{[\s\S]*\}/) : null;
+      if (jsonMatch) underwriting = JSON.parse(jsonMatch[0]);
+    } catch (e) {}
+
+    // STEP 3: Format final report
+    const report = {
+      executiveSummary: {
+        recommendation: underwriting.recommendation,
+        reasoning: underwriting.reasoning,
+        overallRisk: underwriting.riskScore,
+        keyFindings: [
+          `Loan Request: $${application.loanAmount}`,
+          `Stated Revenue: $${application.annualRevenue}`,
+          `Document Analysis Confidence: ${documentAnalysis.confidenceScore}%`,
+          `Red Flags: ${documentAnalysis.redFlags.length > 0 ? documentAnalysis.redFlags.join(", ") : "None identified"}`
+        ]
+      },
+      financialAnalysis: {
+        documentedRevenue: documentAnalysis.revenue,
+        documentedNetIncome: documentAnalysis.netIncome,
+        documentedAssets: documentAnalysis.assets,
+        documentedLiabilities: documentAnalysis.liabilities,
+        loanToRevenueRatio: ((application.loanAmount / (documentAnalysis.revenue || application.annualRevenue)) * 100).toFixed(1) + "%"
+      },
+      recommendation: underwriting.recommendation,
+      nextSteps: underwriting.nextSteps || ["Request additional documentation", "Conduct background verification"],
+      generatedAt: new Date().toISOString()
+    };
+
     return report;
-  } catch (error) {
-    console.error("[UNDERWRITING] Error during analysis:", error);
+  } catch (error: any) {
+    console.error("[UNDERWRITING] Error:", error);
     throw error;
   }
 }
