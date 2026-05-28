@@ -8,6 +8,11 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
 import { performComprehensiveUnderwriting } from "./underwriting-engine";
+import "./document-processor";
+import "./financial-calculator";
+import "./background-researcher";
+import "./risk-scorer";
+import "./report-generator";
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;
