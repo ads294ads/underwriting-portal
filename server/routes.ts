@@ -3476,7 +3476,7 @@ function generateDetailedDocumentInsights(documentTypes: string[], metrics: stri
     );
   }
   
-  return insights;
+  
 
   app.post("/api/loan-applications/:id/comprehensive-underwriting", async (req: Request, res: Response) => {
     try {
@@ -3484,6 +3484,8 @@ function generateDetailedDocumentInsights(documentTypes: string[], metrics: stri
       const applications = await storage.getAllLoanApplications();
       const application = applications.find(app => app.id === applicationId);
       if (!application) return res.status(404).json({ error: "Application not found" });
+
+  return insights;
       const report = await performComprehensiveUnderwriting(application);
       await storage.updateLoanApplication(applicationId, { ...application, comprehensiveUnderwritingReport: report });
       res.json({ success: true, report });
