@@ -149,6 +149,87 @@ export default function LoanDetail() {
           </>
         )}
 
+
+        {/* Comprehensive Underwriting Report */}
+        {application.comprehensiveUnderwritingReport && (
+          <Card className="mb-6 border-2 border-green-200 bg-green-50">
+            <CardHeader>
+              <CardTitle className="text-green-900">Comprehensive Underwriting Decision</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-3 gap-4">
+                <div className="bg-white p-4 rounded border border-green-300">
+                  <p className="text-xs text-gray-600 uppercase font-semibold">Recommendation</p>
+                  <p className={`text-2xl font-bold ${application.comprehensiveUnderwritingReport.underwritingDecision?.recommendation === 'APPROVE' ? 'text-green-600' : 'text-red-600'}`}>
+                    {application.comprehensiveUnderwritingReport.underwritingDecision?.recommendation}
+                  </p>
+                </div>
+                <div className="bg-white p-4 rounded border border-green-300">
+                  <p className="text-xs text-gray-600 uppercase font-semibold">Risk Score</p>
+                  <p className="text-2xl font-bold text-orange-600">{application.comprehensiveUnderwritingReport.executiveSummary?.overallRisk}</p>
+                </div>
+                <div className="bg-white p-4 rounded border border-green-300">
+                  <p className="text-xs text-gray-600 uppercase font-semibold">Financial Score</p>
+                  <p className="text-2xl font-bold text-blue-600">{application.comprehensiveUnderwritingReport.financialAnalysis?.score}</p>
+                </div>
+              </div>
+
+              <div className="bg-white p-4 rounded border border-green-300">
+                <p className="text-sm font-semibold mb-2">Executive Summary</p>
+                <p className="text-sm text-gray-700">{application.comprehensiveUnderwritingReport.executiveSummary?.summary}</p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-white p-4 rounded border border-green-300">
+                  <p className="text-sm font-semibold mb-2">Key Metrics</p>
+                  <div className="space-y-1 text-sm">
+                    <div>Financial Score: <span className="font-semibold">{application.comprehensiveUnderwritingReport.executiveSummary?.keyMetrics?.financialScore}</span></div>
+                    <div>Business Viability: <span className="font-semibold">{application.comprehensiveUnderwritingReport.executiveSummary?.keyMetrics?.businessViability}</span></div>
+                    <div>Owner Credibility: <span className="font-semibold">{application.comprehensiveUnderwritingReport.executiveSummary?.keyMetrics?.ownerCredibility}</span></div>
+                    <div>Loan to Revenue: <span className="font-semibold">{application.comprehensiveUnderwritingReport.executiveSummary?.keyMetrics?.loanToRevenue}</span></div>
+                  </div>
+                </div>
+
+                <div className="bg-white p-4 rounded border border-green-300">
+                  <p className="text-sm font-semibold mb-2">Financial Ratios</p>
+                  <div className="space-y-1 text-sm">
+                    {Object.entries(application.comprehensiveUnderwritingReport.financialAnalysis?.ratios || {}).map(([key, value]) => (
+                      <div key={key}>{key}: <span className="font-semibold">{String(value)}</span></div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {application.comprehensiveUnderwritingReport.underwritingDecision?.conditions && (
+                <div className="bg-white p-4 rounded border border-green-300">
+                  <p className="text-sm font-semibold mb-2">Approval Conditions</p>
+                  <ul className="space-y-1 text-sm">
+                    {application.comprehensiveUnderwritingReport.underwritingDecision.conditions.map((condition, idx) => (
+                      <li key={idx} className="flex items-start gap-2">
+                        <span className="text-green-600 font-bold">•</span>
+                        <span>{condition}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {application.comprehensiveUnderwritingReport.underwritingDecision?.nextSteps && (
+                <div className="bg-white p-4 rounded border border-green-300">
+                  <p className="text-sm font-semibold mb-2">Next Steps</p>
+                  <ol className="space-y-1 text-sm list-decimal list-inside">
+                    {application.comprehensiveUnderwritingReport.underwritingDecision.nextSteps.map((step, idx) => (
+                      <li key={idx}>{step}</li>
+                    ))}
+                  </ol>
+                </div>
+              )}
+
+              <p className="text-xs text-gray-500 text-center">Generated: {new Date(application.comprehensiveUnderwritingReport.generatedAt).toLocaleString()}</p>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Scoring Details */}
         {application.scoringDetails && (
           <Card className="mb-6">
